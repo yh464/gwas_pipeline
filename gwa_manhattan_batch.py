@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+'''
+generates manhattan plots for all fastGWA files in a directory and merges autosome and X
+'''
+
+def main(args):
+    import os
+    from fnmatch import fnmatch
+    from _utils import array_submitter
+    
+    if args.force: f = '-f'
+    elif args.p: f = '-p'
+    else: f = ''
+    if args.a: f += ' -a'
+    if len(args.pheno) == 0:
+        args.pheno = os.listdir(args._in)
+    
+    submitter = array_submitter.array_submitter(
+        name = 'gwa_manhattan',
+        partition = 'icelake-himem', # must use himem, using icelake will raise out-of-memory error [125]
+        timeout = 60,
+        debug = False
+        )
+    
+    for y in args.pheno:
+      os.chdir(args._in)
+      if not os.path.isdir(y): continue # sanity check especially for default y = ls(args._in)
+      os.chdir(y)
+      flist = []
+      for x in os.listdir():
+        if fnmatch(x, '*.fastGWA') and (not fnmatch(x, '*X.fastGWA')) and \
+          (not fnmatch(x, '*all_chrs.fastGWA')): 
+          # excludes X chromosomes
+          flist.append(x)
+      
+      if not os.path.isdir(args.out+y):
+        os.system(f'mkdir -p {args.out}/{y}')
+      
+      for x in flist:
+        out_fname = f'{args.out}/{x}'.replace('.fastGWA','.manhattan.png')
+        out_df = x.replace('.fastGWA','_all_chrs.fastGWA')
+        
+        skip = True
+        
+        if not os.path.isfile(out_fname): skip = False
+        if not args.a and not os.path.isfile(out_df): skip = False
+        if skip and (not args.force) and (not args.p): continue
+      
+        scripts_path = os.path.realpath(__file__)
+        scripts_path = os.path.dirname(scripts_path)
+        submitter.add(f'bash {scripts_path}/pymaster_gtpy.sh '+
+          f'gwa_manhattan.py {y} --file {x} -i {args._in} -o {args.out} {f}')
+    
+    submitter.submit()
+    # submitter.debug()
+        
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description = 
+      'This programme compiles Manhattan plots for all fastGWA output files for a single phenotype file')
+    parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
+    parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
+      default = '../gwa/')
+    parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
+      default = '../gwa/manhattan/')
+    parser.add_argument('-f','--force',dest = 'force', help = 'force output',
+      default = False, action = 'store_true')
+    parser.add_argument('-p','--plot-only', dest = 'p', help = 'skip concatenation, only plot graphs',
+      default = False, action = 'store_true')
+    parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
+      default = False, action = 'store_true')
+    args = parser.parse_args()
+    import os
+    for arg in ['_in','out']:
+        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    
+    from _utils import cmdhistory, path
+    cmdhistory.log()
+    proj = path.project()
+    proj.add_input(args._in, __file__)
+    proj.add_output(args.out, __file__)
+    try: main(args)
+    except: cmdhistory.errlog()
