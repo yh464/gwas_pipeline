@@ -139,7 +139,7 @@ if __name__ == '__main__':
                         help = 'Phenotypes group 2 (reserved for correlates)', nargs = '*', 
                         default = ['disorders_for_mr']) # require manual fiddling, so create new dir
     parser.add_argument('-e2','--ext2', dest = 'ext2', help = 'Extension for phenotype group 2',
-                        default = 'txt')
+                        default = 'fastGWA')
     parser.add_argument('-n2', help = 'Sample size for phenotype group 2, number or tabular',
                         default = '../params/disorder_sample_size.txt')
     parser.add_argument('-nca', help = 'Sample size for cases in phenotype group 2, number',

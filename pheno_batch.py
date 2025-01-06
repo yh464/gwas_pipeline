@@ -92,7 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in',dest = '_in', help =
         'Target file to screen',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Imaging/'+
-        '%sub/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
+        'UKB%sub/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
     parser.add_argument('-s', '--subjs', dest = 'subjs', help = 'list of subjs',
         default = '../params/subjlist_rsfmri_hcp.txt')
     parser.add_argument('-o','--out',dest = 'out', help = 'Output directory',

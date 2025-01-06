@@ -28,8 +28,10 @@ args = parser.parse_args()
 import os
 for arg in ['_in','out','bfile']:
     exec(f'args.{arg} = os.path.realpath(args.{arg})')
-
 if type(args.out) == type(None): args.out = args._in
+
+from _utils import logger
+logger.splash(args)
 
 import time
 import pandas as pd
@@ -79,16 +81,17 @@ for c in chrs:                                                                 #
   tmp_flist.append(f'{tmpout}.hh')
   tmp_flist.append(f'{tmpout}.clumped')
   
-  # clumps by chromosome
-  os.system(f'{args.plink} --noweb --bfile {bf} --clump {tmpgwa} '+
-    f'--clump-field P --clump-p1 {args.p} --clump-p2 1 --clump-r2 0.1 '+       # p1 must be determined by matrix decomposition
-    f'--clump-kb 1000 --extract {tmpsnp} --out {tmpout}')
+  if not os.path.isfile(f'{tmpout}.clumped') or args.force:
+      # clumps by chromosome
+      os.system(f'{args.plink} --noweb --bfile {bf} --clump {tmpgwa} '+
+        f'--clump-field P --clump-p1 {args.p} --clump-p2 1 --clump-r2 0.1 '+       # p1 must be determined by matrix decomposition
+        f'--clump-kb 1000 --extract {tmpsnp} --out {tmpout}')
   
-  out_df.append(pd.read_table(f'{tmpout}.clumped'))
+  out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
   toc = time.perf_counter() - tic
   print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.', file = log)
 
-out_df = pd.concat(out_df)
+out_df = pd.concat(out_df, axis = 0)
 out_df.to_csv(out, sep = '\t', index = False)
 # # clears temp
 # for x in tmp_flist:

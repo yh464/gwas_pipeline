@@ -118,8 +118,6 @@ main = function(args) {
     library(tidyverse)
   }
   
-  tic = proc.time()
-  
   #### check progress ####
   prefix1 = basename(args$gwa1) %>% gsub('.?fastGWA','',.) %>% gsub('.?txt','',.)
   prefix2 = basename(args$gwa2) %>% gsub('.?fastGWA','',.) %>% gsub('.?txt','',.)
@@ -139,10 +137,13 @@ main = function(args) {
     refsnp = l2$SNP
     refsnp = g1$SNP[g1$SNP %in% refsnp]
     refsnp = g2$SNP[g2$SNP %in% refsnp]
+    refsnp = unique(refsnp)
     g1 = g1[g1$SNP %in% refsnp,]
     g1 = g1[order(g1$CHR, g1$POS),]
+    g1 = g1[!duplicated(g1),]
     g2 = g2[g2$SNP %in% refsnp,]
     g2 = g2[order(g2$CHR, g2$POS),]
+    g2 = g2[!duplicated(g2),]
     l2 = merge(l2, g1, by='SNP')
     l2 = l2[order(l2$CHR, l2$POS),]
     
@@ -151,15 +152,16 @@ main = function(args) {
     g2$A1[mismatch] = g1$A2[mismatch]
     g2$A2[mismatch] = g1$A1[mismatch]
     g2$Z[mismatch] = -g2$Z[mismatch]
-      
-    toc = proc.time() - tic
+    
+    print(nrow(g1), nrow(g2),nrow(l2))
+    toc = proc.time() 
     print(paste0('Finished input processing, time = ', toc[3]))
     
     #### run LCV ####
     res = run_lcv(ell= as.numeric(l2$L2), as.numeric(g1$Z), as.numeric(g2$Z), 
                   n.1 = as.integer(args$n1), n.2 = as.integer(args$n2),
                   ldsc.intercept = 0) # otherwise h2 will be underestimated and be negative
-    toc = proc.time() - tic
+    toc = proc.time() 
     print(paste0('Finished MR-LCV, time = ', toc[3]))
     
     out = c(prefix1, prefix2, res$gcp.pm, res$gcp.pse, res$zscore, res$pval.gcpzero.2tailed,

@@ -44,7 +44,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Computes correlational plots between IDPs and PGS (batch)')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input file or directory',
-      default = '../pheno/conn/')
+      default = '../pheno/ukb/')
     parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS score directory',
       default = '../prs/prs_score/')
     parser.add_argument('--cov',dest = 'cov', help = 'DISCRETE covariance file',

@@ -112,7 +112,7 @@ for i in range(nroi): rsc[i,i] = 0
 # Fisher transform
 rsc = np.arctanh(rsc)
 rsc = rsc/2 + rsc.T/2                                                          # enforce symmetry
-rsc = rsc/rsc.max()                                                            # re-scaling as recommended by BCT
+#rsc = rsc/rsc.max()                                                            # re-scaling as recommended by BCT
 
 # neighbourhood
 rsc_bin = rsc>0
@@ -218,9 +218,30 @@ clu_asym_corr = -np.arctanh(clu_asym_corr[0])
 bet_asym_corr = sts.spearmanr(bet_local[:nroi_5],bet_local[nroi_5:])          
 bet_asym_corr = -np.arctanh(bet_asym_corr[0])
 
+deg_asym_pear = sts.pearsonr(deg_local[:nroi_5],deg_local[nroi_5:])            # this is in essence a symmetry measure
+deg_asym_pear = -np.arctanh(deg_asym_pear[0])                                  # normalise to z score, -ve to reflect asymmetry
+
+degi_asym_pear = sts.pearsonr(degi_local[:nroi_5],degi_local[nroi_5:])          
+degi_asym_pear = -np.arctanh(degi_asym_pear[0])
+
+degc_asym_pear = sts.pearsonr(degc_local[:nroi_5],degc_local[nroi_5:])          
+degc_asym_pear = -np.arctanh(degc_asym_pear[0])
+
+mpl_asym_pear = sts.pearsonr(mpl_local[:nroi_5],mpl_local[nroi_5:])          
+mpl_asym_pear = -np.arctanh(mpl_asym_pear[0])
+
+eff_asym_pear = sts.pearsonr(eff_local[:nroi_5],eff_local[nroi_5:])          
+eff_asym_pear = -np.arctanh(eff_asym_pear[0])
+
+clu_asym_pear = sts.pearsonr(clu_local[:nroi_5],clu_local[nroi_5:])          
+clu_asym_pear = -np.arctanh(clu_asym_pear[0])
+
+bet_asym_pear = sts.pearsonr(bet_local[:nroi_5],bet_local[nroi_5:])          
+bet_asym_pear = -np.arctanh(bet_asym_pear[0])
+
 # asymmetry of all intra-hemispheric connectivities
-con_asym_corr = sts.spearmanr(squareform(rsc[:nroi_5,:nroi_5]), squareform(rsc[nroi_5:, nroi_5:]))
-con_asym_corr = -np.arctanh(con_asym_corr[0])
+# con_asym_corr = sts.spearmanr(squareform(rsc[:nroi_5,:nroi_5]), squareform(rsc[nroi_5:, nroi_5:]))
+# con_asym_corr = -np.arctanh(con_asym_corr[0])
 
 # local asymmetry measures
 deg_nasym_abs = deg_local[:nroi_5]-deg_local[nroi_5:]
@@ -299,7 +320,11 @@ df = pd.DataFrame(dict(degi_asym_abs = degi_asym_abs, degi_asym_frac = degi_asym
                        deg_asym_corr = deg_asym_corr, degi_asym_corr = degi_asym_corr,
                        degc_asym_corr = degc_asym_corr, mpl_asym_corr = mpl_asym_corr,
                        eff_asym_corr = eff_asym_corr, clu_asym_corr = clu_asym_corr,
-                       bet_asym_corr = bet_asym_corr, con_asym_corr = [con_asym_corr]
+                       bet_asym_corr = bet_asym_corr, 
+                       deg_asym_pear = deg_asym_pear, degi_asym_pear = degi_asym_pear,
+                       degc_asym_pear = degc_asym_pear, mpl_asym_pear = mpl_asym_pear,
+                       eff_asym_pear = eff_asym_pear, clu_asym_pear = clu_asym_pear,
+                       bet_asym_pear = [bet_asym_pear]
                        ), index = ['global_asym']).T
 df.to_csv(out_filename, sep = '\t', index = True, header = True)
 

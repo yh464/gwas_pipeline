@@ -23,8 +23,11 @@ def main(args):
     # array submitter
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
-        name = 'finemap', n_cpu = 2,
-        timeout = 30)
+        name = f'finemap_{args.pheno[0]}', n_cpu = 2,
+        env = 'gentoolspy',
+        timeout = 60,
+        debug = False
+        )
     scripts_path = os.path.realpath(__file__)
     scripts_path = os.path.dirname(scripts_path)
     
@@ -51,8 +54,9 @@ def main(args):
         
         print(f'{prefix} submitted to slurm', file = log)
         
-        submitter.add(f'bash {scripts_path}/pymaster.sh '+
-          f'finemap_by_trait.py {x} -i {y} -d {args._in} -o {args.out} -p {args.p:.4e} -b {args.bfile} {force}')
+        submitter.add(
+          f'python finemap_by_trait.py {x} -i {y} -d {args._in} -c {args.clump} -o {args.out}'+
+          f' -p {args.p:.4e} --polyfun {args.polyfun} -b {args.bfile} {force}')
     submitter.submit()
     # submitter.debug()
     
@@ -69,6 +73,8 @@ if __name__ == '__main__':
       default = '../finemap/')
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary',
       default = '../params/bed/')
+    parser.add_argument('--polyfun', help = 'directory of POLYFUN tool',
+      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
     parser.add_argument('-p', dest = 'p', help = 'p-value', default = 3.1076e-11, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')

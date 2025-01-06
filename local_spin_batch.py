@@ -15,7 +15,7 @@ def main(args):
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
         name = 'local_spin', n_cpu = 1,
-        timeout = 10, env = 'rwd',
+        timeout = 30, env = 'rwd',
         debug = False
         )
     
@@ -26,9 +26,13 @@ def main(args):
         d = os.path.dirname(x)
         p = os.path.basename(x)
         for f in os.listdir(d):
-            if fnmatch(f,p):
-                submitter.add(f'Rscript local_spin_lr.r -i {d}/{f} {force}')
-                submitter.add(f'Rscript local_spin.r -i {d}/{f} {force}')
+            if fnmatch(f,p) and not fnmatch(f,'*yeo.*') and not fnmatch(f,'*mes.*'):
+                lr_out = f'{d}/{f}'.replace('.txt','').replace('.csv','')+'.spinlr.yeo.txt'
+                out = lr_out.replace('spinlr','spin')
+                if not os.path.isfile(lr_out) or args.force:
+                    submitter.add(f'Rscript local_spin_lr.r -i {d}/{f} {force}')
+                if not os.path.isfile(out) or args.force:
+                    submitter.add(f'Rscript local_spin.r -i {d}/{f} {force}')
     
     submitter.submit()
     
@@ -38,9 +42,14 @@ if __name__ == '__main__':
         description = 'This programme batch runs spin permutations')
     parser.add_argument('-i','--in', dest = '_in', help = 'input files, can have wildcards, nargs=*',
         nargs = '*', 
-        default = ['../local_corr/*20??_rg.csv',
-                   '../prs/prs_corr/*20??_beta.csv',
-                   '../clump/*3e-11_overlaps.txt'])
+        # default = ['../local_corr/*20??_rg.csv',
+        #            '../local_corr/local_h2_summary.csv',
+        #            '../local_corr/global_rg.csv',
+        #            '../local_corr/asym_rg.csv',
+        #            '../prs/prs_corr/*20??_beta.csv',
+        #            '../clump/*3e-11_overlaps.txt']
+        default = ['../brainplots/*.txt','../brainplots/*.csv']
+        )
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
         default = False, action = 'store_true')
     args = parser.parse_args()

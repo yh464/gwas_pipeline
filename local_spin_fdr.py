@@ -20,7 +20,7 @@ def main(args):
       '7Networks_2', 'Somatomotor').replace('7Networks_3','D_Attention').replace(
       '7Networks_4','V_Attention').replace('7Networks_5','Limbic').replace(
       '7Networks_6','Frontoparietal').replace('7Networks_7','Default')
-    df.to_csv(x, sep = ';', index = False)
+    df.to_csv(x, sep = '\t', index = False)
 
 if __name__ == '__main__':
   import argparse

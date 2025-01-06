@@ -19,6 +19,7 @@ f <- args$force
 tic <- proc.time()
 
 tmpdir <- '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
+if (! dir.exists(tmpdir)) dir.create(tmpdir)
 
 #### Mapping from HCP to broader cortical types ####
 # load the mapping files
@@ -81,9 +82,9 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
   enrich.yeo <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
   enrich.eco <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
   
-  stats.mes <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor())
-  stats.yeo <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor())
-  stats.eco <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor())
+  stats.mes <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
+  stats.yeo <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
+  stats.eco <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
   
   for (feature in 2:length(unique(colnames(data)))){
     print(paste0('Working on: ',colnames(data)[feature]))
@@ -116,7 +117,9 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
       z$x <- null$Real # real value
       null$Real <- NULL
       
-      if (file.exists(cache_fname) && !f){
+      if (file.exists(cache_fname) 
+          # && !f
+          ){
         load(cache_fname)
       } else {
         for (i in 1:10000){
@@ -139,26 +142,28 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
       z$medianV <- apply(null[,2:ncol(null)],1,median, na.rm = T) # median null distrib
       z$p1tail <- 0 # 1-tailed p-value
       z$p2tail <- 0 # 2-tailed p-value
+      z$fdr <- 0
       z$lci <- 0
       z$rci <- 0
       for (i in 1:nrow(null)){
         xi <- z$x[i]
         mui <- z$medianV[i]
-        nulli <- null[i,2:ncol(null)] %>% sort()
-        z$lci[i] <- nulli[as.integer(ncol(nulli)*0.025)]
-        z$rci[i] <- nulli[as.integer(ncol(nulli)*0.975)]
+        nulli <- null[i,2:ncol(null)] %>% as.numeric() %>% sort()
+        z$lci[i] <- nulli[as.integer(length(nulli)*0.025)]
+        z$rci[i] <- nulli[as.integer(length(nulli)*0.975)]
         yi <- 2*mui - xi
         if (xi<mui){
-          p1tail <- sum(nulli<xi)/ncol(nulli)
-          potail <- sum(nulli>yi)/ncol(nulli)
+          p1tail <- sum(nulli<xi)/length(nulli)
+          potail <- sum(nulli>yi)/length(nulli)
         } else {
-          p1tail <- sum(nulli>xi)/ncol(nulli)
-          potail <- sum(nulli<yi)/ncol(nulli)
+          p1tail <- sum(nulli>xi)/length(nulli)
+          potail <- sum(nulli<yi)/length(nulli)
         }
         z$p1tail[i] <- p1tail
         z$p2tail[i] <- p1tail+potail
       }
       z$feature <- as.character(colnames(data)[feature])
+      z$fdr <- p.adjust(z$p2tail, method = 'BH')
       
       null <- as.data.frame(t(null))
       colnames(null) <- null[1,]
@@ -211,8 +216,10 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
        enrich.yeo, enrich.mes, enrich.eco,
        file = paste0(prefix,'.spinlr.stats.rdata'))
 }
-write.table(apply(stats.mes,2,as.character),file = paste0(prefix,'.spinlr.mes.csv'))
-write.table(apply(stats.yeo,2,as.character),file = paste0(prefix,'.spinlr.yeo.csv'))
+write.table(apply(stats.mes,2,as.character),file = paste0(prefix,'.spinlr.mes.txt'),
+            quote = F, sep = '\t')
+write.table(apply(stats.yeo,2,as.character),file = paste0(prefix,'.spinlr.yeo.txt'),
+            quote = F, sep = '\t')
 
 #### Permutation plots ####
 # Reset labels
@@ -243,7 +250,6 @@ cmap_yeo = c("#781286","#4682B4","#00760E","#C43AFA","#DCF8A4","#E69422","#CD3E4
              "#580066","#266294","#005600","#A41ACA","#BCC884","#C67402","#AD1E2E")
 cmap_ve=c("#FEB35A", "#BFE274", "#FFFEA9", "#C3C6E0", "#FC7E6F", "#79B5D1", "#8FD1C9")
 cmap_ve2=c("#8B1C61", "#0000CF", "#01883D", "#EF9A01", "#FFFE01", "#01FFFF", "#FF00FE")
-
 
 # null distribution as ridgeplot and real values on top.
 mes <- ggplot(data=enrich.mes, aes(y=Var2,x=value,fill=Var2)) +

@@ -14,8 +14,7 @@ Requires following inputs:
 def main(args):
     import os
     from fnmatch import fnmatch
-    gcorrdir = f'{args.out}/gcorr'
-    if not os.path.isdir(gcorrdir): os.system(f'mkdir -p {gcorrdir}')
+    if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     
     # array submitter
     from _utils import array_submitter
@@ -41,8 +40,8 @@ def main(args):
     
     for i in range(len(prefix_1)):
       for j in range(len(prefix_2)):
-        out_rg = f'{gcorrdir}/{pheno_1[i]}_{prefix_1[i]}.{pheno_2[j]}_{prefix_2[j]}.rg.log'
-        out_rg1 = f'{gcorrdir}/{pheno_2[j]}_{prefix_2[j]}.{pheno_1[i]}_{prefix_1[i]}.rg.log'
+        out_rg = f'{args.out}/{pheno_1[i]}_{prefix_1[i]}.{pheno_2[j]}_{prefix_2[j]}.rg.log'
+        out_rg1 = f'{args.out}/{pheno_2[j]}_{prefix_2[j]}.{pheno_1[i]}_{prefix_1[i]}.rg.log'
         
         # check for duplicate files
         if os.path.isfile(out_rg) and os.path.isfile(out_rg1):
@@ -61,7 +60,7 @@ def main(args):
           tmp = open(out_rg).read().splitlines()[-4].split()[2]
           try: float(tmp)
           except:
-              # try constraining intercepts
+            # try constraining intercepts
             submitter.add('bash '+
               f'{scripts_path}/ldsc_master.sh ldsc.py --ref-ld-chr {args.ldsc}/baseline/'+
               f' --w-ld-chr {args.ldsc}/baseline/ '+
@@ -93,7 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../gene_corr/')
+      default = '../gene_corr/gcorr/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
@@ -105,6 +104,6 @@ if __name__ == '__main__':
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng_%pheno_%maf.sumstats', __file__)
-    proj.add_output(args.out+'/gcorr/%pheng_%pheno_%maf.%pheng_%pheno_%maf.rg.log', __file__)
+    proj.add_output(args.out+'/%pheng_%pheno_%maf.%pheng_%pheno_%maf.rg.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()

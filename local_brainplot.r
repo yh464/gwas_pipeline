@@ -9,37 +9,19 @@ require(tidyverse)
 require(ggsegExtra)
 require(ggsegGlasser)
 
-setwd('d:/.cam-pg/2023_rsfc-gwas')
+setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
 
 ref <- glasser$data
 
-for (f in c(
-            # 'local_corr/local_h2_summary'
-            # 'local_corr/global_rg',
-            # 'local_corr/asd2019_rg',
-            # 'local_corr/mdd2023_rg',
-            # 'local_corr/an2019_rg',
-            # 'local_corr/ptsd2024_rg',
-            # 'local_corr/scz2022_rg',
-            # 'prs/asd2019_beta',
-            # 'prs/mdd2023_beta',
-            # 'prs/an2019_beta',
-            # 'prs/ptsd2024_beta',
-            # 'prs/adhd2022_beta',
-            # 'prs/scz2022_beta',
-            # 'prs/sud2023_beta',
-            'clump/clu_local_3e-11_overlaps.txt',
-            'clump/deg_local_3e-11_overlaps.txt',
-            'clump/degi_local_3e-11_overlaps.txt',
-            'clump/degc_local_3e-11_overlaps.txt',
-            'clump/mpl_local_3e-11_overlaps.txt',
-            'clump/eff_local_3e-11_overlaps.txt'
-            )
-     ){
-  if (! endsWith(f, 'txt')) {fname <- paste0(f,'.csv'); sep <- ','} else {
-    fname <- f; sep <- '\t'
-  }
-  df <- read.csv(fname, sep = sep)
+for (f in list.files()){
+  out = paste0(f%>%gsub('.txt','',.)%>%gsub('.csv','',.),'.pdf')
+  if (file.exists(out)) next
+  if (endsWith(f, '.pdf') | endsWith(f, '.png')) next
+  if (grepl('yeo',f) | grepl('mes',f)) next
+  if (! endsWith(f, '.csv')) sep <- '' else sep <- ','
+  print(f)
+  df <- read.csv(f, sep = sep)
+  if (is.null(df$label)) df$label = rownames(df)
   df$label <- gsub('_0.01','',df$label)
   df$label <- gsub('_ROI','',df$label)
   df$label <- gsub('^L','lh_L',df$label)
@@ -54,18 +36,18 @@ for (f in c(
     ggplot() + geom_brain(
       atlas = glasser,
       aes(fill = value),
-      position = position_brain(side ~ hemi)) +
+      position = position_brain(hemi + side ~ .)) +
     scale_fill_gradient2(low='blue', mid = 'white', high='red',
-                          midpoint = 0) +
-    facet_wrap(~name) + 
+                         midpoint = 0) +
+    facet_wrap(~name, nrow = 1) + 
     theme(axis.ticks = element_blank(),
           axis.text = element_blank())
   options()
   ggsave(
-    paste(f,'.pdf',sep=''),
+    out,
     plot = plt,
     device = 'pdf',
-    width = 6, height = 3
+    width = m$name %>% unique() %>% length(), height = 3
   )
   print(plt)
 }

@@ -35,6 +35,7 @@ def main(args):
             annot_list.append(x)
     
     for x in args.pheno:
+      print(f'Processing: {x}')
       os.chdir(f'{args._in}/{x}/genes')
       all_annot = []
       
@@ -59,9 +60,16 @@ def main(args):
           summary = pd.concat(dflist).sort_values(by = 'Pfdr')
           summary.to_csv(f'{args._in}/{x}/summary/{annot}.siggenes.txt', sep = '\t', index = False)
           all_annot.append(summary)
-      all_annot = pd.concat(all_annot)
+      all_annot = pd.concat(all_annot, ignore_index = True)
       all_annot = all_annot.loc[all_annot.P <= 0.05 ,:].sort_values(by = 'Pfdr')
       all_annot.to_csv(f'{args._in}/{x}/all_siggenes.txt', sep = '\t', index = False)
+      
+      all_annot = all_annot.loc[all_annot.Pfdr <= 0.05,:]
+      overlaps = pd.DataFrame(data = 0, index = all_annot.annot.unique(), columns = all_annot.LABEL.unique())
+      for i in all_annot.index:
+          overlaps.loc[all_annot.loc[i, 'annot'], all_annot.loc[i,'LABEL']] = 1
+      overlaps.index.name = 'annot'
+      overlaps.to_csv(f'{args._in}/{x}/all_siggenes_overlaps.txt', sep = '\t', index = True, header = True)
       
 if __name__ == '__main__':
 

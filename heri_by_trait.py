@@ -27,9 +27,10 @@ if args.force or (not os.path.isfile(f'{args.out}/{prefix}.sumstats')):
 
 # QC h2 log
 h2log = f'{args.out}/{prefix}.h2.log'
-tmp = open(h2log).read().splitlines()[-7].replace('(','').replace(')','').split()
-try: h2 = float(tmp[-2])
-except: os.remove(h2log)
+if os.path.isfile(h2log):
+    tmp = open(h2log).read().splitlines()[-7].replace('(','').replace(')','').split()
+    try: h2 = float(tmp[-2])
+    except: os.remove(h2log)
 
 if (not os.path.isfile(f'{args.out}/{prefix}.h2.log')) or args.force:
   os.system(f'bash {scripts_path}/ldsc_master.sh ldsc.py '+

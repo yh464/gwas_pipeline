@@ -105,9 +105,11 @@ def main(args):
           
           for f1 in prefix1:
             mr_prefix = f'{args._in}/{p2}/{f2}/{p1}_{f1}_{f2}'
-            c, p = parse_mr_results(f'{mr_prefix}_mr_forward')
+            try: c, p = parse_mr_results(f'{mr_prefix}_mr_forward')
+            except: print(f'{mr_prefix} no MR forward result')
             results_fwd.append(c); pleio_fwd.append(p)
-            c, p = parse_mr_results(f'{mr_prefix}_mr_reverse')
+            try: c, p = parse_mr_results(f'{mr_prefix}_mr_reverse')
+            except: print(f'{mr_prefix} no MR reverse result')
             results_rev.append(c); pleio_rev.append(p)
         
           # concatenate and write tabular output
@@ -160,7 +162,8 @@ if __name__ == '__main__':
     for arg in ['gwa','_in']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
     
-    from _utils import cmdhistory, path
+    from _utils import cmdhistory, path, logger
+    logger.splash(args)
     cmdhistory.log()
     proj = path.project()
     proj.add_input(f'{args._in}/{args.p2}/*/*',__file__)

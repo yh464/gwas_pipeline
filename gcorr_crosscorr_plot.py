@@ -91,8 +91,9 @@ def main(args):
     summary = pd.concat(summary) # creates a long format table
     summary.insert(loc = len(summary.columns), column = 'q', value = np.nan)
     for p1,x1 in zip(pheno_1, prefix_1): # FDR correction for each IDP, which are non-independent
-        summary.loc[(summary.pheno1==x1) & (summary.group1==p1),'q'] = sts.false_discovery_control(
-            summary.loc[(summary.pheno1==x1)&(summary.group1==p1),'p'])
+        summary.loc[(summary.pheno1==x1) & (summary.group1==p1) & ~np.isnan(summary.p),'q'] \
+            = sts.false_discovery_control(
+            summary.loc[(summary.pheno1==x1)&(summary.group1==p1) & ~np.isnan(summary.p),'p'])
     
     summary['pheno1'] = summary.pheno1.str.replace('_0.01','').replace('_meta','').replace('_corr','')
     summary['pheno2'] = summary.pheno2.str.replace('_meta','').replace('_0.01','')
@@ -109,6 +110,8 @@ def main(args):
     fig, ax = plt.subplots(len(args.p1), len(args.p2), 
                          figsize = (sum(count_2)/3, sum(count_1)/3),
                          width_ratios = count_2, height_ratios = count_1)
+    if len(args.p1) == 1 and len(args.p2) == 1:
+        ax = np.array([ax])
     ax = ax.reshape((len(args.p1),len(args.p2)))
     summary['pt_size'] = (summary.q < 0.05).astype(float) + \
         (summary.p < 0.05).astype(float) + 1 # FDR < 0.05 -> size = 3

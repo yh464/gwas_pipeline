@@ -21,7 +21,8 @@ def main(args):
         # scan directory for clump files at desired p value threshold
         flist = []
         for f in os.listdir(f'{args._in}/{p}'):
-            if fnmatch(f,f'*{args.p:.0e}.clumped'):
+            if fnmatch(f,f'*{args.p:.0e}.clumped') and not fnmatch(f,'*_X_*') \
+                and not fnmatch(f,'*all_chrs*'):
                 flist.append(f)
 
         # initialise output table
@@ -35,7 +36,7 @@ def main(args):
             dflist.append(df)
         
         # summary table of significant clumps
-        outdf = pd.concat(dflist).sort_values(by = ['CHR','BP','P'])
+        outdf = pd.concat(dflist).sort_values(by = ['CHR','BP','P']).dropna()
         outdf.to_csv(f'{args._in}/{p}_{args.p:.0e}_clumps.txt', sep = '\t', index = False)
         
         # identify overlaps 

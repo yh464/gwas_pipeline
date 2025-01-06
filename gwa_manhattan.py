@@ -54,6 +54,7 @@ if (not os.path.isfile(out_fname)) or args.force or args.p:
     df = pd.read_csv(x, sep = '\t')
   else:
     df = pd.read_csv(x.replace('.fastGWA','_all_chrs.fastGWA'), sep = '\t')
+  df.sort_values(by = ['CHR','POS'], inplace = True)
   _,ax = plt.subplots(figsize = (12,4))
   manhattanplot(data = df,
                 chrom = 'CHR',
@@ -64,7 +65,7 @@ if (not os.path.isfile(out_fname)) or args.force or args.p:
                 sign_marker_p = 5e-8,  # Genome wide significant p-value
                 sign_marker_color="r",
                 logp = True,
-                ld_block_size = 500000,
+                ld_block_size = 1000000,
                 text_kws = {'fontfamily': 'sans-serif', 'fontsize': 10},
                 ax = ax)
   # fig = plt.gcf()

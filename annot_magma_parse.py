@@ -23,6 +23,7 @@ def main(args):
     from fnmatch import fnmatch
     import pandas as pd
     import scipy.stats as sts
+    import numpy as np
     
     toc = time.perf_counter()-tic
     print(f'Loaded modules. Time = {toc:.3f} seconds')
@@ -49,7 +50,7 @@ def main(args):
         if fnmatch(x, '*.genes.annot'): 
             annot_list.append(x)
     
-    # gene sets of interest
+    # cell types of interest
     f = open(args.gset).read().splitlines()
     gset = []
     for x in f:
@@ -74,7 +75,7 @@ def main(args):
                     pflist.append(y)
 
           for prefix in pflist:
-            # Merge gene sets
+            # Merge cell types
             out_fname = f'summary/{prefix}.{annot}.gsasummary.txt'
             dflist = []
             for xprefix in gset:
@@ -104,17 +105,30 @@ def main(args):
           summary = pd.concat(dflist)
           all_annot.append(summary)
           
-          # plot figure for each annotation
+          if not fnmatch(annot,'*ENSG*'): continue # no need to plot for anything other than ENSG
+          
+          summary['pheno'] = summary.pheno.str.replace('_0.01','')
+          summary = summary.rename(columns = {'VARIABLE':'cell type','pheno':'phenotype'})
+          
+          # plot heatmap and miami-like figure for each annotation
           summary['pt_size'] = (summary.Pfdr < 0.05).astype(float) + \
               (summary.P < 0.05).astype(float) + 1
           beta_max = max([abs(summary['BETA'].max()), abs(summary['BETA'].min())])
           gs = summary.gene_set.unique()
-          _, ax = plt.subplots(1,len(gs),
-              figsize = (len(pflist)*len(gs)*0.6,len(summary['VARIABLE'].unique())/2))
+          wratio = [len(summary.loc[summary.gene_set==z, 'cell type'].unique()) for z in gs]
+          fig, ax = plt.subplots(1,len(gs),
+              width_ratios = wratio,
+              figsize = (len(summary['cell type'].unique())/2,len(summary.phenotype.unique())/2))
+          
+          summary['-log(fdr)'] = -np.log10(summary.Pfdr) * (summary['BETA'] > 0)
+          fig1, ax1 = plt.subplots(1, len(gs), width_ratios = wratio,
+              figsize = (len(summary['cell type'].unique()), 3))
+          
           for i in range(len(gs)):
+              tmp = summary.loc[summary.gene_set == gs[i],:]
               sns.scatterplot(
-                  summary.loc[summary.gene_set == gs[i],:],
-                  x = 'pheno', y = 'VARIABLE',
+                  tmp,
+                  y = 'phenotype', x = 'cell type',
                   hue = 'BETA', palette = 'redblue', hue_norm = (-beta_max, beta_max),
                   size = 'pt_size', sizes = (50, 400),
                   edgecolor = '.7',
@@ -124,12 +138,23 @@ def main(args):
                     spine.set_visible(False)
               for label in ax[i].get_xticklabels():
                     label.set_rotation(90)
-              ax[i].set_title(gs[i])
-              plt.ylabel('')
+              ax[i].set_xlabel(gs[i])
+              if i > 0:
+                  ax[i].set_yticklabels([''] * len(ax[i].get_yticklabels()))
+              ax[i].set_ylabel('')
+              
+              sns.barplot(tmp, x = 'cell type', y = '-log(fdr)', hue = 'phenotype', ax = ax1[i], legend = False)
+              if i > 0: ax1[i].set_ylabel('')
+              ax1[i].axhline(-np.log10(0.05), color = 'k')
+              ax1[i].axhline(np.log10(0.05), color = 'k')
+
           norm = mpl.colors.Normalize(vmin=-beta_max, vmax=beta_max)
-          plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), ax = ax[-1])
-          plt.savefig(f'../{annot}.enrichment.pdf', bbox_inches = 'tight')
-      all_annot = pd.concat(all_annot).drop('pt_size', axis = 'columns')
+          fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), cax = fig.add_axes((0.92, 0.25, 0.02, 0.50)))
+          fig.savefig(f'../{annot}.enrichment.pdf', bbox_inches = 'tight')
+          fig1.savefig(f'../{annot}.enrichment.barplot.pdf', bbox_inches = 'tight')
+          plt.close()  
+          
+      all_annot = pd.concat(all_annot)
       all_annot.to_csv(f'{args._in}/{x}/all_enrichment_summary.txt', sep = '\t', index = False)
       toc = time.perf_counter()-tic
       print(f'FINISHED {idx}/{len(args.pheno)}. Time = {toc:.3f} seconds')
@@ -142,7 +167,7 @@ if __name__ == '__main__':
       default = '../annot/magma')
     parser.add_argument('-a', '--annot', dest ='annot', help = 'directory to annotation files',
       default = '../toolbox/hmagma')
-    parser.add_argument('--gset', dest ='gset', help = 'Gene sets to study enrichment',
+    parser.add_argument('--gset', dest ='gset', help = 'cell types to study enrichment',
       default = '../params/gset.txt')
     # no need for 'force'
     args = parser.parse_args()

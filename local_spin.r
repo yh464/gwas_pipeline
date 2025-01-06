@@ -81,9 +81,9 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
   enrich.yeo <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
   enrich.eco <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
   
-  stats.mes <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor())
-  stats.yeo <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor())
-  stats.eco <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor())
+  stats.mes <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
+  stats.yeo <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
+  stats.eco <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
   
   for (feature in 2:length(unique(colnames(data)))){
     print(paste0('Working on: ',colnames(data)[feature]))
@@ -116,7 +116,9 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
       z$x <- null$Real # real value
       null$Real <- NULL
       
-      if (file.exists(cache_fname) && !f){
+      if (file.exists(cache_fname) 
+          # && !f
+          ){
         load(cache_fname)
       } else {
         for (i in 1:10000){
@@ -139,26 +141,28 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
       z$medianV <- apply(null[,2:ncol(null)],1,median, na.rm = T) # median null distrib
       z$p1tail <- 0 # 1-tailed p-value
       z$p2tail <- 0 # 2-tailed p-value
+      z$fdr <- 0
       z$lci <- 0
       z$rci <- 0
       for (i in 1:nrow(null)){
         xi <- z$x[i]
         mui <- z$medianV[i]
-        nulli <- null[i,2:ncol(null)] %>% sort()
-        z$lci[i] <- nulli[as.integer(ncol(nulli)*0.025)]
-        z$rci[i] <- nulli[as.integer(ncol(nulli)*0.975)]
+        nulli <- null[i,2:ncol(null)] %>% as.numeric() %>% sort()
+        z$lci[i] <- nulli[as.integer(length(nulli)*0.025)]
+        z$rci[i] <- nulli[as.integer(length(nulli)*0.975)]
         yi <- 2*mui - xi
         if (xi<mui){
-          p1tail <- sum(nulli<xi)/ncol(nulli)
-          potail <- sum(nulli>yi)/ncol(nulli)
+          p1tail <- sum(nulli<xi)/length(nulli)
+          potail <- sum(nulli>yi)/length(nulli)
         } else {
-          p1tail <- sum(nulli>xi)/ncol(nulli)
-          potail <- sum(nulli<yi)/ncol(nulli)
+          p1tail <- sum(nulli>xi)/length(nulli)
+          potail <- sum(nulli<yi)/length(nulli)
         }
         z$p1tail[i] <- p1tail
         z$p2tail[i] <- p1tail+potail
       }
       z$feature <- as.character(colnames(data)[feature])
+      z$fdr <- p.adjust(z$p2tail, method = 'BH')
       
       null <- as.data.frame(t(null))
       colnames(null) <- null[1,]
@@ -184,23 +188,17 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
   }
   
   enrich.yeo$feature <- as.factor(enrich.yeo$feature)
-  enrich.yeo <- enrich.yeo[enrich.yeo$Var2 %in% c("L_Visual",
-                                                  "L_Somatomotor", "L_D_Attention", "L_V_Attention", "L_Limbic",
-                                                  "L_Frontoparietal", "L_Default", "R_Visual", "R_Somatomotor",
-                                                  "R_D_Attention", "R_V_Attention", "R_Limbic", "R_Frontoparietal", "R_Default"),]
-  stats.yeo <- stats.yeo[stats.yeo$Class %in% c("L_Visual",
-                                                "L_Somatomotor", "L_D_Attention", "L_V_Attention", "L_Limbic",
-                                                "L_Frontoparietal", "L_Default", "R_Visual", "R_Somatomotor",
-                                                "R_D_Attention", "R_V_Attention", "R_Limbic", "R_Frontoparietal", "R_Default"),]
+  enrich.yeo <- enrich.yeo[enrich.yeo$Var2 %in% c("Visual", "Somatomotor",
+    "D_Attention", "V_Attention", "Limbic", "Frontoparietal", "Default"),]
+  stats.yeo <- stats.yeo[stats.yeo$Class %in% c("Visual", "Somatomotor",
+    "D_Attention", "V_Attention", "Limbic", "Frontoparietal", "Default"),]
   enrich.yeo <- droplevels(enrich.yeo)
   
   enrich.mes$feature <- as.factor(enrich.mes$feature)
   enrich.mes <- enrich.mes[enrich.mes$Var2 %in% c(
-    "L_heteromodal","L_idiotypic","L_paralimbic","L_unimodal",
-    "R_heteromodal","R_idiotypic","R_paralimbic","R_unimodal"),]
+    "heteromodal","idiotypic","paralimbic","unimodal"),]
   stats.mes <- stats.mes[stats.mes$Class %in% c(
-    "L_heteromodal","L_idiotypic","L_paralimbic","L_unimodal",
-    "R_heteromodal","R_idiotypic","R_paralimbic","R_unimodal"),]
+    "heteromodal","idiotypic","paralimbic","unimodal"),]
   enrich.mes <- droplevels(enrich.mes)
   
   enrich.eco$feature <- as.factor(enrich.eco$feature)
@@ -211,8 +209,10 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
        enrich.yeo, enrich.mes, enrich.eco,
        file = paste0(prefix,'.spin.stats.rdata'))
 }
-write.table(apply(stats.mes,2,as.character),file = paste0(prefix,'.spin.mes.csv'))
-write.table(apply(stats.yeo,2,as.character),file = paste0(prefix,'.spin.yeo.csv'))
+write.table(apply(stats.mes,2,as.character),file = paste0(prefix,'.spin.mes.txt'),
+            sep = '\t', quote = F)
+write.table(apply(stats.yeo,2,as.character),file = paste0(prefix,'.spin.yeo.txt'),
+            sep = '\t', quote = F)
 
 #### Permutation plots ####
 # Reset labels

@@ -11,6 +11,7 @@ def main(args):
     # parse input
     flist = np.loadtxt(args._list, dtype = 'U')
     bed_list = open(args.bed).read().splitlines()
+    if len(bed_list) == 1: bed_list *= 22
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
     for i in range(flist.shape[0]):

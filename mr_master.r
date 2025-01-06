@@ -48,7 +48,6 @@ merge_gwa_clump = function(gwa, clump, prefix) {
 
 #### main MR execution block ####
 main = function(args){
-tic = proc.time()
 #### Required packages ####
 if (! require(tidyverse)){
   install.packages('tidyverse', repos = "https://cloud.r-project.org")
@@ -189,7 +188,7 @@ save('mr_fwd_harm', 'mr_rev_harm','args', file = cache_file)
   load(cache_file)
 }
 
-toc = proc.time()-tic
+toc = proc.time()
 print(paste0('Finished input data harmonisation, time = ',toc[3]))
 
 #### Define function for MR ####
@@ -268,10 +267,10 @@ all_mr_results = function(harm, prefix) {
 
 #### Execute MR ####
 all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'))
-toc = proc.time()-tic
+toc = proc.time()
 print(paste0('Finished forward direction MR, time = ',toc[3]))
 all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'))
-toc = proc.time()-tic
+toc = proc.time()
 print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }
 

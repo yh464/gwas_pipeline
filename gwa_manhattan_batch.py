@@ -16,7 +16,7 @@ def main(args):
         args.pheno = os.listdir(args._in)
     
     submitter = array_submitter.array_submitter(
-        name = 'gwa_manhattan',
+        name = f'gwa_manhattan_{args.pheno[0]}',
         partition = 'icelake-himem', # must use himem, using icelake will raise out-of-memory error [125]
         timeout = 60,
         debug = False
@@ -46,9 +46,7 @@ def main(args):
         if not args.a and not os.path.isfile(out_df): skip = False
         if skip and (not args.force) and (not args.p): continue
       
-        scripts_path = os.path.realpath(__file__)
-        scripts_path = os.path.dirname(scripts_path)
-        submitter.add(f'bash {scripts_path}/pymaster_gtpy.sh '+
+        submitter.add('python '+
           f'gwa_manhattan.py {y} --file {x} -i {args._in} -o {args.out} {f}')
     
     submitter.submit()

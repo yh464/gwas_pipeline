@@ -155,6 +155,28 @@ class array_submitter():
             nfiles = self._arraysize
         for i in range(min((int(5/self._count),nfiles))):
             os.system(f'cat {self.tmpdir}/{self.name}_{i}.sh')
+        
+        # master wrapper
+        wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
+        wrap = open(wrap_name,'w')
+        print('#!/bin/bash',file = wrap)
+        print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
+        wrap.close()
+        
+        # the algorithm maximises the number of files, and minimises the time per file
+        # by breaking down the workload, the job may filter through faster
+        if self._count == 1:
+            nfiles = self._fileid - 1
+            if self._mode == 'short': nfiles += 1
+        else:
+            nfiles = self._arraysize - 1
+        time = self.timeout * self._count
+        
+        if nfiles < 0: return
+        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
+                  f'-t {time} -p {self.partition} {self._email} {self._account} '+
+                  f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
+                  f' --array=0-{nfiles} {wrap_name}') 
     
     def submit(self):
         # if debug mode is on, debug instead
