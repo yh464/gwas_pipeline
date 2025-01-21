@@ -108,6 +108,7 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
       
       # populate the real beta distribution
       real <- df_merge %>% group_by(Class) %>% summarise(meanT = mean(value,na.rm = T))
+      print(real)
       
       # populate the null model by looping through the permuted indices and recomputing the mean
       null <- real
@@ -126,7 +127,7 @@ if (file.exists(paste0(prefix,'.spin.stats.rdata')) && !f){
           tempmap$Class <- tempmap$Class[perms[,i]]
           temp_merge <- merge(df,tempmap, by = 'label')
           tempnull <- temp_merge %>% group_by(Class) %>% summarise(meanT = mean(value,na.rm = T))
-          tempnull <- merge(z,tempnull,by='Class')
+          tempnull <- merge(z,tempnull,by='Class', all = T) # this is to deal with incomplete regional data
           null[paste0('perm',i)] <- tempnull$meanT
           if (i %% 1000 == 0) {
             toc <- proc.time() - tic

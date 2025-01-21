@@ -43,7 +43,6 @@ merge_gwa_clump = function(gwa, clump, prefix) {
 
 #### main MR execution block ####
 main = function(args){
-  tic = proc.time()
   #### Required packages ####
   if (! require(tidyverse)){
     install.packages('tidyverse', repos = 'https://cloud.r-project.org')
@@ -100,10 +99,11 @@ main = function(args){
     stat_fwd = stat_fwd[stat_fwd$snp %in% snp_fwd,]
     stat_rev = stat_rev[stat_rev$snp %in% snp_rev,]
     
-    save('stat_fwd', 'stat_rev', 'snp_fwd','snp_rev','params_fwd', 'params_rev','args', file = cache_file)
+    save('stat_fwd', 'stat_rev', 'snp_fwd','snp_rev','params_fwd', 'params_rev',
+         'args', file = cache_file)
   } else {load(cache_file)}
   
-  toc = proc.time() - tic
+  toc = proc.time()[3]
   cat('Finished input processing, time = ', toc, 'seconds')
   
   #### Execute CAUSE and write output ####
@@ -111,29 +111,34 @@ main = function(args){
   out_fwd = paste0(out_prefix,'_mr_forward_cause_results.txt')
   out_rev = paste0(out_prefix,'_mr_reverse_cause_results.txt')
   if (! file.exists(out_fwd) | ! file.exists(out_rev) | args$force) {
-    # fit CAUSE
-    res_fwd = cause(X = stat_fwd, variants = snp_fwd, param_ests = params_fwd, force = T)
-    toc = proc.time() - tic
-    cat('Fitted forward CAUSE, time = ', toc, 'seconds')
+    # forward CAUSE
+    tryCatch({
+      res_fwd = cause(X = stat_fwd, variants = snp_fwd, param_ests = params_fwd, force = T)
+      toc = proc.time()[3]
+      cat('Fitted forward CAUSE, time = ', toc, 'seconds')
+      # parse results
+      elpd_fwd = res_fwd$elpd$delta_elpd[c(1,2)]
+      summary_fwd = summary(res_fwd)
+      tab_fwd = summary_fwd[4]$tab %>% as_tibble()
+      tab_fwd$elpd = elpd_fwd
+      tab_fwd$p_value = c(NA, summary_fwd[3]$p)
+      tab_fwd %>% write.table(file = out_fwd, sep = '\t')
+    }, error = function(e) {cat('Forward CAUSE failed, likely too few SNPs')})
     
-    res_rev = cause(X = stat_rev, variants = snp_rev, param_ests = params_rev, force = T)
-    toc = proc.time() - tic
-    cat('Fitted reverse CAUSE, time = ', toc, 'seconds')
+    # reverse CAUSE
+    tryCatch({
+      res_rev = cause(X = stat_rev, variants = snp_rev, param_ests = params_rev, force = T)
+      toc = proc.time()[3]
+      cat('Fitted reverse CAUSE, time = ', toc, 'seconds')
+      
+      elpd_rev = res_rev$elpd$delta_elpd[c(1,2)]
+      summary_rev = summary(res_rev)
+      tab_rev = summary_rev[4]$tab %>% as_tibble()
+      tab_rev$elpd = elpd_rev
+      tab_rev$p_value = c(NA, summary_rev[3]$p)
+      tab_rev %>% write.table(file = out_rev, sep = '\t')
+    }, error = function(e) {cat('Reverse CAUSE failed, likely too few SNPs')})
     
-    # parse results
-    elpd_fwd = res_fwd$elpd$delta_elpd[c(1,2)]
-    summary_fwd = summary(res_fwd)
-    tab_fwd = summary_fwd[4]$tab %>% as_tibble()
-    tab_fwd$elpd = elpd_fwd
-    tab_fwd$p_value = c(NA, summary_fwd[3]$p)
-    tab_fwd %>% write.table(file = out_fwd, sep = '\t')
-    
-    elpd_rev = res_rev$elpd$delta_elpd[c(1,2)]
-    summary_rev = summary(res_rev)
-    tab_rev = summary_rev[4]$tab %>% as_tibble()
-    tab_rev$elpd = elpd_rev
-    tab_rev$p_value = c(NA, summary_rev[3]$p)
-    tab_rev %>% write.table(file = out_rev, sep = '\t')
   }
 }
 

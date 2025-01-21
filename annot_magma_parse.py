@@ -32,17 +32,7 @@ def main(args):
     import seaborn as sns
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    # Red-blue colour map
-    cdict = dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
-                 green = ((0,0,0),(1/2,1,1),(1,0,0)),
-                 blue = ((0,.8,.8),(1/2,1,1),(1,0,0)))
-    cmap_name = 'redblue'
-    cmap = mpl.colors.LinearSegmentedColormap(cmap_name,cdict,1024)
-    try:
-      mpl.colormaps.register(cmap)
-    except:
-      pass
-    sns.set_theme(style = 'whitegrid')
+    from _plots import corr_heatmap
     
     # annotation methods
     annot_list = []
@@ -57,6 +47,7 @@ def main(args):
       gset.append(x.split('/')[-1].replace('.txt',''))
     
     idx = 0
+    overall_fig = []
     for x in args.pheno:
       idx += 1
       os.chdir(args._in)
@@ -83,12 +74,14 @@ def main(args):
               tmp.insert(0,'gene_set',value = xprefix)
               tmp.insert(0,'annot', value = annot)
               tmp.insert(0,'pheno', value = prefix)
+              
+              # FDR correction
+              tmp1 = tmp.P.values.copy()    
+              fdr = sts.false_discovery_control(tmp1)
+              tmp['Pfdr']= fdr
+              
               dflist.append(tmp)
             df = pd.concat(dflist, axis = 'index')
-            # FDR correction
-            tmp = df.P.values.copy()    
-            fdr = sts.false_discovery_control(tmp)
-            df['Pfdr']= fdr
             df.to_csv(out_fname, sep = '\t', index = False)
         
       toc = time.perf_counter()-tic
@@ -98,7 +91,7 @@ def main(args):
       all_annot = []
       for annot in annot_list:
           dflist = []
-          for y in os.listdir():
+          for y in sorted(os.listdir()):
             if not fnmatch(y, f'*{annot}.gsasummary.txt'): continue
             tmp = pd.read_table(y)
             dflist.append(tmp)
@@ -107,57 +100,44 @@ def main(args):
           
           if not fnmatch(annot,'*ENSG*'): continue # no need to plot for anything other than ENSG
           
+          # plotting manipulations may affect the tabular output
+          summary = summary.copy()
+          summary['group'] = x
           summary['pheno'] = summary.pheno.str.replace('_0.01','')
-          summary = summary.rename(columns = {'VARIABLE':'cell type','pheno':'phenotype'})
+          summary = summary.rename(columns = {'VARIABLE':'cell type','pheno':'phenotype','P':'p','Pfdr':'q'})
           
           # plot heatmap and miami-like figure for each annotation
-          summary['pt_size'] = (summary.Pfdr < 0.05).astype(float) + \
-              (summary.P < 0.05).astype(float) + 1
-          beta_max = max([abs(summary['BETA'].max()), abs(summary['BETA'].min())])
+          summary['pt_size'] = (summary.q < 0.05).astype(float) + \
+              (summary.p < 0.05).astype(float) + 1
           gs = summary.gene_set.unique()
           wratio = [len(summary.loc[summary.gene_set==z, 'cell type'].unique()) for z in gs]
-          fig, ax = plt.subplots(1,len(gs),
-              width_ratios = wratio,
-              figsize = (len(summary['cell type'].unique())/2,len(summary.phenotype.unique())/2))
-          
-          summary['-log(fdr)'] = -np.log10(summary.Pfdr) * (summary['BETA'] > 0)
+          summary['-log(fdr)'] = -np.log10(summary.q) * (summary['BETA'] > 0)
           fig1, ax1 = plt.subplots(1, len(gs), width_ratios = wratio,
               figsize = (len(summary['cell type'].unique()), 3))
           
           for i in range(len(gs)):
               tmp = summary.loc[summary.gene_set == gs[i],:]
-              sns.scatterplot(
-                  tmp,
-                  y = 'phenotype', x = 'cell type',
-                  hue = 'BETA', palette = 'redblue', hue_norm = (-beta_max, beta_max),
-                  size = 'pt_size', sizes = (50, 400),
-                  edgecolor = '.7',
-                  legend = False, ax = ax[i]
-                  )
-              for _, spine in ax[i].spines.items():
-                    spine.set_visible(False)
-              for label in ax[i].get_xticklabels():
-                    label.set_rotation(90)
-              ax[i].set_xlabel(gs[i])
-              if i > 0:
-                  ax[i].set_yticklabels([''] * len(ax[i].get_yticklabels()))
-              ax[i].set_ylabel('')
-              
               sns.barplot(tmp, x = 'cell type', y = '-log(fdr)', hue = 'phenotype', ax = ax1[i], legend = False)
               if i > 0: ax1[i].set_ylabel('')
               ax1[i].axhline(-np.log10(0.05), color = 'k')
               ax1[i].axhline(np.log10(0.05), color = 'k')
 
-          norm = mpl.colors.Normalize(vmin=-beta_max, vmax=beta_max)
-          fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), cax = fig.add_axes((0.92, 0.25, 0.02, 0.50)))
-          fig.savefig(f'../{annot}.enrichment.pdf', bbox_inches = 'tight')
           fig1.savefig(f'../{annot}.enrichment.barplot.pdf', bbox_inches = 'tight')
-          plt.close()  
+          plt.close()
+          
+          fig = corr_heatmap(summary[['group','phenotype','gene_set','cell type','BETA','p','q']])
+          fig.savefig(f'../{annot}.enrichment.pdf', bbox_inches = 'tight')
+          plt.close()
+          
+          overall_fig.append(summary[['group','phenotype','gene_set','cell type','BETA','p','q']])
           
       all_annot = pd.concat(all_annot)
       all_annot.to_csv(f'{args._in}/{x}/all_enrichment_summary.txt', sep = '\t', index = False)
       toc = time.perf_counter()-tic
       print(f'FINISHED {idx}/{len(args.pheno)}. Time = {toc:.3f} seconds')
+     
+    fig = corr_heatmap(pd.concat(overall_fig))
+    fig.savefig(f'{args._in}/ENSG_enrichment_'+'_'.join(args.pheno)+'.pdf', bbox_inches = 'tight')
       
 if __name__ == '__main__':
     import argparse

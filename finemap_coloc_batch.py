@@ -81,6 +81,7 @@ def main(args):
         for y in os.listdir(f'{args._in}/{x}'):
             if fnmatch(y, '*.fastGWA') and not fnmatch(y, '*all_chrs*') and not fnmatch(y, '*_X.fastGWA'):
                 flist.append(f'{args._in}/{x}/{y}')
+    print(f'Found {len(flist)} GWAS summary statistics files.')
     
     # specify output
     outdir = f'{args.out}/'+'_'.join(sorted(args.pheno))

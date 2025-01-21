@@ -22,6 +22,7 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import os
+from _plots import corr_heatmap
 
 # aesthetics
 cdict = dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),

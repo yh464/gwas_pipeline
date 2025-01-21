@@ -11,11 +11,33 @@ Also identifies overlaps between different phenotypes within a phenotype group
 Output format: tabular, columns = loci (one representative SNP in the clump), rows = phenotypes
 '''
 
+def identify_clumps(df):
+    from fnmatch import fnmatch
+    clumps = []
+    snps = df['SNP'].unique()
+    current_clump = [snps[0]]
+    for i in snps[1:]:
+        for j in current_clump:
+            all_p2 = df.loc[df.SNP==j,'SP2'] # lists all SNPs within clumping distance
+            in_clump = False
+            for p2 in all_p2:
+                if fnmatch(p2, f'*{i}*'):
+                    in_clump = True; break
+            if in_clump:
+                break
+        if in_clump:
+            current_clump.append(i); continue
+        else:
+            clumps.append(current_clump); current_clump = [i]
+    clumps.append(current_clump)
+    return clumps
+
 def main(args):
     import os
     import pandas as pd
     from fnmatch import fnmatch
     
+    crosstrait_clumps = []
     # for each phenotype
     for p in args.pheno:
         # scan directory for clump files at desired p value threshold
@@ -31,33 +53,20 @@ def main(args):
         for f in flist:
             df = pd.read_csv(f'{args._in}/{p}/{f}', sep = '\s+')
             prefix = f.replace(f'_{args.p:.0e}.clumped','')
+            prefix = prefix.replace('_0.01','')
             prefix_list.append(prefix)
             df.insert(loc = 0, column = 'phenotype', value = prefix)
+            df.insert(loc = 0, column = 'phen_group', value = p)
             dflist.append(df)
         
         # summary table of significant clumps
         outdf = pd.concat(dflist).sort_values(by = ['CHR','BP','P']).dropna()
         outdf.to_csv(f'{args._in}/{p}_{args.p:.0e}_clumps.txt', sep = '\t', index = False)
+        crosstrait_clumps.append(outdf)
         
         # identify overlaps 
         ## first identify SNPs in the same clump
-        clumps = []
-        snps = outdf['SNP'].unique()
-        current_clump = [snps[0]]
-        for i in snps[1:]:
-            for j in current_clump:
-                all_p2 = outdf.loc[outdf.SNP==j,'SP2'] # lists all SNPs below p value threshold
-                in_clump = False
-                for p2 in all_p2:
-                    if fnmatch(p2, f'*{i}*'):
-                        in_clump = True; break
-                if in_clump:
-                    break
-            if in_clump:
-                current_clump.append(i); continue
-            else:
-                clumps.append(current_clump); current_clump = [i]
-        clumps.append(current_clump)
+        clumps = identify_clumps(outdf)
         
         ## then compile the table of overlaps
         overlaps = pd.DataFrame(data = 0, index = prefix_list, 
@@ -71,6 +80,25 @@ def main(args):
                     overlaps.loc[phen,idx_snp] = 1
         overlaps.insert(loc = 0, column = 'label', value = prefix_list)
         overlaps.to_csv(f'{args._in}/{p}_{args.p:.0e}_overlaps.txt',sep = '\t',index = False)
+    
+    crosstrait_clumps = pd.concat(crosstrait_clumps)
+    ct_prefix = '_'.join(args.pheno)
+    crosstrait_clumps.to_csv(f'{args._in}/all_clumps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t', index = False)
+    # identify overlaps as above
+    clumps = identify_clumps(crosstrait_clumps)
+    overlaps = pd.DataFrame(data = 0, index = pd.MultiIndex.from_frame(crosstrait_clumps[['phen_group','phenotype']]),
+                            columns = [clump[0] for clump in clumps])
+    for pheng in args.pheno:
+        for phen in crosstrait_clumps.phenotype.unique():
+            siglist = crosstrait_clumps.loc[(crosstrait_clumps.phen_group == pheng) &
+                (crosstrait_clumps.phenotype == phen),'SNP']
+            for snp in siglist:
+                for clump in clumps:
+                    if not snp in clump: continue
+                    idx_snp = clump[0]
+                    overlaps.loc[(pheng,phen), idx_snp] = 1
+    overlaps.to_csv(f'{args._in}/all_overlaps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t')
+    
         
 if __name__ == '__main__':
     import argparse

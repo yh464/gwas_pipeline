@@ -2,55 +2,133 @@
 '''
 Author: Yuankai He
 Correspondence: yh464@cam.ac.uk
-2024-11-08
+Version 1: 2025-01-16
 
 Conducts Summary-data Mendelian Randomisation to prioritise genes using
 expression, isoform, splicing, methylation and chromosome accessibility QTL.
 
 Requires following inputs: 
-    fine-map extracted list of SNPs, (finemap_batch.py, finemap_parse.py)
     GWAS summary statistics,
     BESD format xQTL datasets.
 '''
 
-def format_gwa(gwa, snp_list, tmpgwa):
+def format_gwa(gwa, tmpgwa):
     # input file name, usually fastGWA format
     import pandas as pd
-    df = pd.read_table(gwa, sep = '\s+')
-    df = pd.merge(df, snp_list)
-    if not 'N' in df.columns:
-        df['N'] = 'NA' # will not be used in SMR, just for the correct format 
-    df = df[['SNP','A1','A2','AF1','BETA','SE','P','N']]
-    df.to_csv(tmpgwa, sep = '\t', header = True, index = False)
+    import numpy as np
+    df = pd.read_table(gwa)
+    out = [0,0,0,0,0,0,0,0] # 8 columns
     
+    for col in df.columns:
+        if col.lower() in ['snp','id','rsid']: out[0] = df[col]
+        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = df[col]
+        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = df[col]
+        if col.lower() in ['af1','freq','eaf','maf']: out[3] = df[col]
+        if col.lower() in ['beta','logor','b']: out[4] = df[col]
+        if col.lower() in ['or']: out[4] = np.log(df[col])
+        if col.lower() in ['se', 'stderr']: out[5] = df[col]
+        if col.lower() in ['p','pval']: out[6] = df[col]
+        if col.lower() in ['nobs','n']: out[7] = df[col]
+    
+    out = pd.concat(out, axis = 1)
+    out.to_csv(tmpgwa, sep = '\t', index = False)
+
 def main(args):
     import os
     from fnmatch import fnmatch
-    import pandas as pd
     
     # temp directory
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/smr_cache'
+    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/smr_temp'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     # array submitter
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
-        name = f'genpr_smr_{args.pheno}',
+        name = f'annot_smr_{args.pheno[0]}',
+        n_cpu = 2,
         timeout = 90,
         debug = True
     )
     
+    # annotation utility for single fastGWA and single xQTL dataset
+    def annot_smr(gwa, xqtl, bfile, out, smr, force):
+        # output directory
+        prefix = os.path.basename(gwa)
+        prefix = '.'.join(prefix.split('.')[:-1])
+        if not os.path.isdir(out): os.system(f'mkdir -p {out}')
+        
+        # munge input summary statistics
+        if not os.path.isfile(f'{tmpdir}/{prefix}.txt') or force:
+            format_gwa(gwa, f'{tmpdir}/{prefix}.txt')
+        
+        # parse input xqtl file
+        from fnmatch import fnmatch
+        qtl = os.path.basename(xqtl).replace('.besd','')
+        if os.path.isfile(f'{xqtl}.besd'):
+            xqtl_list = [xqtl] * 24
+        else:
+            xqtl_list = []
+            for chrom in range(1,25):
+                found = False
+                for f in os.listdir(xqtl):
+                    if fnmatch(f.replace('X','23').replace('Y','24'), f'*chr{chrom}.besd'):
+                        xqtl_list.append(f'{xqtl}/'+f.replace('.besd',''))
+                        found = True
+                        break
+                if found: continue
+                # if there is no match
+                xqtl_list.append(None)
+        
+        # parse input PLINK binaries
+        if os.path.isfile(f'{bfile}.bed'):
+            bfile_list = [bfile] * 24
+        else:
+            bfile_list = []
+            for chrom in range(1,25):
+                found = False
+                for f in os.listdir(bfile):
+                    if fnmatch(f.replace('X','23').replace('Y','24'), f'*chr{chrom}.bed'):
+                        bfile_list.append(f'{bfile}/'+f.replace('.bed',''))
+                        found = True
+                        break
+                if found: continue
+                # if there is no match
+                bfile_list.append(None)
+        
+        if os.path.isfile(f'{xqtl}.besd') and os.path.isfile(f'{bfile}.bed'):
+            if not os.path.isfile(f'{out}/{prefix}.smr') or force:
+                submitter.add(
+                f'{smr} --bfile {bfile} --gwas-summary {tmpdir}/{prefix}.txt '+
+                f'--beqtl-summary {xqtl} --out {out}/{prefix}'
+                )
+        
+        else:
+            # print(f'Processing: {prefix} \n\tConducting SMR by chromosome, following files have been found:')
+            # for x, b in zip(xqtl_list, bfile_list):
+            #     print('\t\t'.join([str(x), str(b)]))
+            
+            if not os.path.isdir(f'{out}/{prefix}.{qtl}'): os.mkdir(f'{out}/{prefix}.{qtl}')
+            
+            for x, b, chrom in zip(xqtl_list, bfile_list, range(1,25)):
+                if x == None or b == None: continue
+                if not os.path.isfile(f'{out}/{prefix}.{qtl}/chr{chrom}.smr') or force:
+                    submitter.add(
+                    f'{smr} --bfile {b} --gwas-summary {tmpdir}/{prefix}.txt '+
+                    f'--beqtl-summary {x} --out {out}/{prefix}.{qtl}/chr{chrom}'
+                    )
+    
     qtl_list = []
     for y in os.listdir(args.qtl):
         if fnmatch(y, '*.besd'): qtl_list.append(y)
+        if os.path.isdir(f'{args.qtl}/{y}'):
+            if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]):
+                qtl_list.append(f'{args.qtl}/{y}')
+    
+    print('Following QTL have been found:')
+    for x in qtl_list: print(x)
     
     for x in args.pheno:
         if not os.path.isdir(f'{args.out}/{x}'): os.system(f'mkdir -p {args.out}/{x}')
-        
-        # list of sig. variants
-        sig_snp = args.finemap.replace('%pheno',x)
-        sig_snp = pd.read_table(sig_snp, header = None)
-        sig_snp.columns = ['SNP']
         
         # scans directory for fastGWA files
         flist = []
@@ -59,17 +137,16 @@ def main(args):
                 flist.append(y)
 
         for y in flist:
-            # format GWAS
-            tmpgwa = f'{tmpdir}/{x}/{y}'
-            if args.force or not os.path.isfile(tmpgwa):
-                format_gwa(y, sig_snp, tmpgwa)
-            
             # conduct SMR for each QTL file
             for qtl in qtl_list:
-                out_prefix = f'{args.out}/{x}/{y}_{qtl}'.replace('.fastGWA','').replace('.besd','')
-                if os.path.isfile(f'{out_prefix}.smr') and not args.force: continue
-                submitter.add(f'{args.smr} --bfile {args.bfile} --gwas-summary {args._in}/{x}/{y} '+
-                              f'--beqtl-summary {args.qtl}/{qtl} --out {out_prefix} --thread-num 4')
+                annot_smr(
+                    gwa = f'{args._in}/{x}/{y}',
+                    xqtl = qtl,
+                    bfile = args.bfile,
+                    out = f'{args.out}/{x}',
+                    smr = args.smr,
+                    force = args.force
+                    )
     
     submitter.submit()
 
@@ -83,25 +160,23 @@ if __name__ == '__main__':
     parser.add_argument('-q','--qtl', dest = 'qtl', help = 'Directory containing all xQTL files',
       default = '../params/xqtl')
     parser.add_argument('-s','--smr', dest = 'smr', help = 'Location of SMR binary',
-      default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/toolbox/smr') # intentionally absolute
-    parser.add_argument('-f', '--finemap', dest = 'finemap', 
-      help = 'file name of fine-mapped SNP lists, %pheno for phenotype wildcard',
-      default = '../finemap/%pheno_sig_variants_list.txt')
+      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary to use in magma',
-      default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/autosomes') # intentionally absolute
+      default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/') # intentionally absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../genpr/smr')
+      default = '../annot/smr')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','finemap','smr','bfile']:
+    for arg in ['_in','out','qtl','smr','bfile']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
     
-    from _utils import cmdhistory, path
+    from _utils import cmdhistory, path, logger
+    logger.splash(args)
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
-    proj.add_output(args.out+'/%pheng/%pheno_%maf.finemap.summary',__file__)
+    proj.add_output(args.out+'/%pheng/%pheno.*.smr',__file__)
     try: main(args)
     except: cmdhistory.errlog()

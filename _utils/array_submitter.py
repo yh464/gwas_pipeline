@@ -148,11 +148,14 @@ class array_submitter():
                 self._count += 1
     
     def debug(self):
-        if self._count == 1:
-            nfiles = self._fileid
-            if self._mode == 'short': nfiles += 1
-        else:
-            nfiles = self._arraysize
+        import os
+        from fnmatch import fnmatch
+        nfiles = 0
+        for x in os.listdir(self.tmpdir):
+            if fnmatch(x, f'{self.name}_*.sh'):
+                n = x.replace(self.name,'').replace('.sh','').replace('_','')
+                n = int(n)
+                if n > nfiles: nfiles = n
         for i in range(min((int(5/self._count),nfiles))):
             os.system(f'cat {self.tmpdir}/{self.name}_{i}.sh')
         
@@ -163,13 +166,7 @@ class array_submitter():
         print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
         wrap.close()
         
-        # the algorithm maximises the number of files, and minimises the time per file
-        # by breaking down the workload, the job may filter through faster
-        if self._count == 1:
-            nfiles = self._fileid - 1
-            if self._mode == 'short': nfiles += 1
-        else:
-            nfiles = self._arraysize - 1
+        # debug command also outputs the submit command
         time = self.timeout * self._count
         
         if nfiles < 0: return
@@ -191,13 +188,15 @@ class array_submitter():
         print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
         wrap.close()
         
-        # the algorithm maximises the number of files, and minimises the time per file
-        # by breaking down the workload, the job may filter through faster
-        if self._count == 1:
-            nfiles = self._fileid - 1
-            if self._mode == 'short': nfiles += 1
-        else:
-            nfiles = self._arraysize - 1
+        # scans directory for number of files (last sanity check)
+        import os
+        from fnmatch import fnmatch
+        nfiles = 0
+        for x in os.listdir(self.tmpdir):
+            if fnmatch(x, f'{self.name}_*.sh'):
+                n = x.replace(self.name,'').replace('.sh','').replace('_','')
+                n = int(n)
+                if n > nfiles: nfiles = n
         time = self.timeout * self._count
         
         if nfiles < 0: return

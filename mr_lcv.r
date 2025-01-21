@@ -107,6 +107,7 @@ read.zscore = function(gwa){
   if ('Z' %in% colnames(df)) return(df[,c('SNP','CHR','POS','A1','A2','Z')])
   if ('OR' %in% colnames(df)) df$BETA = log(df$OR)
   df$Z = df$BETA/df$SE # manually calculate z-score if not explicitly stated
+  df = na.omit(df)
   return(df[,c('SNP', 'CHR','POS','A1','A2','Z')])
 }
 
@@ -118,13 +119,24 @@ main = function(args) {
     library(tidyverse)
   }
   
-  #### check progress ####
+  #### input processing ####
+  # file name operations
   prefix1 = basename(args$gwa1) %>% gsub('.?fastGWA','',.) %>% gsub('.?txt','',.)
   prefix2 = basename(args$gwa2) %>% gsub('.?fastGWA','',.) %>% gsub('.?txt','',.)
   out_prefix = paste0(args$out,'/',basename(dirname(args$gwa1)),'_',prefix1,'_',prefix2,'_mr_lcv_results.txt')
-  if (! file.exists(out_prefix) | args$force){
-    
-    #### input processing ####
+  
+  # cache file specification
+  tmpdir = here('../temp/mr_cache')
+  if (! dir.exists(tmpdir)) dir.create(tmpdir)
+  cache_file = paste0(
+    tmpdir,'/',
+    basename(dirname(args$gwa1)),'_',
+    prefix1,'_',
+    basename(dirname(args$gwa2)),'_',
+    prefix2,'_lcv_cache.rdata'
+  )
+  
+  if (! file.exists(cache_file) | args$force) {
     # read input
     g1 = read.zscore(args$gwa1)
     g2 = read.zscore(args$gwa2)
@@ -153,13 +165,16 @@ main = function(args) {
     g2$A2[mismatch] = g1$A1[mismatch]
     g2$Z[mismatch] = -g2$Z[mismatch]
     
-    print(nrow(g1), nrow(g2),nrow(l2))
-    toc = proc.time() 
-    print(paste0('Finished input processing, time = ', toc[3]))
+    save('g1','g2','l2','args', file = cache_file)
+  } else load(cache_file)
     
+  toc = proc.time() 
+  print(paste0('Finished input processing, time = ', toc[3]))
+  
+  if (! file.exists(out_prefix) | args$force) {
     #### run LCV ####
     res = run_lcv(ell= as.numeric(l2$L2), as.numeric(g1$Z), as.numeric(g2$Z), 
-                  n.1 = as.integer(args$n1), n.2 = as.integer(args$n2),
+                  n.1 = as.numeric(args$n1), n.2 = as.numeric(args$n2),
                   ldsc.intercept = 0) # otherwise h2 will be underestimated and be negative
     toc = proc.time() 
     print(paste0('Finished MR-LCV, time = ', toc[3]))

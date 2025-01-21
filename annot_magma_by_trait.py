@@ -40,7 +40,7 @@ from fnmatch import fnmatch
 for arg in ['dir','annot','bfile','out','magma','gset']:
     exec(f'args.{arg} = os.path.realpath(args.{arg})')
 
-os.system('module load gcc/11')                                                # IMPORTANT!!!!!
+os.system('module load gcc/11') # IMPORTANT!!!!!
 os.chdir(f'{args.dir}/{args.pheno}')
 prefix = args._in.replace('.fastGWA','')
 

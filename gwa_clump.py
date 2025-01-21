@@ -86,8 +86,8 @@ for c in chrs:                                                                 #
       os.system(f'{args.plink} --noweb --bfile {bf} --clump {tmpgwa} '+
         f'--clump-field P --clump-p1 {args.p} --clump-p2 1 --clump-r2 0.1 '+       # p1 must be determined by matrix decomposition
         f'--clump-kb 1000 --extract {tmpsnp} --out {tmpout}')
-  
-  out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
+  if os.path.isfile(f'{tmpout}.clumped'):
+      out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
   toc = time.perf_counter() - tic
   print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.', file = log)
 

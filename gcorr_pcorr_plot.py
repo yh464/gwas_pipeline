@@ -27,7 +27,7 @@ def main(args):
     df_list = []
     pheno_list = []
     for x in pheno:
-      df_list.append(pd.read_csv(f'{x}.txt', sep = '\s+'))
+      df_list.append(pd.read_table(f'{x}.txt', sep = '\s+'))
       pheno_list += [x] * (len(df_list[-1].columns) - 1)
     pheno_df = df_list[0]
     for x in range(1,len(df_list)):

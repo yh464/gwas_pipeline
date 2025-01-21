@@ -1,8 +1,7 @@
 #### Information ####
 # A wrapper for Mendelian Randomisation
 # Author: Yuankai He (yh464@cam.ac.uk)
-# V1.0:   2024-10-15
-# V2.0:   2025-01-20 - added MRlap correction
+# Date:   2024-10-15
 # Notes:  conducts MR by inverse variance, inverse median, Egger, PRESSO and ML
 #         if 'clump' parameters are not supplied, the whole GWA file will be used
 
@@ -12,22 +11,14 @@ library(here) # for portability
 optlist = list(
   # input options
   # the filtering for p-values should be moved into the 'batch' file
-  make_option('--c1', dest = 'clump1', help = '*CLUMPED* trait 1 summary stats, one file only'),
-  make_option('--g1', dest = 'gwa1', help = 'raw trait 1 summary stats, one file only'),
-  make_option('--n1', help = 'Sample size of trait 1 summary stats'), # default 54030 for functional
-  make_option('--c2', dest = 'clump2', help = '*CLUMPED* trait 2 summary stats, one file only'),
-  make_option('--g2', dest = 'gwa2', help = 'raw trait 2 summary stats, one file only'),
-  make_option('--n2', help = 'Sample size of trait 2 phenotype summary stats'),
-  make_option('--nca', help = '# cases of trait 2 phenotype summary stats'),
-  make_option('--nco', help = '# controls of trait 2 phenotype summary stats'),
-  
-  # for MR-lap based correction
-  make_option('--pval', help = 'p-value threshold for MR', type = 'double'),
-  make_option('--h21', help = 'LDSC h2 estimate for trait 1', type = 'double'),
-  make_option('--h2se1', help = 'LDSC h2 std. err. for trait 1', type = 'double'),
-  make_option('--h22', help = 'LDSC h2 estimate for trait 2', type = 'double'),
-  make_option('--h2se2', help = 'LDSC h2 std. err. for trait 2', type = 'double'),
-  make_option('--rglog', help = 'LDSC genetic correlation log file'),
+  make_option('--c1', dest = 'clump1', help = '*CLUMPED* IDP summary stats, one file only'),
+  make_option('--g1', dest = 'gwa1', help = 'raw IDP summary stats, one file only'),
+  make_option('--n1',dest = 'n1', help = 'Sample size of IDP summary stats'), # default 54030 for functional
+  make_option('--c2', dest = 'clump2', help = '*CLUMPED* disorder summary stats, one file only'),
+  make_option('--g2', dest = 'gwa2', help = 'raw disorder summary stats, one file only'),
+  make_option('--n2', dest = 'n2', help = 'Sample size of disorder phenotype summary stats'),
+  make_option('--nca', dest = 'nca', help = '# cases of disorder phenotype summary stats'),
+  make_option('--nco', dest = 'nco', help = '# controls of disorder phenotype summary stats'),
   
   # output directory
   make_option(c('-o','--out'),dest = 'out', help = 'output directory'),
@@ -42,7 +33,7 @@ args = parse_args(OptionParser(option_list = optlist))
 print('Input options')
 print(args)
 
-#### Utility to read summary stats ####
+#### Input file processing utility ####
 merge_gwa_clump = function(gwa, clump, prefix) {
   # gwa file should have 'SNP' column, clump should be the standard PLINK output
   snp = read.table(clump, header = T)['SNP']
@@ -53,23 +44,6 @@ merge_gwa_clump = function(gwa, clump, prefix) {
   gwa$Phenotype = prefix
   clumped = merge(gwa, snp, by = 'SNP')
   return(list(gwa,clumped))
-}
-
-#### Utility to read rg log files ####
-parse_rg_log = function(file) {
-  tryCatch({
-    library(readr)
-    data = read_lines(file, skip_empty_rows = T)
-    data = strsplit(data[length(data) - 2],'\\s+')
-    data = data[[1]]
-    results = list()
-    results$lambda = as.numeric(data[11])
-    results$lambda_se = as.numeric(data[12])
-    return(results)
-  }, error = function(e) {
-    return(list(lambda = NA, lambda_se = NA))
-  }
-  )
 }
 
 #### main MR execution block ####
@@ -220,10 +194,9 @@ toc = proc.time()
 print(paste0('Finished input data harmonisation, time = ',toc[3]))
 
 #### Define function for MR ####
-all_mr_results = function(harm, prefix, ldsc_params) {
+all_mr_results = function(harm, prefix) {
   # harm = harmonised data
   # prefix = file name in export, INCLUDING directory
-  # ldsc_params is for MR-lap correction
   
   #### perform tests: MR, sensitivity analysis, pleiotropy, leave-one-out, Steiger ####
   # excluding MR-presso test
@@ -234,37 +207,6 @@ all_mr_results = function(harm, prefix, ldsc_params) {
   single = mr_singlesnp(harm)
   loo = mr_leaveoneout(harm)
   direc = directionality_test(harm)
-  
-  #### MRlap correction ####
-  source('https://github.com/n-mounier/MRlap/raw/refs/heads/master/R/get_correction.R')
-  tryCatch({
-    mrlap_res = get_correction(
-      IVs = harm %>% select(beta.exposure,se.exposure) %>%
-        rename(std_beta.exp = beta.exposure, std_SE.exp = se.exposure),
-      lambda = ldsc_params$lambda,
-      lambda_se = ldsc_params$lambda_se,
-      h2_LDSC = ldsc_params$h2_exp,
-      h2_LDSC_se = ldsc_params$h2se_exp,
-      alpha_obs = res$b[res$method=='Inverse variance weighted'],
-      alpha_obs_se = res$se[res$method=='Inverse variance weighted'],
-      n_exp = max(harm$samplesize.exposure, na.rm = T) %>% as.numeric(), 
-      # as.numeric() required to prevent integer overflow
-      n_out = max(harm$samplesize.outcome, na.rm = T) %>% as.numeric(),
-      MR_threshold = args$pval,
-      verbose = T
-    )
-    res = res %>% rbind(
-      data.frame(
-        id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
-        outcome = res$outcome[1], exposure = res$exposure[1],
-        method = 'MRlap corrected IVW', nsnp = res$nsnp[1],
-        b = mrlap_res$alpha_corrected,
-        se = mrlap_res$alpha_corrected_se,
-        pval = 2*stats::pnorm(-abs(mrlap_res$alpha_corrected/mrlap_res$alpha_corrected_se))
-      )
-    )
-  }, error = function(e) {cat('MRlap correction failed, check for missing data')}
-  )
   
   #### outputs for MR ####
   # scatter plot
@@ -326,13 +268,10 @@ all_mr_results = function(harm, prefix, ldsc_params) {
 }
 
 #### Execute MR ####
-ldsc_params = parse_rg_log(args$rglog)
-ldsc_params_fwd = c(ldsc_params, list(h2_exp = args$h21, h2se_exp = args$h2se1))
-ldsc_params_rev = c(ldsc_params, list(h2_exp = args$h22, h2se_exp = args$h2se2))
-all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), ldsc_params_fwd)
+all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'))
 toc = proc.time()
 print(paste0('Finished forward direction MR, time = ',toc[3]))
-all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), ldsc_params_rev)
+all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'))
 toc = proc.time()
 print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }
