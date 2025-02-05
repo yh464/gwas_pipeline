@@ -269,6 +269,21 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params) {
   loo = mr_leaveoneout(harm)
   direc = directionality_test(harm)
   
+  #### if not correct direction, re-test after Steiger filtering ####
+  if (! direc$correct_causal_direction){
+    harm_filtered = harm %>% filter(abs(beta.exposure) > abs(beta.outcome))
+    res_filtered = mr_ivw(harm_filtered$beta.exposure,
+                          harm_filtered$beta.outcome,
+                          harm_filtered$se.exposure,
+                          harm_filtered$se.outcome)
+    res = res %>% rbind(data.frame(
+      id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
+      outcome = res$outcome[1], exposure = res$exposure[1],
+      method = 'Steiger-filtered IVW', nsnp = nrow(harm_filtered),
+      b = res_filtered$b, se = res_filtered$se, pval = res_filtered$pval
+    ))
+  }
+  
   #### Plots for TwoSampleMR ####
   # scatter plot
   scatter = mr_scatter_plot(res,harm)
