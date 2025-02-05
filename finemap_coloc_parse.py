@@ -36,7 +36,10 @@ def parse_coloc_cluster(entry, groups):
         group = groups.loc[groups.names==trait, 'group']
         clusters.loc[snp, trait] = 1
         summary.loc[snp, group] = 1
-    
+    clusters.insert(loc = 0, column = 'regional_prob', value = entry['regional_prob'])
+    clusters.insert(loc = 1, column = 'prob_explained_by_snp', value = entry['posterior_explained_by_snp'])
+    summary.insert(loc = 0, column = 'regional_prob', value = entry['regional_prob'])
+    summary.insert(loc = 1, column = 'prob_explained_by_snp', value = entry['posterior_explained_by_snp'])
     return clusters, summary
     
     

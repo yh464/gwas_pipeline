@@ -11,7 +11,7 @@ def main(args):
     # array submitter
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
-        name = 'prs_corr_', n_cpu = 1,
+        name = f'prs_corr_{args.pheno[0]}', n_cpu = 1,
         timeout = 30,
         # debug = True
         )
@@ -22,17 +22,16 @@ def main(args):
     diagdir = args.out + '/diagnostics/'
     if not os.path.isdir(diagdir): os.mkdir(diagdir)
     
-    os.chdir(args._in)
     flist = []
     for p in args.pheno:
-        if os.path.isfile(p):
+        if os.path.isfile(f'{args._in}/p'):
             flist.append(p)
             continue
-        if os.path.isfile(f'{p}.txt'):
+        if os.path.isfile(f'{args._in}/{p}.txt'):
             flist.append(f'{p}.txt')
             continue
         
-        for x in os.listdir():
+        for x in os.listdir(args._in):
             if fnmatch(x, f'*{p}*.txt'):
                 flist.append(x)
     print('Files to process:')
@@ -40,8 +39,8 @@ def main(args):
     
     # Correlation
     for x in flist:
-      submitter.add('python '+
-        f'prs_corr.py -i {args._in}/{x} -p {args.prs} --cov {args.cov} --qcov {args.qcov} -o {args.out} {f}')
+      os.system('python '+
+        f'prs_corr.py -i {args._in}/{x} -p {args.prs} --dcov {args.dcov} --qcov {args.qcov} -o {args.out} {f}')
     submitter.submit()
 
 if __name__ == '__main__':
@@ -52,7 +51,7 @@ if __name__ == '__main__':
       default = '../pheno/ukb/')
     parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS score directory',
       default = '../prs/prs_score/')
-    parser.add_argument('--cov',dest = 'cov', help = 'DISCRETE covariance file',
+    parser.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
       default = '../params/discrete_covars.txt')
     parser.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file',
       default = '../params/quantitative_covars.txt')
@@ -62,7 +61,7 @@ if __name__ == '__main__':
                         action = 'store_true', default = False)
     args=parser.parse_args()
     import os
-    for arg in ['_in','out','prs','cov','qcov']:
+    for arg in ['_in','out','prs','dcov','qcov']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
         
     from _utils import cmdhistory, path, logger

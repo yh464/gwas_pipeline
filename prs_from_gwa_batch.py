@@ -11,6 +11,7 @@ def main(args):
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
         name = 'prs_from_gwa', n_cpu = 2,
+        env = 'gentoolspy',
         timeout = 150, lim = 1)
     scripts_path = os.path.realpath(__file__)
     scripts_path = os.path.dirname(scripts_path)
@@ -31,8 +32,9 @@ def main(args):
         out_prefix = out_dir + f'chr{j+1}'
         if os.path.isfile(out_prefix+f'_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt') and (not args.force):
           continue
-        submitter.add(f'bash {scripts_path}/prs_from_gwa.sh '+
-          f'{args.prscs} {args.ref} {bed_list[j]} {f} {n} {out_prefix} {j+1} {args.phi}')
+        submitter.add(f'python {args.prscs}/PRScs.py --ref_dir={args.ref} '+
+          f'--bim_prefix={bed_list[j]} --sst_file={f} --n_gwas={n} --out_dir={out_prefix} '+
+          f'--chrom={j+1} --phi={args.phi} --seed 114514')
     submitter.submit()
         
 if __name__ == '__main__':
@@ -43,7 +45,7 @@ if __name__ == '__main__':
       help = 'list of GWA files to generate PRS. FORMAT: ${absolute path} \t ${sample size}',
       default = '../params/gwa_for_prs.list')
     parser.add_argument('--prscs', dest = 'prscs', help = 'directory of PRSCS executable',
-      default = '/rds/user/yh464/hpc-work/conda/PRScs/')
+      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/PRScs/')
     parser.add_argument('--ref', dest = 'ref', help = 'reference panel',
       default = '../params/ldblk_1kg_eur/')
     parser.add_argument('--bed', dest = 'bed', help = 'list of PLINK binaries for target sample',

@@ -2,7 +2,8 @@
 '''
 Author: Yuankai He
 Correspondence: yh464@cam.ac.uk
-2024-11-05
+Version 1: 2024-11-05
+Version 2: 2025-01-21
 
 Batch submits jobs for Mendelian Randomisation for all GWAS files in a directory
 (usually the same group of phenotypes). Scans the entire directory for GWAS summary
@@ -51,19 +52,21 @@ def main(args):
     from _utils import array_submitter
     submitter_main = array_submitter.array_submitter(
         name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 2, timeout = 20,
+        n_cpu = 3 if args.apss else 2, 
+        timeout = 30,
         # debug = True
         )
     submitter_cause = array_submitter.array_submitter(
         name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3, timeout = 20,
-        # debug = True
+        n_cpu = 3, timeout = 30,
+        debug = True
         )
     
     # output directory
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
     force = '-f' if args.force else ''
+    apss = '--apss' if args.apss else ''
     
     for p2 in args.p2:
       # make output directory wrt p2
@@ -131,17 +134,20 @@ def main(args):
             # input file name specification
             gwa1 = f'{args._in}/{p1}/{f1}.{args.ext1}'
             clump1, pval1 = find_clump(f'{args.clump}/{p1}',f1, args.pval)
+            clump001, _ = find_clump(f'{args.clump}/{p1}',f1, 0.001)
             gwa2 = f'{args._in}/{p2}/{f2}.{args.ext2}'
             clump2, pval2 = find_clump(f'{args.clump}/{p2}',f2, args.pval)
-            pval_thr = min([pval1, pval2])
+            clump002, _ = find_clump(f'{args.clump}/{p2}',f2, 0.001)
+            pval_thr = max([pval1, pval2])
             
+            # check rg and h2 information
             if os.path.isfile(f'{args.rg}/{p1}_{f1}.{p2}_{f2}.rg.log'):
                 rglog = f'{args.rg}/{p1}_{f1}.{p2}_{f2}.rg.log'
             elif os.path.isfile(f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'):
                 rglog = f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'
             else:
                 print(f'Missing rg information, {p1}_{f1} & {p2}_{f2}')
-                continue
+                rglog = f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'
             
             # check progress and QC output
             out_prefix = f'{args.out}/{p2}/{f2}/{p1}_{f1}_{f2}'
@@ -166,7 +172,7 @@ def main(args):
                     f'--g2 {gwa2} --c2 {clump2} --n2 {n2} {nca} {nco} '+
                     f'--pval {pval_thr:.0e} --h21 {h21:.4f} --h2se1 {h2se1:.4f} '+
                     f'--h22 {h22:.4f} --h2se2 {h2se2:.4f} --rglog {rglog} '+
-                    f'-o {args.out}/{p2}/{f2} {force}')
+                    f'-o {args.out}/{p2}/{f2} {force} {apss}')
             
             if not os.path.isfile(f'{out_prefix}_mr_lcv_results.txt') or args.force: # bidirectional
                 submitter_main.add(
@@ -176,8 +182,8 @@ def main(args):
             if not os.path.isfile(f'{out_prefix}_mr_forward_cause_results.txt') or \
                 not os.path.isfile(f'{out_prefix}_mr_reverse_cause_results.txt') or args.force:
                 submitter_cause.add(
-                    f'Rscript mr_cause.r --g1 {gwa1} --c1 {clump1} '+
-                    f'--g2 {gwa2} --c2 {clump2} -o {args.out}/{p2}/{f2} {force}')
+                    f'Rscript mr_cause.r --g1 {gwa1} --c1 {clump001} '+
+                    f'--g2 {gwa2} --c2 {clump002} -o {args.out}/{p2}/{f2} {force}')
     
     submitter_main.submit()
     submitter_cause.submit()
@@ -219,6 +225,9 @@ if __name__ == '__main__':
                         default = '../params/disorder_sample_size.txt')
     pheno_spec.add_argument('-nca', help = 'Sample size for cases in phenotype group 2, number',
                         default = None)
+    
+    corr = parser.add_argument_group('Corrections and adjustments')
+    corr.add_argument('--apss', help = 'conduct MR-APSS correction', action = 'store_true', default = False)
     
     parser.add_argument('--pval', help = 'Clumping p-value threshold', default = 5e-8, type = float)
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',

@@ -28,6 +28,9 @@ def parse_mr_results(prefix):
     presso = pd.read_table(f'{prefix}_presso_results.txt')
     dirtest = pd.read_table(f'{prefix}_dirtest.txt')
     pleio = pd.read_table(f'{prefix}_pleiotropy.txt')
+    cause = pd.read_table(f'{prefix}_cause_results.txt')
+    lcv = f'{prefix}_lcv_results.txt'.replace('_forward','').replace('_reverse','')
+    lcv = pd.read_table(lcv)
     
     # pleiotropy output: egger intercept and p value, rssobs and p value
     pleio = pleio[['outcome','exposure','egger_intercept','se','pval']]
@@ -49,6 +52,8 @@ def parse_mr_results(prefix):
     
     causal['correct_dir'] = dirtest.iloc[0,-2]
     causal['dirtest_p'] = dirtest.iloc[0,-1]
+    causal['cause_p'] = cause.iloc[-1,-1]
+    causal['lcv_p'] = lcv.loc['p','x']
     
     return causal, pleio
 
@@ -88,9 +93,12 @@ def main(args):
       for f in os.listdir(f'{args.gwa}/{p2}'):
           if fnmatch(f, '*_X*') or fnmatch(f,'*_all_chrs*'): continue # exclude x-chr sum stats
           if fnmatch(f,f'*.{args.ext2}'): prefix2.append(f.replace(f'.{args.ext2}',''))
-    
-      for f2 in prefix2:
-        for p1 in args.p1:
+          
+      for p1 in args.p1:
+        all_fwd = []
+        all_rev = []
+        
+        for f2 in prefix2:
           # initialise output parsed tables
           results_fwd = []
           results_rev = []
@@ -114,13 +122,15 @@ def main(args):
         
           # concatenate and write tabular output
           results_fwd = pd.concat(results_fwd)
-          results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','dirtest_p'])
+          results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
           results_fwd_corrected.sort_values(by = 'pfdr', inplace = True)
+          all_fwd.append(results_fwd_corrected)
           results_fwd_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_forward.txt', sep = '\t', index = False)
           
           results_rev = pd.concat(results_rev)
-          results_rev_corrected = stratified_fdr(results_rev,'method',['p','dirtest_p'])
+          results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
           results_rev_corrected.sort_values(by = 'pfdr', inplace = True)
+          all_rev.append(results_rev_corrected)
           results_rev_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_reverse.txt', sep = '\t', index = False)
           
           pleio_fwd = pd.concat(pleio_fwd)
@@ -132,7 +142,12 @@ def main(args):
           pleio_rev_corrected = stratified_fdr(pleio_rev,'exposure',['egger_p','presso_p'])
           pleio_rev_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_reverse_pleiotropy.txt', 
                                      sep = '\t', index = False)
-          
+        
+        pd.concat(all_fwd).sort_values(by = 'pfdr').to_csv(
+            f'{args._in}/{p2}/all_{p1}_{p2}_mr_forward.txt', sep = '\t', index = False)
+        pd.concat(all_rev).sort_values(by = 'pfdr').to_csv(
+            f'{args._in}/{p2}/all_{p1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
+        
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 
@@ -154,8 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory, should be the output of mr_batch.py',
                         default = '../mr')
     # default output to the same directory
-    parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
-                        default = False, help = 'Force overwrite')
+    # always overwrites
     args = parser.parse_args()
     
     import os

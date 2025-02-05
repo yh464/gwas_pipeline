@@ -61,7 +61,7 @@ def main(args):
           summary.to_csv(f'{args._in}/{x}/summary/{annot}.siggenes.txt', sep = '\t', index = False)
           all_annot.append(summary)
       all_annot = pd.concat(all_annot, ignore_index = True)
-      all_annot = all_annot.loc[all_annot.P <= 0.05 ,:].sort_values(by = 'Pfdr')
+      all_annot = all_annot.loc[all_annot.P <= 0.05 ,:].sort_values(by = ['Pfdr','P'])
       all_annot.to_csv(f'{args._in}/{x}/all_siggenes.txt', sep = '\t', index = False)
       
       all_annot = all_annot.loc[all_annot.Pfdr <= 0.05,:]

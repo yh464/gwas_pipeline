@@ -29,6 +29,15 @@ optlist = list(
   make_option('--h2se2', help = 'LDSC h2 std. err. for trait 2', type = 'double'),
   make_option('--rglog', help = 'LDSC genetic correlation log file'),
   
+  # for MR-APSS based correction
+  make_option('--apss', help = 'Apply MR-APSS correction', action = 'store_true', default = F),
+  make_option('--ldsc', help = 'LDSC baseline',
+      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline'),
+  make_option('--plink', help = 'PLINK executable',
+      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink'),
+  make_option('--bfile', help = 'BED file for clumping',
+      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/fileforclumping_full'),
+  
   # output directory
   make_option(c('-o','--out'),dest = 'out', help = 'output directory'),
   
@@ -82,7 +91,8 @@ if (! require(tidyverse)){
 library(ggplot2) # apparently there is a problem with the ggplot2 function 'scale_linewidth_manual'
 library(TwoSampleMR) # need devtools to install from github so just raise an error
 library(MRPRESSO)
-
+library(MRAPSS)
+  
 #### Input file processing ####
 # file names and directory operations
 if (!dir.exists(args$out)) dir.create(args$out)
@@ -100,7 +110,9 @@ cache_file = paste0(
   basename(dirname(args$gwa2)),'_',
   prefix2,'_cache.rdata'
 )
-if (! file.exists(cache_file) | args$force){
+
+if (!file.exists(cache_file) | args$force){
+  #### Read GWAS summary stats ####
   print(paste0('Reading file: ', args$gwa1))
   stat1 = merge_gwa_clump(args$gwa1, args$clump1, prefix1)
   print(paste0('Reading file: ', args$gwa2))
@@ -121,106 +133,128 @@ if (! file.exists(cache_file) | args$force){
   stat1_rev = merge(stat1[[1]], ref_snp_rev)
   stat2_rev = merge(stat2[[1]], ref_snp_rev)
   
-# format data
-exp1 = format_data(stat1_fwd, type = 'exposure',
-                   snp_col = 'SNP',
-                   beta_col = 'BETA',
-                   se_col = 'SE',
-                   effect_allele_col = 'A1', # NB check and double check
-                   other_allele_col = 'A2',
-                   eaf_col = 'AF1',
-                   pval_col = 'P',
-                   min_pval = 1e-200,
-                   chr_col = 'CHR',
-                   pos_col = 'POS')
-out1 = format_data(stat1_rev, type = 'outcome',
-                   snp_col = 'SNP',
-                   beta_col = 'BETA',
-                   se_col = 'SE',
-                   effect_allele_col = 'A1', # NB check and double check
-                   other_allele_col = 'A2',
-                   eaf_col = 'AF1',
-                   pval_col = 'P',
-                   min_pval = 1e-200,
-                   chr_col = 'CHR',
-                   pos_col = 'POS')
-
-# SUMMARY STATS FOR DISORDERS NEED MANUAL FIDDLING, consider a separate folder for sumstats
-exp2 = format_data(stat2_rev, type = 'exposure',
-                   snp_col = 'SNP',
-                   beta_col = 'BETA',
-                   se_col = 'SE',
-                   info_col = 'INFO', # THIS IS DIFFERENT FROM THE ABOVE
-                   effect_allele_col = 'A1', # NB check and double check
-                   other_allele_col = 'A2',
-                   eaf_col = 'AF1',
-                   pval_col = 'P',
-                   min_pval = 1e-200,
-                   chr_col = 'CHR',
-                   pos_col = 'POS')
-out2 = format_data(stat2_fwd, type = 'outcome',
-                   snp_col = 'SNP',
-                   beta_col = 'BETA',
-                   se_col = 'SE',
-                   info_col = 'INFO',
-                   effect_allele_col = 'A1', # NB check and double check
-                   other_allele_col = 'A2',
-                   eaf_col = 'AF1',
-                   pval_col = 'P',
-                   min_pval = 1e-200,
-                   chr_col = 'CHR',
-                   pos_col = 'POS')
-
-# harmonise data for 2-sample MR
-exp1$samplesize.exposure = as.integer(args$n1)
-out2$samplesize.outcome = as.integer(args$n2)
-mr_fwd_harm = harmonise_data(exp1, out2, action = 2) # action 2 = default, conservative
-# pre-calculate variance for directionality test
-if (! is.null(args$nca) & ! is.null(args$nco)){
-  r2_fwd = get_r_from_lor(lor = mr_fwd_harm$beta.outcome,
-                      af = mr_fwd_harm$eaf.outcome,
-                      ncase = as.integer(args$nca),
-                      ncontrol = as.integer(args$nco),
-                      prevalence = 0.0185, # TODO: CHANGE BY DISEASE
-                      model = 'logit',
-                      correction = T)
-} else {
-  r2_fwd = get_r_from_pn(mr_fwd_harm$pval.outcome, mr_fwd_harm$samplesize.outcome)
-}
-r1_fwd = get_r_from_pn(mr_fwd_harm$pval.exposure, mr_fwd_harm$samplesize.exposure)
-mr_fwd_harm$r.outcome = r2_fwd
-mr_fwd_harm$r.exposure = r1_fwd
-
-# harmonise data for reverse direction
-exp2$samplesize.exposure = as.integer(args$n2)
-out1$samplesize.outcome = as.integer(args$n1)
-mr_rev_harm = harmonise_data(exp2, out1, action = 2)
-# pre-calculate variance for directionality test
-if (! is.null(args$nca) & ! is.null(args$nco)){
-  r2_rev = get_r_from_lor(lor = mr_rev_harm$beta.outcome,
-                           af = mr_rev_harm$eaf.outcome,
-                           ncase = as.integer(args$nca),
-                           ncontrol = as.integer(args$nco),
-                           prevalence = 0.0185, # TODO: CHANGE BY DISEASE
-                           model = 'logit',
-                           correction = T)
-} else {
-  r2_rev = get_r_from_pn(mr_rev_harm$pval.outcome, mr_rev_harm$samplesize.outcome)
-}
-r1_rev = get_r_from_pn(mr_rev_harm$pval.exposure, mr_rev_harm$samplesize.exposure)
-mr_rev_harm$r.outcome = r1_rev
-mr_rev_harm$r.exposure = r2_rev
-
-save('mr_fwd_harm', 'mr_rev_harm','args', file = cache_file)
-} else {
-  load(cache_file)
-}
+  #### format data for TwoSampleMR ####
+  exp1 = TwoSampleMR::format_data(stat1_fwd, type = 'exposure',
+                                  snp_col = 'SNP',
+                                  beta_col = 'BETA',
+                                  se_col = 'SE',
+                                  effect_allele_col = 'A1', # NB check and double check
+                                  other_allele_col = 'A2',
+                                  eaf_col = 'AF1',
+                                  pval_col = 'P',
+                                  min_pval = 1e-200,
+                                  chr_col = 'CHR',
+                                  pos_col = 'POS')
+  out1 = TwoSampleMR::format_data(stat1_rev, type = 'outcome',
+                                  snp_col = 'SNP',
+                                  beta_col = 'BETA',
+                                  se_col = 'SE',
+                                  effect_allele_col = 'A1', # NB check and double check
+                                  other_allele_col = 'A2',
+                                  eaf_col = 'AF1',
+                                  pval_col = 'P',
+                                  min_pval = 1e-200,
+                                  chr_col = 'CHR',
+                                  pos_col = 'POS')
+  
+  exp2 = TwoSampleMR::format_data(stat2_rev, type = 'exposure',
+                                  snp_col = 'SNP',
+                                  beta_col = 'BETA',
+                                  se_col = 'SE',
+                                  info_col = 'INFO', # THIS IS DIFFERENT FROM THE ABOVE
+                                  effect_allele_col = 'A1', # NB check and double check
+                                  other_allele_col = 'A2',
+                                  eaf_col = 'AF1',
+                                  pval_col = 'P',
+                                  min_pval = 1e-200,
+                                  chr_col = 'CHR',
+                                  pos_col = 'POS')
+  out2 = TwoSampleMR::format_data(stat2_fwd, type = 'outcome',
+                                  snp_col = 'SNP',
+                                  beta_col = 'BETA',
+                                  se_col = 'SE',
+                                  info_col = 'INFO',
+                                  effect_allele_col = 'A1', # NB check and double check
+                                  other_allele_col = 'A2',
+                                  eaf_col = 'AF1',
+                                  pval_col = 'P',
+                                  min_pval = 1e-200,
+                                  chr_col = 'CHR',
+                                  pos_col = 'POS')
+  
+  #### harmonise data for 2-sample MR ####
+  exp1$samplesize.exposure = as.integer(args$n1)
+  out2$samplesize.outcome = as.integer(args$n2)
+  mr_fwd_harm = harmonise_data(exp1, out2, action = 2) # action 2 = default, conservative
+  # pre-calculate variance for directionality test
+  if (! is.null(args$nca) & ! is.null(args$nco)){
+    r2_fwd = get_r_from_lor(lor = mr_fwd_harm$beta.outcome,
+                            af = mr_fwd_harm$eaf.outcome,
+                            ncase = as.integer(args$nca),
+                            ncontrol = as.integer(args$nco),
+                            prevalence = 0.0185, # TODO: CHANGE BY DISEASE
+                            model = 'logit',
+                            correction = T)
+  } else {
+    r2_fwd = get_r_from_pn(mr_fwd_harm$pval.outcome, mr_fwd_harm$samplesize.outcome)
+  }
+  r1_fwd = get_r_from_pn(mr_fwd_harm$pval.exposure, mr_fwd_harm$samplesize.exposure)
+  mr_fwd_harm$r.outcome = r2_fwd
+  mr_fwd_harm$r.exposure = r1_fwd
+  
+  # harmonise data for reverse direction
+  exp2$samplesize.exposure = as.integer(args$n2)
+  out1$samplesize.outcome = as.integer(args$n1)
+  mr_rev_harm = harmonise_data(exp2, out1, action = 2)
+  
+  #### pre-calculate variance for Steiger test ####
+  if (! is.null(args$nca) & ! is.null(args$nco)){
+    r2_rev = get_r_from_lor(lor = mr_rev_harm$beta.outcome,
+                            af = mr_rev_harm$eaf.outcome,
+                            ncase = as.integer(args$nca),
+                            ncontrol = as.integer(args$nco),
+                            prevalence = 0.0185, # TODO: CHANGE BY DISEASE
+                            model = 'logit',
+                            correction = T)
+  } else {
+    r2_rev = get_r_from_pn(mr_rev_harm$pval.outcome, mr_rev_harm$samplesize.outcome)
+  }
+  r1_rev = get_r_from_pn(mr_rev_harm$pval.exposure, mr_rev_harm$samplesize.exposure)
+  mr_rev_harm$r.outcome = r1_rev
+  mr_rev_harm$r.exposure = r2_rev
+  
+  #### pre-calculate parameters for MR-APSS correction ####
+  if (args$apss){
+    gwa1 = MRAPSS::format_data(stat1[[1]], snp_col = 'SNP', b_col = 'BETA', se_col = 'SE',
+                               freq_col = 'AF1', A1_col = 'A1', A2_col = 'A2', p_col = 'P', n_col = 'N')
+    rm(stat1)
+    gwa2 = MRAPSS::format_data(stat2[[1]], snp_col = 'SNP', b_col = 'BETA', se_col = 'SE',
+                               freq_col = 'AF1', A1_col = 'A1', A2_col = 'A2', p_col = 'P', n_col = 'N')
+    rm(stat2)
+    apss_params = MRAPSS::est_paras(dat1 = gwa1, dat2 = gwa2, trait1.name = prefix1,
+                                    trait2.name = prefix2, ldscore.dir = args$ldsc)
+    rm(gwa1); rm(gwa2);
+    apss_fwd = list()
+    apss_fwd$dat = MRAPSS::clump(apss_params$dat, plink_bin = args$plink, bfile = args$bfile)
+    apss_fwd$C = apss_params$C; apss_fwd$Omega = apss_params$Omega
+    
+    apss_params$dat %>% rename(b.exp = b.out, b.out = b.exp, se.exp = se.out, se.out = se.exp, 
+                               pval.exp = pval.out, pval.out = pval.exp)
+    apss_rev = list()
+    apss_rev$dat = MRAPSS::clump(apss_params$dat, plink_bin = args$plink, bfile = args$bfile)
+    apss_rev$C = apss_params$C[c(2,1),c(2,1)]
+    apss_rev$Omega = apss_params$Omega[c(2,1),c(2,1)]
+    # clumping threshold is 1e-5
+    rm(apss_params)
+  } else {apss_fwd = NA; apss_rev = NA; rm(stat1); rm(stat2)}
+  save('mr_fwd_harm', 'mr_rev_harm','apss_fwd', 'apss_rev','args', file = cache_file)
+} else load(cache_file)
 
 toc = proc.time()
 print(paste0('Finished input data harmonisation, time = ',toc[3]))
 
 #### Define function for MR ####
-all_mr_results = function(harm, prefix, ldsc_params) {
+all_mr_results = function(harm, prefix, ldsc_params, apss_params) {
   # harm = harmonised data
   # prefix = file name in export, INCLUDING directory
   # ldsc_params is for MR-lap correction
@@ -234,6 +268,25 @@ all_mr_results = function(harm, prefix, ldsc_params) {
   single = mr_singlesnp(harm)
   loo = mr_leaveoneout(harm)
   direc = directionality_test(harm)
+  
+  #### Plots for TwoSampleMR ####
+  # scatter plot
+  scatter = mr_scatter_plot(res,harm)
+  ggsave(paste0(prefix,'_scatterplot.pdf'))
+  ggsave(paste0(prefix,'_scatterplot.png'))
+  remove(scatter)
+  
+  # forest plot
+  forest = mr_forest_plot(single)
+  ggsave(paste0(prefix,'_forest.pdf'))
+  ggsave(paste0(prefix,'_forest.png'))
+  remove(forest)
+  
+  # leave-one-out plot
+  loo_plot = mr_leaveoneout_plot(loo)
+  ggsave(paste0(prefix,'_looplot.pdf'))
+  ggsave(paste0(prefix,'_looplot.png'))
+  remove(loo_plot)
   
   #### MRlap correction ####
   source('https://github.com/n-mounier/MRlap/raw/refs/heads/master/R/get_correction.R')
@@ -266,25 +319,24 @@ all_mr_results = function(harm, prefix, ldsc_params) {
   }, error = function(e) {cat('MRlap correction failed, check for missing data')}
   )
   
-  #### outputs for MR ####
-  # scatter plot
-  scatter = mr_scatter_plot(res,harm)
-  ggsave(paste0(prefix,'_scatterplot.pdf'))
-  ggsave(paste0(prefix,'_scatterplot.png'))
-  remove(scatter)
-  
-  # forest plot
-  forest = mr_forest_plot(single)
-  ggsave(paste0(prefix,'_forest.pdf'))
-  ggsave(paste0(prefix,'_forest.png'))
-  remove(forest)
-  
-  # leave-one-out plot
-  loo_plot = mr_leaveoneout_plot(loo)
-  ggsave(paste0(prefix,'_looplot.pdf'))
-  ggsave(paste0(prefix,'_looplot.png'))
-  remove(loo_plot)
-  
+  #### MR-APSS correction ####
+  if (args$apss) tryCatch({
+    mrapss_res = MRAPSS(apss_params$dat, exposure = res$exposure[1],
+                      outcome = res$outcome[1], C = apss_params$C,
+                      Omega = apss_params$Omega, Cor.SelectionBias = T)
+    res = res %>% rbind(
+      data.frame(
+        id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
+        outcome = res$outcome[1], exposure = res$exposure[1],
+        method = 'MR-APSS', nsnp = nrow(apss_params$dat),
+        b = mrapss_res$beta,
+        se = mrapss_res$beta.se,
+        pval = mrapss_res$pvalue
+      )
+    )
+  }, error = function(e) {cat('MR-APSS correction failed, check for missing data\n')}
+  )
+  #### tabular outputs ####
   # tabular output
   write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
   
@@ -329,10 +381,10 @@ all_mr_results = function(harm, prefix, ldsc_params) {
 ldsc_params = parse_rg_log(args$rglog)
 ldsc_params_fwd = c(ldsc_params, list(h2_exp = args$h21, h2se_exp = args$h2se1))
 ldsc_params_rev = c(ldsc_params, list(h2_exp = args$h22, h2se_exp = args$h2se2))
-all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), ldsc_params_fwd)
+all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), ldsc_params_fwd, apss_fwd)
 toc = proc.time()
 print(paste0('Finished forward direction MR, time = ',toc[3]))
-all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), ldsc_params_rev)
+all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), ldsc_params_rev, apss_rev)
 toc = proc.time()
 print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }

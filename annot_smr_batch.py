@@ -99,7 +99,7 @@ def main(args):
             if not os.path.isfile(f'{out}/{prefix}.smr') or force:
                 submitter.add(
                 f'{smr} --bfile {bfile} --gwas-summary {tmpdir}/{prefix}.txt '+
-                f'--beqtl-summary {xqtl} --out {out}/{prefix}'
+                f'--beqtl-summary {xqtl} --out {out}/{prefix}.{qtl}'
                 )
         
         else:
@@ -119,7 +119,7 @@ def main(args):
     
     qtl_list = []
     for y in os.listdir(args.qtl):
-        if fnmatch(y, '*.besd'): qtl_list.append(y)
+        if fnmatch(y, '*.besd'): qtl_list.append(f'{args.qtl}/{y}')
         if os.path.isdir(f'{args.qtl}/{y}'):
             if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]):
                 qtl_list.append(f'{args.qtl}/{y}')
