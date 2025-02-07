@@ -2,17 +2,114 @@
 #!/usr/env/bin python3
 
 '''
+Author: Yuankai He
+Correspondence: yh464@cam.ac.uk
+2025-01-20
+
 This utility manages the nomenclature of file names / paths
 '''
 
 import os
 import numpy as np
 import re
+import pandas as pd
+
+class normaliser():
+    def __init__(self, _dir = '../path/', _dict = 'dict.txt'):
+        
+        self._dict_file = f'{_dir}/{_dict}'
+        
+        # initialise file
+        if not os.path.isdir(_dir): os.mkdir(_dir)
+        if not os.path.isfile(self._dict_file):
+            df = pd.DataFrame(dict(
+                before = ['pfdr','fdr','pheno','stderr','logor'],
+                after = ['q','q','phenotype','se','beta']
+                )).set_index('before')
+            df.to_csv(self._dict_file, sep = '\t')
+        
+        # load file
+        self._dict = pd.read_table(self._dict_file, index_col = 'before')
+    
+    def load(self):
+        self._dict = pd.read_table(self._dict_file, index_col = 'before')
+    
+    def save(self):
+        self._dict.to_csv(self._dict_file, sep = '\t')
+    
+    def append(self, before, after):
+        # accepts new entries only, does not overwrite existing entries
+        try:
+            _ = self._dict.loc[before,'after']
+            print('WARNING: cannot overwrite existing dictionary entry')
+        except:
+            self._dict = pd.concat((self._dict, 
+                pd.DataFrame(index = [before], columns =['after'], data = after)))
+            self.save()
+    
+    def update(self, before, after):
+        # updates existing entries and appends new entries
+        try:
+            self._dict.loc[before,'after'] = after
+            self.save()
+            print(f'WARNING: overwriting existing entry: {before}')
+        except:
+            self._dict = pd.concat((self._dict, 
+                pd.DataFrame(index = [before], columns =['after'], data = after)))
+            self.save()
+    
+    def _normalise_df(self, df):
+        def n(series):
+            if x[0] == '_':
+                series = series.str.replace(x, y)
+            else:
+                series = series.replace(x,y)
+                series = '_' + series + '_'
+                series = series.str.replace(f'_{x}_',f'_{y}_').str.removeprefix(
+                    '_').str.removesuffix('_')
+            return series
+        
+        for x in self._dict.index:
+            y = self._dict.loc[x, 'after']
+            for col in df.columns:
+                try: # we do not replace numbers 
+                    df[col].astype(float)
+                    continue
+                except: # we execute replace operations below
+                    df[col] = n(df[col])
+            try: df.index.astype(float)
+            except: df.index = n(df.index)
+        return df
+    
+    def normalise(self, data, backup = None):
+        # read table if data is a file
+        if os.path.isfile(data):
+            if backup == None: backup = f'{data}.bak'
+            os.system(f'cp {data} {backup}')
+            if data[-3:] == 'csv':                
+                df = pd.read_csv(data)
+                df = self._normalise_df(df)
+                df.to_csv(data, index = False)
+            else: 
+                df = pd.read_table(data, sep = '\\s+')
+                df = self._normalise_df(df)
+                df.to_csv(data, index = False, sep = '\t')
+            return df
+        
+        # process input DataFrame object
+        elif type(data) == pd.DataFrame:
+            df = data
+        # or try to coerse input object into pd.DataFrame
+        else: df = pd.DataFrame(data)
+        
+        return self._normalise_df(df)
+                    
+        
 
 class project():
     def __init__(self,
                  _dir = '../path/', # uses relative path, so defaults to the relative path to the wd
-                 _dict = 'dict.txt', # nomenclature
+                 _dict = 'wildcards.txt', # placeholders of a certain format
                  _flow = 'workflow.txt', # workflow, shows file name, input and output
                  ):
         
