@@ -26,7 +26,7 @@ def main(args):
         for g2 in args.p2:
             df2 = pd.read_table(f'{args._in}/{g2}.txt', sep = '\\s+', index_col = ['FID','IID'])
             merge = pd.concat([df1, df2], axis = 1)
-            for t1 in df1.columna: # excludes FID and IID
+            for t1 in df1.columns: # excludes FID and IID
                 for t2 in df2.columns:
                     tmp = merge[[t1, t2]].dropna()
                     r = tmp[t1].corr(tmp[t2])
