@@ -110,55 +110,6 @@ def main(args):
     fig = corr_heatmap(summary)
     fig.savefig(f'{fout}.pdf', bbox_inches = 'tight')
     
-    ## relative widths/heights of plots are given in the 'count' section
-    # fig, ax = plt.subplots(len(args.p1), len(args.p2), 
-    #                      figsize = (sum(count_2)/3, sum(count_1)/3),
-    #                      width_ratios = count_2, height_ratios = count_1)
-    # if len(args.p1) == 1 and len(args.p2) == 1:
-    #     ax = np.array([ax])
-    # ax = ax.reshape((len(args.p1),len(args.p2)))
-    # summary['pt_size'] = (summary.q < 0.05).astype(float) + \
-    #     (summary.p < 0.05).astype(float) + 1 # FDR < 0.05 -> size = 3
-    
-    # for i in range(len(args.p1)):
-    #     for j in range(len(args.p2)):
-    #         p1 = args.p1[i]; p2 = args.p2[j]
-    #         tmp = summary.loc[(summary.group1 == p1) & (summary.group2 == p2),:]
-            
-    #         sns.scatterplot(
-    #             tmp,
-    #             x = 'pheno2', y = 'pheno1',
-    #             hue = 'rg', palette = 'redblue', hue_norm = (-1,1),
-    #             size = 'pt_size', sizes = (25, 250),
-    #             edgecolor = '.7',
-    #             legend = False, ax = ax[i,j]
-    #             )
-            
-    #         # remove x and y labels if aligned
-    #         if i != len(args.p1) -1: 
-    #             ax[i,j].set_xlabel(''); 
-    #             ax[i,j].set_xticklabels([''] * len(ax[i,j].get_xticklabels()))
-    #         else:
-    #             ax[i,j].set_xlabel(args.p2[j])
-    #             for label in ax[i,j].get_xticklabels():
-    #               label.set_rotation(90)
-    #         if j > 0:
-    #             ax[i,j].set_ylabel(''); 
-    #             ax[i,j].set_yticklabels([''] * len(ax[i,j].get_yticklabels()))
-    #         else:
-    #             ax[i,j].set_ylabel(args.p1[i])
-            
-    #         ax[i,j].set_xlim(-0.5, count_2[j]-0.5)
-    #         ax[i,j].set_ylim(-0.5, count_1[i]-0.5)
-            
-    #         # despine
-    #         for _, spine in ax[i,j].spines.items():
-    #             spine.set_visible(False)
-    # # colour bar
-    # norm = mpl.colors.Normalize(vmin=-1, vmax=1)
-    # plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), cax = fig.add_axes((0.92, 0.25, 0.02, 0.50)))
-    # plt.savefig(f'{fout}.pdf', bbox_inches = 'tight')
-    
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 

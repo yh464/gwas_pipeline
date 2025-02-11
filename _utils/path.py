@@ -15,7 +15,7 @@ import re
 import pandas as pd
 
 class normaliser():
-    def __init__(self, _dir = '../path/', _dict = 'dict.txt'):
+    def __init__(self, _dir = os.path.realpath('../path/'), _dict = 'dict.txt'):
         
         self._dict_file = f'{_dir}/{_dict}'
         
@@ -29,13 +29,13 @@ class normaliser():
             df.to_csv(self._dict_file, sep = '\t')
         
         # load file
-        self._dict = pd.read_table(self._dict_file, index_col = 'before')
+        self._dict = pd.read_table(self._dict_file, index_col = 'before').fillna('')
     
     def load(self):
-        self._dict = pd.read_table(self._dict_file, index_col = 'before')
+        self._dict = pd.read_table(self._dict_file, index_col = 'before').fillna('')
     
     def save(self):
-        self._dict.to_csv(self._dict_file, sep = '\t')
+        self._dict.to_csv(self._dict_file, sep = '\t', index = True, header = True)
     
     def append(self, before, after):
         # accepts new entries only, does not overwrite existing entries
@@ -59,7 +59,8 @@ class normaliser():
             self.save()
     
     def _normalise_df(self, df):
-        def n(series):
+        def n(series, x, y):
+            series = pd.Series(series).str.lower()
             if x[0] == '_':
                 series = series.str.replace(x, y)
             else:
@@ -70,20 +71,21 @@ class normaliser():
             return series
         
         for x in self._dict.index:
-            y = self._dict.loc[x, 'after']
+            y = str(self._dict.loc[x, 'after'])
             for col in df.columns:
                 try: # we do not replace numbers 
                     df[col].astype(float)
                     continue
                 except: # we execute replace operations below
-                    df[col] = n(df[col])
+                    df.loc[:,col] = n(df[col], x, y)
             try: df.index.astype(float)
-            except: df.index = n(df.index)
+            except: df.index = n(df.index, x, y)
+            df.columns = n(df.columns, x, y)
         return df
     
     def normalise(self, data, backup = None):
         # read table if data is a file
-        if os.path.isfile(data):
+        if type(data) == str and os.path.isfile(data):
             if backup == None: backup = f'{data}.bak'
             os.system(f'cp {data} {backup}')
             if data[-3:] == 'csv':                
@@ -103,8 +105,6 @@ class normaliser():
         else: df = pd.DataFrame(data)
         
         return self._normalise_df(df)
-                    
-        
 
 class project():
     def __init__(self,

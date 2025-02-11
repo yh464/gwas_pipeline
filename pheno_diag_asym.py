@@ -41,8 +41,8 @@ os.chdir('/rds/user/yh464/rds-rb643-ukbiobank2/Data_Users/yh464/pheno/ukb')
 if not os.path.isdir('diagnostics'): os.mkdir('diagnostics')
 
 # distribution of global phenotypes
-glob = pd.read_table('global.txt', sep = '\s+').set_index('IID')
-asym = pd.read_table('global_asym_diag.txt', sep = '\s+').set_index('IID')
+glob = pd.read_table('global.txt', sep = '\\s+').set_index('IID')
+asym = pd.read_table('global_asym_diag.txt', sep = '\\s+').set_index('IID')
 rois = pd.Index(open('deg_local.txt').readline().replace('\n','').split()[2:]) # only read header
 if not os.path.isfile('diagnostics/global_asym_dist.svg') or force:
     tmp = glob[['deg_global','degi_global','degc_global','eff_global','mpl_global',
@@ -78,7 +78,7 @@ for p in ['deg','degi','degc','clu','eff','mpl']:
     asym_q2 = asym.loc[tmp==tmp.quantile(.5, 'nearest'),'FID']
     asym_q3 = asym.loc[tmp==tmp.quantile(.75, 'nearest'),'FID']
     
-    df = pd.read_table(f'{p}_local.txt', sep = '\s+').set_index('FID').iloc[:,1:]
+    df = pd.read_table(f'{p}_local.txt', sep = '\\s+').set_index('FID').iloc[:,1:]
     # for x, lab in zip([asym_min, asym_q1, asym_q2, asym_q3, asym_max],
     #                   ['min','25%','median','75%','max']):
     for x, lab in zip([asym_q1, asym_q2, asym_q3],
@@ -130,27 +130,29 @@ rng = np.random.Generator(np.random.MT19937(114514))
 eid = rng.choice(glob['FID'], size = 5000, replace = False)
 eid = sorted(eid)
 
-if not os.path.isfile('diagnostics/regional_v_asym_V3A.pdf') or force:
+
+for roi in ['V3A','PF','Ig','MT','pOFC']:
+  if not os.path.isfile(f'diagnostics/regional_v_asym_{roi}.pdf') or force:
     # random region L/R difference v asymmetry
-    df = pd.read_table('deg_local.txt', sep = '\s+').set_index('FID').iloc[:,1:]
+    df = pd.read_table('deg_local.txt', sep = '\\s+').set_index('FID').iloc[:,1:]
     _, ax = plt.subplots(1,3,figsize = (15,5))
-    df1 = df.loc[eid,:].iloc[:,[20, 208]]
+    df1 = df.loc[eid,:]
     asym_test = asym.loc[asym.FID.isin(eid),['FID','deg_asym_corr']]
     df1 = pd.merge(df1, asym_test, on = 'FID').set_index('FID').sort_values(
-        by = 'L_V3A_ROI')
-    sns.scatterplot(df1, x = 'L_V3A_ROI', y = 'R_V3A_ROI', hue = 'deg_asym_corr',
+        by = f'L_{roi}_ROI')
+    sns.scatterplot(df1, x = f'L_{roi}_ROI', y = f'R_{roi}_ROI', hue = 'deg_asym_corr',
                     s = 1, linewidths = 0, palette = 'redblue', ax = ax[0])
     
-    df1['L - R'] = df1['L_V3A_ROI']- df1['R_V3A_ROI']
-    sns.scatterplot(df1, x = 'deg_asym_corr', y = 'L - R', hue = 'L_V3A_ROI',
+    df1['L - R'] = df1[f'L_{roi}_ROI']- df1[f'R_{roi}_ROI']
+    sns.scatterplot(df1, x = 'deg_asym_corr', y = 'L - R', hue = f'L_{roi}_ROI',
         s = 2, linewidths = 0, palette = 'redblue', ax = ax[1])
     
-    df1 = df1.melt(id_vars = 'deg_asym_corr', value_vars = ['L_V3A_ROI','R_V3A_ROI'], 
+    df1 = df1.melt(id_vars = 'deg_asym_corr', value_vars = [f'L_{roi}_ROI',f'R_{roi}_ROI'], 
                    var_name = 'hemisphere')
     sns.scatterplot(df1, x = 'deg_asym_corr', y = 'value', hue = 'hemisphere',
         s = 2, linewidths = 0, ax = ax[2])
-    ax[2].set_title('Example region: V3A')
-    plt.savefig('diagnostics/regional_v_asym_V3A.pdf', bbox_inches = 'tight')
+    # ax[2].set_title('Example region: {roi}')
+    plt.savefig(f'diagnostics/regional_v_asym_{roi}.pdf', bbox_inches = 'tight')
     plt.close()
 
 # split-half regression
@@ -160,10 +162,10 @@ bottom_half = top_half.copy()
 betas = top_half.copy()
 diff_corr = top_half.copy()
 for p in ['deg','degi','degc','clu','eff','mpl']:
-    df = pd.read_table(f'{p}_local.txt', sep = '\s+').set_index('FID').iloc[:,1:]
+    df = pd.read_table(f'{p}_local.txt', sep = '\\s+').set_index('FID').iloc[:,1:]
     lrtotal = pd.DataFrame(columns = rois[:188].str.replace('L_','') + '_total',
         index = df.index, data = df.iloc[:,:188].to_numpy() + df.iloc[:,188:376].to_numpy())
-    lrdiff = pd.read_table(f'{p}_nasym_abs.txt', sep='\s+').set_index('FID').iloc[:, 1:]
+    lrdiff = pd.read_table(f'{p}_nasym_abs.txt', sep='\\s+').set_index('FID').iloc[:, 1:]
     lrdiff.columns = rois[:188].str.replace('L_','') + '_diff'
     df = pd.concat([df, lrtotal, lrdiff], axis = 1)
     tmp = pd.concat([asym[f'{p}_asym_corr'], glob[f'{p}_global']], axis = 1)
@@ -197,7 +199,7 @@ diff_corr.to_csv('diagnostics/pcorr_nasym_asym.txt', sep = '\t', index = True)
 # pear_corr = []
 # frac_corr = []
 # for p in ['deg','degi','degc','clu','eff','mpl']:
-#     df = pd.read_table(f'{p}_local.txt', sep = '\s+')
+#     df = pd.read_table(f'{p}_local.txt', sep = '\\s+')
 #     rois = df.columns[2:] # FID IID ...
 #     glob_temp = glob[['IID',f'{p}_global']]
 #     df = pd.merge(glob_temp, df)

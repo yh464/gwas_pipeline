@@ -22,10 +22,10 @@ for (f in list.files()){
   print(f)
   df <- read.csv(f, sep = sep)
   if (is.null(df$label)) df$label = rownames(df)
-  df$label <- gsub('_0.01','',df$label)
-  df$label <- gsub('_ROI','',df$label)
-  df$label <- gsub('^L','lh_L',df$label)
-  df$label <- gsub('^R','rh_R',df$label)
+  df$label <- gsub('_0.01','',df$label, ignore.case = T)
+  df$label <- gsub('_ROI','',df$label, ignore.case = T)
+  df$label <- gsub('^L','lh_L',df$label, ignore.case = T)
+  df$label <- gsub('^R','rh_R',df$label, ignore.case = T)
   m <- merge(df, ref, by = 'label', all.y = T, all.x = F)
   
   # for some plots, we can zero the NaN bits

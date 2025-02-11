@@ -18,7 +18,7 @@ def splash(args, silent = False):
     v = vars(args)
     for var in v:
         val = v[var]
-        msg.append(f'    {var}' + ' ' * (10-len(var)) + str(val))
+        msg.append(f'    {var}' + ' ' * (15-len(var)) + str(val))
     msg.append('=' * 100)
     if not silent: print('\n'.join(msg))
     return '\n'.join(msg)

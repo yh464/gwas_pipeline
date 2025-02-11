@@ -274,10 +274,15 @@ main = function(args){
       harm_filtered = harm %>% steiger_filtering() %>% filter(
         (steiger_dir | steiger_pval > 0.05) & mr_keep
       )
-      res_filtered = mr_ivw(harm_filtered$beta.exposure,
+      tryCatch(
+        res_filtered = mr_ivw(harm_filtered$beta.exposure,
                             harm_filtered$beta.outcome,
                             harm_filtered$se.exposure,
-                            harm_filtered$se.outcome)
+                            harm_filtered$se.outcome),
+        error = function(e) {
+          res_filtered = list(b = NA, se = NA, pval = NA)
+        }
+      )
       res = res %>% rbind(data.frame(
         id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
         outcome = res$outcome[1], exposure = res$exposure[1],

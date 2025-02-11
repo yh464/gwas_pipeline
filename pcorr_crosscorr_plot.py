@@ -12,19 +12,22 @@ Requires following inputs:
 
 def main(args):
     import pandas as pd
+    from _utils import path
     from _plots import corr_heatmap
     import scipy.stats as sts
     
     prefix = f'{args.out}/pcorr_'+'_'.join(args.p1)+'.'+ '_'.join(args.p2) 
     
+    norm = path.normaliser()
+    
     summary = []
     for g1 in args.p1:
-        df1 = pd.read_table(f'{args._in}/{g1}.txt', sep = '\s+')
+        df1 = pd.read_table(f'{args._in}/{g1}.txt', sep = '\\s+', index_col = ['FID','IID'])
         for g2 in args.p2:
-            df2 = pd.read_table(f'{args._in}/{g2}.txt', sep = '\s+')
-            merge = pd.merge(df1, df2, on = ['FID','IID'])
-            for t1 in df1.columns[2:]: # excludes FID and IID
-                for t2 in df2.columns[2:]:
+            df2 = pd.read_table(f'{args._in}/{g2}.txt', sep = '\\s+', index_col = ['FID','IID'])
+            merge = pd.concat([df1, df2], axis = 1)
+            for t1 in df1.columna: # excludes FID and IID
+                for t2 in df2.columns:
                     tmp = merge[[t1, t2]].dropna()
                     r = tmp[t1].corr(tmp[t2])
                     n = tmp.shape[0]
@@ -38,7 +41,7 @@ def main(args):
                             r = r, p = [p]))
                         )
     
-    summary = pd.concat(summary)
+    summary = norm.normalise(pd.concat(summary))
     summary.to_csv(f'{prefix}.txt', sep = '\t', index = False)
     summary.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'r'
         ).to_csv(f'{prefix}.wide.txt', index_label = False, sep = '\t', header = True, index = True)

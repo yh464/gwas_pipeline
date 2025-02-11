@@ -150,14 +150,14 @@ class array_submitter():
     def debug(self):
         import os
         from fnmatch import fnmatch
-        nfiles = 0
+        nfiles = -1
         for x in os.listdir(self.tmpdir):
             if fnmatch(x, f'{self.name}_*.sh'):
                 n = x.replace(self.name,'').replace('.sh','').replace('_','')
                 n = int(n)
                 if n > nfiles: nfiles = n
-        for i in range(min((int(5/self._count),nfiles))):
-            os.system(f'cat {self.tmpdir}/{self.name}_{i}.sh')
+        
+        os.system(f'cat {self.tmpdir}/{self.name}_0.sh')
         
         # master wrapper
         wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
@@ -191,16 +191,20 @@ class array_submitter():
         # scans directory for number of files (last sanity check)
         import os
         from fnmatch import fnmatch
-        nfiles = 0
+        nfiles = -1
         for x in os.listdir(self.tmpdir):
-            if fnmatch(x, f'{self.name}_*.sh'):
+            if fnmatch(x, f'{self.name}_*.sh') and not fnmatch(x,'*wrap.sh'):
                 n = x.replace(self.name,'').replace('.sh','').replace('_','')
                 n = int(n)
                 if n > nfiles: nfiles = n
         time = self.timeout * self._count
         
         if nfiles < 0: return
-        os.system(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
+        
+        from subprocess import check_output
+        msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {self._email} {self._account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{nfiles} {wrap_name}') 
+        jobid = int(msg.split()[-1])
+        return jobid

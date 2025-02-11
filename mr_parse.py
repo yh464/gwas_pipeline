@@ -74,10 +74,11 @@ def stratified_fdr(df,label, pvalues):
             p[p=='<0.001'] = '0' # MR-PRESSO outputs may output <0.001
             p = p.astype(np.float64)
             q = np.zeros(p.size)
-            q[~pd.isna(group[pcol])] = fdr(p[~pd.isna(group[pcol])])
-            q[pd.isna(group[pcol])] = np.nan
-            qcol = pcol[:-1]+'pfdr'
-            group[qcol] = q
+            q[~group[pcol].isna().to_numpy()] = fdr(p[~group[pcol].isna().to_numpy()])
+            q[group[pcol].isna().to_numpy()] = np.nan
+            qcol = pcol[:-1]+'q'
+            q = pd.DataFrame(data = q, index = group.index, columns =[qcol])
+            group = pd.concat([group, q],axis = 1)
         groups_list.append(group)
     out = pd.concat(groups_list)
     return out
@@ -86,6 +87,9 @@ def main(args):
     import os
     from fnmatch import fnmatch
     import pandas as pd
+    from _utils import path
+    
+    norm = path.normaliser()
     
     for p2 in args.p2:
       # input processing by scanning directories
@@ -123,13 +127,13 @@ def main(args):
           # concatenate and write tabular output
           results_fwd = pd.concat(results_fwd)
           results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
-          results_fwd_corrected.sort_values(by = 'pfdr', inplace = True)
+          results_fwd_corrected.sort_values(by = 'q', inplace = True)
           all_fwd.append(results_fwd_corrected)
           results_fwd_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_forward.txt', sep = '\t', index = False)
           
           results_rev = pd.concat(results_rev)
           results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
-          results_rev_corrected.sort_values(by = 'pfdr', inplace = True)
+          results_rev_corrected.sort_values(by = 'q', inplace = True)
           all_rev.append(results_rev_corrected)
           results_rev_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_reverse.txt', sep = '\t', index = False)
           
@@ -143,9 +147,9 @@ def main(args):
           pleio_rev_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_reverse_pleiotropy.txt', 
                                      sep = '\t', index = False)
         
-        pd.concat(all_fwd).sort_values(by = 'pfdr').to_csv(
+        norm.normalise(pd.concat(all_fwd).sort_values(by = 'q')).to_csv(
             f'{args._in}/{p2}/all_{p1}_{p2}_mr_forward.txt', sep = '\t', index = False)
-        pd.concat(all_rev).sort_values(by = 'pfdr').to_csv(
+        norm.normalise(pd.concat(all_rev).sort_values(by = 'q')).to_csv(
             f'{args._in}/{p2}/all_{p1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
         
 if __name__ == '__main__':
