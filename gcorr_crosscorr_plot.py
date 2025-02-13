@@ -20,22 +20,8 @@ def main(args):
     from fnmatch import fnmatch
     import pandas as pd
     import numpy as np
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
     import scipy.stats as sts
-    
-    # Red-blue colour map
-    cdict = dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
-                 green = ((0,0,0),(1/2,1,1),(1,0,0)),
-                 blue = ((0,.8,.8),(1/2,1,1),(1,0,0)))
-    cmap_name = 'redblue'
-    cmap = mpl.colors.LinearSegmentedColormap(cmap_name,cdict,1024)
-    try:
-      mpl.colormaps.register(cmap)
-    except:
-      pass
-    sns.set_theme(style = 'whitegrid')
+    from _utils.path import normaliser
     
     # scans directories to include sumstats 
     os.chdir(args.sumstats)
@@ -95,8 +81,8 @@ def main(args):
             = sts.false_discovery_control(
             summary.loc[(summary.pheno1==x1)&(summary.group1==p1) & ~np.isnan(summary.p),'p'])
     
-    summary['pheno1'] = summary.pheno1.str.replace('_0.01','').replace('_meta','').replace('_corr','')
-    summary['pheno2'] = summary.pheno2.str.replace('_meta','').replace('_0.01','')
+    norm = normaliser()
+    summary = norm.normalise(summary)
     
     # tabular output, wide and long
     fout = f'{args.out}/crosscorr_' + '_'.join(args.p1)+'.'+'_'.join(args.p2)

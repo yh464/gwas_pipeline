@@ -275,11 +275,12 @@ main = function(args){
         (steiger_dir | steiger_pval > 0.05) & mr_keep
       )
       tryCatch(
-        res_filtered = mr_ivw(harm_filtered$beta.exposure,
+        {
+          res_filtered = mr_ivw(harm_filtered$beta.exposure,
                             harm_filtered$beta.outcome,
                             harm_filtered$se.exposure,
-                            harm_filtered$se.outcome),
-        error = function(e) {
+                            harm_filtered$se.outcome)
+        }, error = function(e) {
           res_filtered = list(b = NA, se = NA, pval = NA)
         }
       )
@@ -366,6 +367,7 @@ main = function(args){
     #### tabular outputs ####
     # tabular output
     write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
+    print(res)
     
     # tabular outputs for QC tests
     write.table(direc, paste0(prefix,'_dirtest.txt'), sep = '\t')

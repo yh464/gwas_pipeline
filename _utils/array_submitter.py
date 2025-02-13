@@ -181,13 +181,6 @@ class array_submitter():
             self.debug()
             return
         
-        # master wrapper
-        wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
-        wrap = open(wrap_name,'w')
-        print('#!/bin/bash',file = wrap)
-        print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
-        wrap.close()
-        
         # scans directory for number of files (last sanity check)
         import os
         from fnmatch import fnmatch
@@ -200,6 +193,24 @@ class array_submitter():
         time = self.timeout * self._count
         
         if nfiles < 0: return
+        
+        # master wrapper
+        wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
+        wrap = open(wrap_name,'w')
+        # sbatch arguments
+        print('#!/bin/bash',file = wrap)
+        print(f'#SBATCH -N {self.n_node}', file = wrap)
+        print(f'#SBATCH -n {self.n_task}', file = wrap)
+        print(f'#SBATCH -c {self.n_cpu}', file = wrap)
+        print(f'#SBATCH -t {time}', file = wrap)
+        print(f'#SBATCH -p {self.partition}', file = wrap)
+        print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
+        print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
+        print(f'#SBATCH --array=0-{nfiles}', file = wrap)
+        if len(self._email) > 0: print(f'#SBATCH {self._email}', file = wrap)
+        if len(self._account) > 0: print(f'#SBATCH {self._account}', file = wrap)
+        print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
+        wrap.close()
         
         from subprocess import check_output
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+

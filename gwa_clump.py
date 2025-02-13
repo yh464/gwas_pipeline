@@ -44,19 +44,15 @@ prefix = '.'.join(args.file.split('.')[:-1])
 out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
 
 tmpdir = f'/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
-logdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwa_clump/'
 if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
-if not os.path.isdir(logdir): os.mkdir(logdir)
-log = open(f'{logdir}/{args.file}.log'.replace('.fastGWA',''),'w')     # log file
-
 os.chdir(args.out)                                                             # we do not need the input dir
 
 df = pd.read_table(f'{args._in}/{args.file}', sep = '\t')
 sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
 if sf.sum() == 0:
-  print(f'File {args.file} contains no significant SNP, skipping', file = log)
+  print(f'File {args.file} contains no significant SNP, skipping')
   toc = time.perf_counter() - tic
-  print(f'Total time = {toc:.3f}.', file = log)
+  print(f'Total time = {toc:.3f}.')
 
 df_sig = df.loc[sf,:].sort_values(by = 'P')
 df_sig.to_csv(out.replace('clumped','siglist'), sep = '\t',index = False)      # export top few snps
@@ -89,7 +85,7 @@ for c in chrs:                                                                 #
   if os.path.isfile(f'{tmpout}.clumped'):
       out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
   toc = time.perf_counter() - tic
-  print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.', file = log)
+  print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
 
 out_df = pd.concat(out_df, axis = 0)
 out_df.to_csv(out, sep = '\t', index = False)
