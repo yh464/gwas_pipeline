@@ -58,6 +58,7 @@ class array_submitter():
         self._arraysize = arraysize # the default array job size limit is 2000 for SLURM
         self._count = 1 # number of commands per file
         self._fileid = 0 # current file id
+        self._nfiles = 0
         self._jobid = 0
         self._mode = 'long' if timeout > 15 else 'short'
         if type(mode) != type(None): self._mode = mode # override mode option if given
@@ -106,6 +107,7 @@ class array_submitter():
         if self._mode == 'long':
             # first iteration: reset files
             if self._count == 1:
+                self._nfiles += 1
                 self._newfile()
             
             # append command
@@ -129,6 +131,7 @@ class array_submitter():
         elif self._mode == 'short':
             # for 'short' jobs, submit in 15-min batches
             if self._count == 1:
+                self._nfiles += 1
                 self._newfile()
             
             fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
@@ -149,14 +152,6 @@ class array_submitter():
     
     def debug(self):
         import os
-        from fnmatch import fnmatch
-        nfiles = -1
-        for x in os.listdir(self.tmpdir):
-            if fnmatch(x, f'{self.name}_*.sh'):
-                n = x.replace(self.name,'').replace('.sh','').replace('_','')
-                n = int(n)
-                if n > nfiles: nfiles = n
-        
         os.system(f'cat {self.tmpdir}/{self.name}_0.sh')
         
         # master wrapper
@@ -169,11 +164,11 @@ class array_submitter():
         # debug command also outputs the submit command
         time = self.timeout * self._count
         
-        if nfiles < 0: return
+        if self._nfiles < 0: return
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {self._email} {self._account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{nfiles} {wrap_name}') 
+                  f' --array=0-{self._nfiles} {wrap_name}') 
     
     def submit(self):
         # if debug mode is on, debug instead
@@ -181,32 +176,21 @@ class array_submitter():
             self.debug()
             return
         
-        # scans directory for number of files (last sanity check)
-        import os
-        from fnmatch import fnmatch
-        nfiles = -1
-        for x in os.listdir(self.tmpdir):
-            if fnmatch(x, f'{self.name}_*.sh') and not fnmatch(x,'*wrap.sh'):
-                n = x.replace(self.name,'').replace('.sh','').replace('_','')
-                n = int(n)
-                if n > nfiles: nfiles = n
-        time = self.timeout * self._count
-        
-        if nfiles < 0: return
-        
         # master wrapper
         wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
         wrap = open(wrap_name,'w')
+        
         # sbatch arguments
         print('#!/bin/bash',file = wrap)
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {self.n_cpu}', file = wrap)
+        time = self.timeout * self._nfiles
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
-        print(f'#SBATCH --array=0-{nfiles}', file = wrap)
+        print(f'#SBATCH --array=0-{self._nfiles}', file = wrap)
         if len(self._email) > 0: print(f'#SBATCH {self._email}', file = wrap)
         if len(self._account) > 0: print(f'#SBATCH {self._account}', file = wrap)
         print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
@@ -216,6 +200,7 @@ class array_submitter():
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {self._email} {self._account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{nfiles} {wrap_name}') 
+                  f' --array=0-{self._nfiles} {wrap_name}', shell = True) 
         jobid = int(msg.split()[-1])
+        print(msg)
         return jobid

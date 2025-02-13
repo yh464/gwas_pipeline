@@ -26,7 +26,6 @@ def main(args):
         timeout = 10, mode = 'long',
         debug = False
         )
-
     
     for x in args.pheno:
       os.chdir(args._in)
@@ -34,9 +33,12 @@ def main(args):
       if not os.path.isdir(f'{args.out}/{x}'): os.mkdir(f'{args.out}/{x}')
       
       for y in os.listdir():
-        if fnmatch(y, '*.fastGWA') and (not fnmatch(y, '*X.fastGWA')) and \
-          (not fnmatch(y, '*all_chrs.fastGWA')):                                   # autosomes
-          submitter.add('python '+
+        if not fnmatch(y, '*.fastGWA'): continue
+        if fnmatch(y, '*X.fastGWA') or fnmatch(y, '*all_chrs.fastGWA'):
+            continue                               # autosomes
+        prefix = y.replace('.fastGWA','')
+        if os.path.isfile(f'{args.out}/{x}/{prefix}.h2.log') and not args.force: continue
+        submitter.add('python '+
             f'heri_by_trait.py -i {args._in}/{x}/{y} -o {args.out}/{x}/ --ldsc {args.ldsc} {force}')
     submitter.submit()
 
@@ -59,7 +61,8 @@ if __name__ == '__main__':
     for arg in ['_in','out','ldsc']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
         
-    from _utils import cmdhistory, path
+    from _utils import cmdhistory, path, logger
+    logger.splash(args)
     cmdhistory.log()
     proj = path.project()
     proj.add_var('%pheng',r'.+', 'phenotype group')
