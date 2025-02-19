@@ -54,12 +54,12 @@ def main(args):
         name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3 if args.apss else 2, 
         timeout = 30,
-        debug = True
+        # debug = True
         )
     submitter_cause = array_submitter.array_submitter(
         name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3, timeout = 30,
-        debug = True
+        # debug = True
         )
     
     # output directory

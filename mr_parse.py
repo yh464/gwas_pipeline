@@ -23,14 +23,12 @@ def parse_mr_results(prefix):
     '''
     
     import pandas as pd
+    import numpy as np
     
     main_mr = pd.read_table(f'{prefix}_results.txt')
     presso = pd.read_table(f'{prefix}_presso_results.txt')
     dirtest = pd.read_table(f'{prefix}_dirtest.txt')
     pleio = pd.read_table(f'{prefix}_pleiotropy.txt')
-    cause = pd.read_table(f'{prefix}_cause_results.txt')
-    lcv = f'{prefix}_lcv_results.txt'.replace('_forward','').replace('_reverse','')
-    lcv = pd.read_table(lcv)
     
     # pleiotropy output: egger intercept and p value, rssobs and p value
     pleio = pleio[['outcome','exposure','egger_intercept','se','pval']]
@@ -52,8 +50,15 @@ def parse_mr_results(prefix):
     
     causal['correct_dir'] = dirtest.iloc[0,-2]
     causal['dirtest_p'] = dirtest.iloc[0,-1]
-    causal['cause_p'] = cause.iloc[-1,-1]
-    causal['lcv_p'] = lcv.loc['p','x']
+    try:
+        cause = pd.read_table(f'{prefix}_cause_results.txt')
+        causal['cause_p'] = cause.iloc[-1,-1]
+    except: causal['cause_p'] = np.nan
+    try:
+        lcv = f'{prefix}_lcv_results.txt'.replace('_forward','').replace('_reverse','')
+        lcv = pd.read_table(lcv)
+        causal['lcv_p'] = lcv.loc['p','x']
+    except: causal['lcv_p'] = np.nan
     
     return causal, pleio
 
@@ -117,12 +122,14 @@ def main(args):
           
           for f1 in prefix1:
             mr_prefix = f'{args._in}/{p2}/{f2}/{p1}_{f1}_{f2}'
-            try: c, p = parse_mr_results(f'{mr_prefix}_mr_forward')
+            try: 
+                c, p = parse_mr_results(f'{mr_prefix}_mr_forward')
+                results_fwd.append(c); pleio_fwd.append(p)
             except: print(f'{mr_prefix} no MR forward result')
-            results_fwd.append(c); pleio_fwd.append(p)
-            try: c, p = parse_mr_results(f'{mr_prefix}_mr_reverse')
+            try: 
+                c, p = parse_mr_results(f'{mr_prefix}_mr_reverse')
+                results_rev.append(c); pleio_rev.append(p)
             except: print(f'{mr_prefix} no MR reverse result')
-            results_rev.append(c); pleio_rev.append(p)
         
           # concatenate and write tabular output
           results_fwd = pd.concat(results_fwd)
@@ -169,7 +176,7 @@ if __name__ == '__main__':
                         help = 'Phenotypes group 2 (reserved for correlates)', nargs = '*', 
                         default = ['disorders_for_mr']) # require manual fiddling, so create new dir
     parser.add_argument('-e2','--ext2', dest = 'ext2', help = 'Extension for phenotype group 2',
-                        default = 'txt')
+                        default = 'fastGWA')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory, should be the output of mr_batch.py',
                         default = '../mr')
     # default output to the same directory

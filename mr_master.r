@@ -14,12 +14,13 @@ optlist = list(
   # the filtering for p-values should be moved into the 'batch' file
   make_option('--c1', dest = 'clump1', help = '*CLUMPED* trait 1 summary stats, one file only'),
   make_option('--g1', dest = 'gwa1', help = 'raw trait 1 summary stats, one file only'),
-  make_option('--n1', help = 'Sample size of trait 1 summary stats'), # default 54030 for functional
+  make_option('--n1', help = 'Sample size of trait 1 summary stats', type = 'double'), 
+  # default 54030 for functional
   make_option('--c2', dest = 'clump2', help = '*CLUMPED* trait 2 summary stats, one file only'),
   make_option('--g2', dest = 'gwa2', help = 'raw trait 2 summary stats, one file only'),
-  make_option('--n2', help = 'Sample size of trait 2 phenotype summary stats'),
-  make_option('--nca', help = '# cases of trait 2 phenotype summary stats'),
-  make_option('--nco', help = '# controls of trait 2 phenotype summary stats'),
+  make_option('--n2', help = 'Sample size of trait 2 phenotype summary stats', type = 'double'),
+  make_option('--nca', help = '# cases of trait 2 phenotype summary stats', type = 'double'),
+  make_option('--nco', help = '# controls of trait 2 phenotype summary stats', type = 'double'),
   
   # for MR-lap based correction
   make_option('--pval', help = 'p-value threshold for MR', type = 'double'),
@@ -182,16 +183,16 @@ main = function(args){
                                     pos_col = 'POS')
     
     #### harmonise data for 2-sample MR ####
-    exp1$samplesize.exposure = as.integer(args$n1)
-    out2$samplesize.outcome = as.integer(args$n2)
+    exp1$samplesize.exposure = as.numeric(args$n1)
+    out2$samplesize.outcome = as.numeric(args$n2)
     mr_fwd_harm = harmonise_data(exp1, out2, action = 2) # action 2 = default, conservative
     # pre-calculate variance for directionality test
     if (! is.null(args$nca) & ! is.null(args$nco)){
       r2_fwd = get_r_from_lor(lor = mr_fwd_harm$beta.outcome,
                               af = mr_fwd_harm$eaf.outcome,
-                              ncase = as.integer(args$nca),
-                              ncontrol = as.integer(args$nco),
-                              prevalence = 0.0185, # TODO: CHANGE BY DISEASE
+                              ncase = as.numeric(args$nca),
+                              ncontrol = as.numeric(args$nco),
+                              prevalence = args$nca/(args$nca + args$nco),
                               model = 'logit',
                               correction = T)
     } else {
@@ -202,16 +203,16 @@ main = function(args){
     mr_fwd_harm$r.exposure = r1_fwd
     
     # harmonise data for reverse direction
-    exp2$samplesize.exposure = as.integer(args$n2)
-    out1$samplesize.outcome = as.integer(args$n1)
+    exp2$samplesize.exposure = as.numeric(args$n2)
+    out1$samplesize.outcome = as.numeric(args$n1)
     mr_rev_harm = harmonise_data(exp2, out1, action = 2)
     
     #### pre-calculate variance for Steiger test ####
     if (! is.null(args$nca) & ! is.null(args$nco)){
       r2_rev = get_r_from_lor(lor = mr_rev_harm$beta.outcome,
                               af = mr_rev_harm$eaf.outcome,
-                              ncase = as.integer(args$nca),
-                              ncontrol = as.integer(args$nco),
+                              ncase = as.numeric(args$nca),
+                              ncontrol = as.numeric(args$nco),
                               prevalence = 0.0185, # TODO: CHANGE BY DISEASE
                               model = 'logit',
                               correction = T)

@@ -87,7 +87,7 @@ def main(args):
     # identify overlaps as above
     clumps = identify_clumps(crosstrait_clumps)
     overlaps = pd.DataFrame(data = 0, index = pd.MultiIndex.from_frame(crosstrait_clumps[['phen_group','phenotype']]),
-                            columns = [clump[0] for clump in clumps])
+                            columns = [clump[0] for clump in clumps]).sort_index()
     for pheng in args.pheno:
         for phen in crosstrait_clumps.phenotype.unique():
             siglist = crosstrait_clumps.loc[(crosstrait_clumps.phen_group == pheng) &

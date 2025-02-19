@@ -58,7 +58,7 @@ class array_submitter():
         self._arraysize = arraysize # the default array job size limit is 2000 for SLURM
         self._count = 1 # number of commands per file
         self._fileid = 0 # current file id
-        self._nfiles = 0
+        self._nfiles = -1
         self._jobid = 0
         self._mode = 'long' if timeout > 15 else 'short'
         if type(mode) != type(None): self._mode = mode # override mode option if given
@@ -150,42 +150,17 @@ class array_submitter():
             else:
                 self._count += 1
     
-    def debug(self):
-        import os
-        os.system(f'cat {self.tmpdir}/{self.name}_0.sh')
-        
+    def _write_wrap(self):
         # master wrapper
-        wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
-        wrap = open(wrap_name,'w')
-        print('#!/bin/bash',file = wrap)
-        print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
-        wrap.close()
-        
-        # debug command also outputs the submit command
-        time = self.timeout * self._count
-        
-        if self._nfiles < 0: return
-        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
-                  f'-t {time} -p {self.partition} {self._email} {self._account} '+
-                  f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {wrap_name}') 
-    
-    def submit(self):
-        # if debug mode is on, debug instead
-        if self._debug:
-            self.debug()
-            return
-        
-        # master wrapper
-        wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'
-        wrap = open(wrap_name,'w')
+        self._wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'       
+        wrap = open(self._wrap_name,'w')
         
         # sbatch arguments
         print('#!/bin/bash',file = wrap)
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {self.n_cpu}', file = wrap)
-        time = self.timeout * self._nfiles
+        time = self.timeout * self._count
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
@@ -195,12 +170,40 @@ class array_submitter():
         if len(self._account) > 0: print(f'#SBATCH {self._account}', file = wrap)
         print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
         wrap.close()
+    
+    def debug(self):
+        if self._nfiles < 0:
+            print('No files to submit (!)')
+            return
+        
+        import os
+        os.system(f'cat {self.tmpdir}/{self.name}_0.sh')
+        self._write_wrap()
+        
+        # debug command also outputs the submit command
+        time = self.timeout * self._count
+        
+        if self._nfiles < 0: return
+        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
+                  f'-t {time} -p {self.partition} {self._email} {self._account} '+
+                  f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
+                  f' --array=0-{self._nfiles} {self._wrap_name}') 
+    
+    def submit(self):
+        # if debug mode is on, debug instead
+        if self._nfiles < 0: return
+        if self._debug:
+            self.debug()
+            return
+        
+        self._write_wrap()
+        time = self.timeout * self._count
         
         from subprocess import check_output
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {self._email} {self._account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {wrap_name}', shell = True) 
+                  f' --array=0-{self._nfiles} {self._wrap_name}', shell = True) 
         jobid = int(msg.split()[-1])
         print(msg)
         return jobid

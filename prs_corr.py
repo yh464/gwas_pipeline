@@ -34,25 +34,25 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
     import scipy.stats as sts
     
     # process covars
-    dcov = pd.read_table(args.dcov)
-    cov_out = dcov.iloc[:,:2]
-    for i in range(2,dcov.shape[1]):
-      tmp = dcov.iloc[:,i].values
-      tmpname = dcov.columns.tolist()[i]
-      tmpval = np.unique(tmp)
-      for j in range(tmpval.size-1):
-        cov_out[f'{tmpname}_{tmpval[j]}'] = (tmp==tmpval[j]).astype(np.int8)
+    dcov = pd.read_table(args.dcov, index_col = ['FID','IID'], sep = '\\s+').astype(str)
+    cov_out = pd.get_dummies(dcov, prefix = dcov.columns, drop_first = True)
+    # for i in range(dcov.shape[1]):
+    #   tmp = dcov.iloc[:,i].values
+    #   tmpname = dcov.columns.tolist()[i]
+    #   tmpval = np.unique(tmp)
+    #   for j in range(tmpval.size-1):
+    #     cov_out[f'{tmpname}_{tmpval[j]}'] = (tmp==tmpval[j]).astype(np.int8)
     
-    cov_out = cov_out.merge(pd.read_table(args.qcov), how = 'outer', on = ['FID', 'IID']).dropna()
-    cov_list = cov_out.columns.tolist()[2:]
+    cov_out = pd.concat([cov_out,pd.read_table(args.qcov, index_col = ['FID','IID'], sep = '\\s+')], 
+                        axis = 1)
+    cov_list = cov_out.columns.tolist()
     
     # read input
-    phen = pd.read_table(args._in)
+    phen = pd.read_table(args._in, index_col = ['FID','IID'], sep = '\\s+')
     # standardise phenotypes
     print('Phenotypes:')
     phen_list = []
     for x in phen.columns: 
-        if x in ['FID','IID']: continue
         print(f'    {x}')
         try:
             phen.loc[~phen[x].isna(), x] -= phen.loc[~phen[x].isna(), x].mean()
@@ -61,43 +61,42 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
         except:
             print(f'    {x} is not quantitative, dropping')
             phen.drop(x, inplace = True, axis = 1)
-    phen_cov = phen.merge(cov_out, how = 'inner', on = 'IID')
+    phen_cov = pd.concat([phen,cov_out], axis = 1)
     print(f'Total sample size: {phen_cov.shape[0]}\n')
     
     summary = []
-    
     # correlate for each PRS
     os.chdir(args.prs)
     prs_list = [x.replace('.txt','') for x in os.listdir()]
     prs_list = np.array(prs_list, dtype = 'U')
     prs_list = np.unique(prs_list)
     for prs in prs_list:
+        if prs == 'qc': continue
         if not os.path.isdir(prs) and not os.path.isfile(f'{prs}.txt'): continue
-        
+        print(prs)
         # sum PRS across all chromosomes
         if (not os.path.isfile(f'{args.prs}/{prs}.txt') or \
             args.force) and os.path.isdir(f'{args.prs}/{prs}'):
+            chrom = []
             for j in range(22):
-              df = pd.read_table(f'{prs}/{prs}.chr{j+1}.sscore')
-              if j == 0: 
-                ref = df.iloc[:,:2]
-                total_score = df.iloc[:,-1]
-              else: 
-                df = df.merge(ref, how = 'inner')
-                total_score += df.iloc[:,-1]
-            
-            out = ref
-            out.columns = ['FID','IID']
-            out['score_total'] = total_score
-            out['score_norm'] = total_score/total_score.std()
-            out.to_csv(f'{args.prs}/{prs}.txt', index = False, sep = '\t')
+                df = pd.read_table(f'{prs}/{prs}.chr{j+1}.sscore').sort_values('IID').drop_duplicates()
+                col = df.columns.tolist()
+                col[0] = 'FID'
+                df.columns = col
+                df = df.set_index(['FID','IID'])
+                chrom.append(df.iloc[:,-1].to_frame())
+            chrom = pd.concat(chrom, axis = 1)
+            out = pd.DataFrame(index = chrom.index, columns = [])
+            out['score_total'] = chrom.sum(axis = 1)
+            out['score_norm'] = out.score_total/out.score_total.std()
+            out.to_csv(f'{args.prs}/{prs}.txt', index = True, sep = '\t')
         else:
-            out = pd.read_table(f'{args.prs}/{prs}.txt')
+            out = pd.read_table(f'{args.prs}/{prs}.txt', index_col = ['FID','IID'])
         print(f'    {args.prs}/{prs}.txt')
         
-        tmp = out.loc[:,['FID','IID','score_norm']]
-        tmp.columns = ['FID','IID',prs]
-        tmp_merge = phen_cov.copy().merge(tmp, on = 'IID')
+        tmp = out[['score_norm']]
+        tmp.columns = [prs]
+        tmp_merge = pd.concat([phen_cov.copy(),tmp], axis = 1, join = 'inner')
         print(f'    Sample size: {tmp_merge.shape[0]}')
         for phen in phen_list:
             tmp = tmp_merge[cov_list + [prs] + [phen]].dropna().astype(float)
