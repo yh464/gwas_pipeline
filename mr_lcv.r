@@ -103,12 +103,11 @@ print(args)
 
 #### infer z-score from GWAS sum stats ####
 read.zscore = function(gwa){
-  df = na.omit(read.table(gwa, header = T))
-  if ('Z' %in% colnames(df)) return(df[,c('SNP','CHR','POS','A1','A2','Z')])
+  df = read.table(gwa, header = T)
+  if ('Z' %in% colnames(df)) return(na.omit(df[,c('SNP','CHR','POS','A1','A2','Z')]))
   if ('OR' %in% colnames(df)) df$BETA = log(df$OR)
   df$Z = df$BETA/df$SE # manually calculate z-score if not explicitly stated
-  df = na.omit(df)
-  return(df[,c('SNP', 'CHR','POS','A1','A2','Z')])
+  return(na.omit(df[,c('SNP', 'CHR','POS','A1','A2','Z')]))
 }
 
 #### Main LCV function ####

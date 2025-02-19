@@ -12,7 +12,7 @@ stats of the same data extension.
 def qc(file):
     import pandas as pd
     try: 
-        df = pd.read_table(file)
+        df = pd.read_table(file).dropna()
         return df.size >= 5
     except:
         return False

@@ -213,7 +213,7 @@ main = function(args){
                               af = mr_rev_harm$eaf.outcome,
                               ncase = as.numeric(args$nca),
                               ncontrol = as.numeric(args$nco),
-                              prevalence = 0.0185, # TODO: CHANGE BY DISEASE
+                              prevalence = args$nca / (args$nca + args$nco), # TODO: CHANGE BY DISEASE
                               model = 'logit',
                               correction = T)
     } else {
