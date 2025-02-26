@@ -71,6 +71,10 @@ def main(args):
   print(f'header contains {n_cols} columns')
   print(f'header contains {n_cols} columns', file = flog)
   
+  sex = 0
+  eth = 0
+  pc = 0
+  het = 0
   while True:
     line = fin.readline()
     if len(line) == 0: break
@@ -82,20 +86,6 @@ def main(args):
       
     # split columns
     line = line.replace('\n','').split('\t')
-    # line[0] = line[0].replace('"','')
-    # line[-1] = line[-1].replace('"\n','')
-    
-    # some lines contain a sub-table in csv format, so this segment screens for those
-    # sub-tables contain the character '"' which should not appear elsewhere
-    # for tmp in range(len(line)-1, 0, -1): # reverse order because list length will change
-    #     if line[tmp-1][:2] == ',"':
-    #         line[tmp-1] = line[tmp-1][2:]
-    #         line[tmp-2] += ',"' # this is the end of a sub-table
-    
-    #     if line[tmp][-2:] == ',"' and line[tmp-1].find('"') == 0 \
-    #         and line[tmp-1][-2:] != ',"':
-    #         line[tmp] = '","'.join(line[tmp-1:tmp+1])
-    #         del line[tmp-1]
     
     if len(line) != n_cols:
         print(f'{line[0]}: length does not match header, {len(line)} columns')
@@ -105,18 +95,17 @@ def main(args):
     subj.remove(line[0])
     
     # first QC subjects
-    if not line[qc_col_ids[1]] in ['1','1001','1002','1003','1004']: continue # European ancestry
-    if not line[qc_col_ids[0]] == line[qc_col_ids[2]]: continue # genetic sex ~ self-reported
-    if not fnmatch(line[qc_col_ids[5]],'[Nn][Aa]'): continue # heterozygosity, must be NA
+    if not line[qc_col_ids[0]] == line[qc_col_ids[2]]: sex += 1; continue # genetic sex ~ self-reported
+    if not fnmatch(line[qc_col_ids[5]],'[Nn][Aa]'): het += 1; continue # heterozygosity, must be NA
     
     if line[qc_col_ids[3]] == 'NA': continue
     pc1 = float(line[qc_col_ids[3]])
-    if pc1 < -272.541 or pc1 > 270.278: continue # first genetic PC, 5SD is manually calculated
+    if pc1 < -272.541 or pc1 > 270.278: pc += 1; continue # first genetic PC, 5SD is manually calculated
     
     if line[qc_col_ids[4]] == 'NA': continue
     pc2 = float(line[qc_col_ids[4]])
-    if pc2 < -138.931 or pc2 > 139.650: continue # second genetic PC, 5SD manually calculated
-    
+    if pc2 < -138.931 or pc2 > 139.650: pc += 1; continue # second genetic PC, 5SD manually calculated
+    if not line[qc_col_ids[1]] in ['1','1001','1002','1003','1004']: eth += 1; continue # European ancestry
     # if QC is passed, then write out to output file
     line_out = [line[i] for i in valid_col_ids]
     print('\t'.join(line_out), file = fout)
@@ -127,6 +116,10 @@ def main(args):
       print(j, file = flog)
     print('\n', file = flog)
   
+  print(f'{sex} subjects excluded due to reported sex != genetic sex')
+  print(f'{eth} subjects excluded based on ethnicity')
+  print(f'{pc} subjects excluded based on genetic PCs')
+  print(f'{het} subjects excluded due to excessive heterozygosity')
   return
 
 if __name__ == '__main__':

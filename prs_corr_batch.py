@@ -40,7 +40,7 @@ def main(args):
     # Correlation
     for x in flist:
       os.system('python '+
-        f'prs_corr.py -i {args._in}/{x} -p {args.prs} --dcov {args.dcov} --qcov {args.qcov} -o {args.out} {f}')
+        f'prs_corr.py -i {args._in}/{x} -p {" ".join(args.prs)} --prsdir {args.prsdir} --dcov {args.dcov} --qcov {args.qcov} -o {args.out} {f}')
     submitter.submit()
 
 if __name__ == '__main__':
@@ -49,7 +49,10 @@ if __name__ == '__main__':
     parser.add_argument('pheno', nargs = '*', help = 'Phenotype files to process')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
       default = '../pheno/ukb/')
-    parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS score directory',
+    parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS to select', nargs = '*',
+      default = ['an2019','asd2022','ptsd2024','mdd2023','scz2022','bip2021','adhd2022',
+     'sud2023'])
+    parser.add_argument('--prsdir', dest = 'prsdir', help = 'PRS score directory',
       default = '../prs/prs_score/')
     parser.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
       default = '../params/discrete_covars.txt')
@@ -61,7 +64,7 @@ if __name__ == '__main__':
                         action = 'store_true', default = False)
     args=parser.parse_args()
     import os
-    for arg in ['_in','out','prs','dcov','qcov']:
+    for arg in ['_in','out','prsdir','dcov','qcov']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
         
     from _utils import cmdhistory, path, logger

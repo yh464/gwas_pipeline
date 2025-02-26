@@ -29,7 +29,7 @@ def main(args):
       os.chdir(x+'_raw')
       for y in os.listdir():
         if fnmatch(y,'*.fastGWA'):
-          out_fname = y.replace('raw',f'{str(args.freq)}')
+          out_fname = y.replace('_raw','')
           submitter.add(f'bash {scripts_path}/pymaster.sh '+
             f'gwa_filter.py -i {args._in}/{x}_raw/{y} -o {out_dir}/{out_fname} --freq {args.freq}')
     submitter.submit()
@@ -59,6 +59,6 @@ if __name__ == '__main__':
     proj.add_var('%pheno',r'.+', 'phenotype')
     proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
     proj.add_input(args._in+'/%pheng_raw/%pheno_raw.fastGWA', __file__)
-    proj.add_output(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
+    proj.add_output(args._in+'/%pheng/%pheno.fastGWA', __file__)
     try: main(args)
     except: cmdhistory.errlog()

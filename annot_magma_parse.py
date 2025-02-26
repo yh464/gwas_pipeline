@@ -33,6 +33,8 @@ def main(args):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     from _plots import corr_heatmap
+    from _utils.path import normaliser
+    norm = normaliser()
     
     # annotation methods
     annot_list = []
@@ -132,7 +134,7 @@ def main(args):
           overall_fig.append(summary[['group','phenotype','gene_set','cell type','BETA','p','q']])
           
       all_annot = pd.concat(all_annot)
-      all_annot.to_csv(f'{args._in}/{x}/all_enrichment_summary.txt', sep = '\t', index = False)
+      norm.normalise(all_annot).to_csv(f'{args._in}/{x}/all_enrichment_summary.txt', sep = '\t', index = False)
       toc = time.perf_counter()-tic
       print(f'FINISHED {idx}/{len(args.pheno)}. Time = {toc:.3f} seconds')
      
@@ -152,6 +154,7 @@ if __name__ == '__main__':
     # no need for 'force'
     args = parser.parse_args()
     # path normalisation
+    args.pheno.sort()
     import os
     for arg in ['_in','gset']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')

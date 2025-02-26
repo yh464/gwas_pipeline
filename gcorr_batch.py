@@ -47,14 +47,22 @@ def main(args):
     
     for i in range(len(prefix_list)):
       for j in range(i):
-        out_rg = f'{args.out}/{pheno_list[i]}_{prefix_list[i]}.{pheno_list[j]}_{prefix_list[j]}.rg.log'
-        out_rg1 = f'{args.out}/{pheno_list[j]}_{prefix_list[j]}.{pheno_list[i]}_{prefix_list[i]}.rg.log'
+        g1 = pheno_list[i]; p1 = prefix_list[i]
+        g2 = pheno_list[j]; p2 = prefix_list[j]
+        if g2 < g1: g1,g2 = (g2,g1); p1,p2 = (p2,p1)
+        out_rg = f'{args.out}/{g1}.{g2}/{g1}_{p1}.{g2}_{p2}.rg.log'
+        if not os.path.isdir(f'{args.out}/{g1}.{g2}'): 
+            os.mkdir(f'{args.out}/{g1}.{g2}')
         
         # check for duplicate files
-        if os.path.isfile(out_rg) and os.path.isfile(out_rg1):
-            os.remove(out_rg1)
-        if not os.path.isfile(out_rg) and os.path.isfile(out_rg1):
-            out_rg = out_rg1
+        for out_rg1 in [f'{args.out}/{g1}.{g2}/{g1}_{p1}.{g2}_{p2}.rg.log',
+                        f'{args.out}/{g1}.{g2}/{g2}_{p2}.{g1}_{p1}.rg.log',
+                        f'{args.out}/{g2}.{g1}/{g1}_{p1}.{g2}_{p2}.rg.log',
+                        f'{args.out}/{g2}.{g1}/{g2}_{p2}.{g1}_{p1}.rg.log']:
+            if os.path.isfile(out_rg) and os.path.isfile(out_rg1) and out_rg1 != out_rg:
+                os.remove(out_rg1)
+            if not os.path.isfile(out_rg) and os.path.isfile(out_rg1):
+                os.rename(out_rg1, out_rg)
             
         # QC out_rg file
         if os.path.isfile(out_rg):
@@ -71,8 +79,8 @@ def main(args):
               submitter.add('bash '+
                 f'{scripts_path}/ldsc_master.sh ldsc.py --ref-ld-chr {args.ldsc}/baseline/'+
                 f' --w-ld-chr {args.ldsc}/baseline/ '+
-                f'--rg {args._in}/{pheno_list[i]}/{prefix_list[i]}.sumstats,'+
-                f'{args._in}/{pheno_list[j]}/{prefix_list[j]}.sumstats '+
+                f'--rg {args._in}/{g1}/{p1}.sumstats,'+
+                f'{args._in}/{g2}/{p2}.sumstats '+
                 f'--out {out_rg[:-4]} --no-intercept')
               continue
         
@@ -83,8 +91,8 @@ def main(args):
         submitter.add('bash '+
           f'{scripts_path}/ldsc_master.sh ldsc.py --ref-ld-chr {args.ldsc}/baseline/'+
           f' --w-ld-chr {args.ldsc}/baseline/ '+
-          f'--rg {args._in}/{pheno_list[i]}/{prefix_list[i]}.sumstats,'+
-          f'{args._in}/{pheno_list[j]}/{prefix_list[j]}.sumstats '+
+          f'--rg {args._in}/{g1}/{p1}.sumstats,'+
+          f'{args._in}/{g2}/{p2}.sumstats '+
           f'--out {out_rg[:-4]}')
     
     submitter.submit()
@@ -95,11 +103,11 @@ if __name__ == '__main__':
       'This programme creates genetic correlation matrices for global phenotypes')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
-      default = '../gene_corr/ldsc_sumstats/')
+      default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../gene_corr/gcorr/')
+      default = '../gcorr/rglog/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
@@ -111,6 +119,6 @@ if __name__ == '__main__':
     cmdhistory.log()
     proj = path.project()
     proj.add_output(args._in+'/ldsc_sumstats/%pheng_%pheno_%maf.sumstats', __file__)
-    proj.add_output(args.out+'/gcorr/%pheng_%pheno_%maf.%pheng_%pheno_%maf.rg.log', __file__)
+    proj.add_output(args.out+'/rglog/%pheng.%pheng/%pheng_%pheno.%pheng_%pheno.rg.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()

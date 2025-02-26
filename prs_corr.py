@@ -4,9 +4,13 @@ Computes correlational plots between IDPs and PGS
 '''
 
 import argparse
-parser = argparse.ArgumentParser(description='Computes correlational plots between IDPs and PGS (single file)')
-parser.add_argument('-i','--in', dest = '_in', help = 'Input file')
-parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS score directory',
+parser = argparse.ArgumentParser(description='Computes correlational plots between IDPs and PGS (batch)')
+parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
+  default = '../pheno/ukb/')
+parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS to select', nargs = '*',
+  default = ['an2019','asd2022','ptsd2024','mdd2023','scz2022','bip2021','adhd2022',
+ 'sud2023'])
+parser.add_argument('--prsdir', dest = 'prsdir', help = 'PRS score directory',
   default = '../prs/prs_score/')
 parser.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
   default = '../params/discrete_covars.txt')
@@ -18,13 +22,11 @@ parser.add_argument('-f','--force', dest = 'force', help = 'force overwrite',
                     action = 'store_true', default = False)
 args=parser.parse_args()
 import os
-for arg in ['_in','out','dcov','qcov','prs']:
+for arg in ['_in','out','dcov','qcov','prsdir']:
     exec(f'args.{arg} = os.path.realpath(args.{arg})')
-    
+
 import time
 tic = time.perf_counter()
-
-# from fnmatch import fnmatch
 import pandas as pd
 
 prefix = os.path.basename(args._in).replace('.txt','')
@@ -36,13 +38,6 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
     # process covars
     dcov = pd.read_table(args.dcov, index_col = ['FID','IID'], sep = '\\s+').astype(str)
     cov_out = pd.get_dummies(dcov, prefix = dcov.columns, drop_first = True)
-    # for i in range(dcov.shape[1]):
-    #   tmp = dcov.iloc[:,i].values
-    #   tmpname = dcov.columns.tolist()[i]
-    #   tmpval = np.unique(tmp)
-    #   for j in range(tmpval.size-1):
-    #     cov_out[f'{tmpname}_{tmpval[j]}'] = (tmp==tmpval[j]).astype(np.int8)
-    
     cov_out = pd.concat([cov_out,pd.read_table(args.qcov, index_col = ['FID','IID'], sep = '\\s+')], 
                         axis = 1)
     cov_list = cov_out.columns.tolist()
@@ -66,17 +61,19 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
     
     summary = []
     # correlate for each PRS
-    os.chdir(args.prs)
-    prs_list = [x.replace('.txt','') for x in os.listdir()]
-    prs_list = np.array(prs_list, dtype = 'U')
-    prs_list = np.unique(prs_list)
+    os.chdir(args.prsdir)
+    prs_list = args.prs
+    for x in prs_list:
+        if not os.path.isfile(f'{args.prsdir}/{x}.txt') and not os.path.isdir(f'{args.prsdir}/{x}'):
+            prs_list.remove(x)
+    
     for prs in prs_list:
         if prs == 'qc': continue
         if not os.path.isdir(prs) and not os.path.isfile(f'{prs}.txt'): continue
         print(prs)
         # sum PRS across all chromosomes
-        if (not os.path.isfile(f'{args.prs}/{prs}.txt') or \
-            args.force) and os.path.isdir(f'{args.prs}/{prs}'):
+        if (not os.path.isfile(f'{args.prsdir}/{prs}.txt') or \
+            args.force) and os.path.isdir(f'{args.prsdir}/{prs}'):
             chrom = []
             for j in range(22):
                 df = pd.read_table(f'{prs}/{prs}.chr{j+1}.sscore').sort_values('IID').drop_duplicates()
@@ -89,10 +86,10 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
             out = pd.DataFrame(index = chrom.index, columns = [])
             out['score_total'] = chrom.sum(axis = 1)
             out['score_norm'] = out.score_total/out.score_total.std()
-            out.to_csv(f'{args.prs}/{prs}.txt', index = True, sep = '\t')
+            out.to_csv(f'{args.prsdir}/{prs}.txt', index = True, sep = '\t')
         else:
-            out = pd.read_table(f'{args.prs}/{prs}.txt', index_col = ['FID','IID'])
-        print(f'    {args.prs}/{prs}.txt')
+            out = pd.read_table(f'{args.prsdir}/{prs}.txt', index_col = ['FID','IID'])
+        print(f'    {args.prsdir}/{prs}.txt')
         
         tmp = out[['score_norm']]
         tmp.columns = [prs]

@@ -199,9 +199,9 @@ if __name__ == '__main__':
     path_spec.add_argument('-c','--clump', dest = 'clump', help = 'Directory of clumping files',
                         default = '../clump')
     path_spec.add_argument('-h2', dest = 'h2', help = 'Directory to h2 log files',
-                        default = '../gene_corr/ldsc_sumstats')
+                        default = '../gcorr/ldsc_sumstats')
     path_spec.add_argument('-rg', dest = 'rg', help = 'Directory to rg log files',
-                        default = '../gene_corr/gcorr')
+                        default = '../gcorr/rglog')
     path_spec.add_argument('-o','--out', dest = 'out', help = 'Output directory',
                         default = '../mr')
     path_spec.add_argument('--ldsc', help = 'LD scores, for LCV regression', # intentionally absolute

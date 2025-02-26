@@ -33,63 +33,67 @@ if type(args.out) == type(None): args.out = args._in
 from _utils import logger
 logger.splash(args)
 
-import time
-import pandas as pd
-import numpy as np
+def main(args):
+    import time
+    import pandas as pd
+    import numpy as np
+    
+    tic = time.perf_counter()
+    idx = 0
+    blist = np.loadtxt(args.bfile,dtype = 'U')
+    prefix = '.'.join(args.file.split('.')[:-1])
+    out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
+    
+    tmpdir = f'/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
+    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+    os.chdir(args.out)                                                             # we do not need the input dir
+    
+    df = pd.read_table(f'{args._in}/{args.file}', sep = '\t')
+    sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
+    if sf.sum() == 0:
+      print(f'File {args.file} contains no significant SNP, skipping')
+      toc = time.perf_counter() - tic
+      print(f'Total time = {toc:.3f}.')
+      return
+    
+    df_sig = df.loc[sf,:].sort_values(by = 'P')
+    df_sig.to_csv(out.replace('clumped','siglist'), sep = '\t',index = False)      # export top few snps
+    
+    tmp_flist = []                                                                 # list of temp files
+    chrs = df_sig['CHR'].unique()
+    idx = 0
+    
+    out_df = []
+    for c in chrs:                                                                 # every chromosome that is sig, sorted 
+      idx += 1
+      # separates files by chromosome
+      df_tmp = df.loc[df.CHR == c, :].sort_values(by = 'P')
+      tmpgwa = f'{tmpdir}/{args.file}_chr{c}.fastGWA'
+      tmpsnp = f'{tmpdir}/{args.file}_chr{c}.snplist'
+      df_tmp.to_csv(tmpgwa, index = False, sep = '\t')
+      df_tmp['SNP'].to_csv(tmpsnp, index = False, header = False)
+      bf = blist[c-1]                                                              # c ranges 1-23
+      tmpout = f'{tmpdir}/{args.file}_chr{c}'
+      tmp_flist.append(tmpgwa)
+      tmp_flist.append(tmpsnp)
+      tmp_flist.append(f'{tmpout}.hh')
+      tmp_flist.append(f'{tmpout}.clumped')
+      
+      if not os.path.isfile(f'{tmpout}.clumped') or args.force:
+          # clumps by chromosome
+          os.system(f'{args.plink} --noweb --bfile {bf} --clump {tmpgwa} '+
+            f'--clump-field P --clump-p1 {args.p} --clump-p2 1 --clump-r2 0.1 '+       # p1 must be determined by matrix decomposition
+            f'--clump-kb 1000 --extract {tmpsnp} --out {tmpout}')
+      if os.path.isfile(f'{tmpout}.clumped'):
+          out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
+      toc = time.perf_counter() - tic
+      print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
+    
+    out_df = pd.concat(out_df, axis = 0)
+    out_df.to_csv(out, sep = '\t', index = False)
+    # # clears temp
+    # for x in tmp_flist:
+    #   try: os.remove(x)
+    #   except: pass
 
-tic = time.perf_counter()
-idx = 0
-blist = np.loadtxt(args.bfile,dtype = 'U')
-prefix = '.'.join(args.file.split('.')[:-1])
-out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
-
-tmpdir = f'/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
-if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
-os.chdir(args.out)                                                             # we do not need the input dir
-
-df = pd.read_table(f'{args._in}/{args.file}', sep = '\t')
-sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
-if sf.sum() == 0:
-  print(f'File {args.file} contains no significant SNP, skipping')
-  toc = time.perf_counter() - tic
-  print(f'Total time = {toc:.3f}.')
-
-df_sig = df.loc[sf,:].sort_values(by = 'P')
-df_sig.to_csv(out.replace('clumped','siglist'), sep = '\t',index = False)      # export top few snps
-
-tmp_flist = []                                                                 # list of temp files
-chrs = df_sig['CHR'].unique()
-idx = 0
-
-out_df = []
-for c in chrs:                                                                 # every chromosome that is sig, sorted 
-  idx += 1
-  # separates files by chromosome
-  df_tmp = df.loc[df.CHR == c, :].sort_values(by = 'P')
-  tmpgwa = f'{tmpdir}/{args.file}_chr{c}.fastGWA'
-  tmpsnp = f'{tmpdir}/{args.file}_chr{c}.snplist'
-  df_tmp.to_csv(tmpgwa, index = False, sep = '\t')
-  df_tmp['SNP'].to_csv(tmpsnp, index = False, header = False)
-  bf = blist[c-1]                                                              # c ranges 1-23
-  tmpout = f'{tmpdir}/{args.file}_chr{c}'
-  tmp_flist.append(tmpgwa)
-  tmp_flist.append(tmpsnp)
-  tmp_flist.append(f'{tmpout}.hh')
-  tmp_flist.append(f'{tmpout}.clumped')
-  
-  if not os.path.isfile(f'{tmpout}.clumped') or args.force:
-      # clumps by chromosome
-      os.system(f'{args.plink} --noweb --bfile {bf} --clump {tmpgwa} '+
-        f'--clump-field P --clump-p1 {args.p} --clump-p2 1 --clump-r2 0.1 '+       # p1 must be determined by matrix decomposition
-        f'--clump-kb 1000 --extract {tmpsnp} --out {tmpout}')
-  if os.path.isfile(f'{tmpout}.clumped'):
-      out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
-  toc = time.perf_counter() - tic
-  print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
-
-out_df = pd.concat(out_df, axis = 0)
-out_df.to_csv(out, sep = '\t', index = False)
-# # clears temp
-# for x in tmp_flist:
-#   try: os.remove(x)
-#   except: pass
+main(args)

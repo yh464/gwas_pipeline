@@ -22,7 +22,7 @@ parser.add_argument('-p2', nargs = '*', help = 'correlates phenotype groups',
 parser.add_argument('-i','--in', dest = '_in', help = 'input directory',
   default='../local_corr/')
 parser.add_argument('--sumstats', help = 'sumstats directory to be scanned for file names',
-  default = '../gene_corr/ldsc_sumstats/')
+  default = '../gcorr/ldsc_sumstats/')
 parser.add_argument('-c','--corresponding', dest = 'corresponding', 
   help = 'match local phenotype to corresponding global phenotype',
   default = False, action = 'store_true')
@@ -89,18 +89,18 @@ for g2, p2 in zip(pheno_2, prefix_2):
 summary = pd.concat(summary)
 
 for g2 in args.p2:
-    temp = norm.normalise(summary.loc[summary.group2 == g2,:])
     if args.corresponding:
-        temp.to_csv(f'{args.out}/gcorr_local_{g2}.long.txt', sep = '\t', 
+        temp = summary.loc[summary.group2 == g2,:]
+        norm.normalise(temp).to_csv(f'{args.out}/gcorr_local_{g2}.long.txt', sep = '\t', 
                     index = False, header = True)
         outdf = temp.pivot(columns = 'group1',index = 'pheno1', values = 'rg')
         outdf.columns.name = None
         outdf.index.name = 'label'
-        outdf.to_csv(f'{args.out}/gcorr_local_{g2}.txt', sep = '\t', index = True, header = True)
+        norm.normalise(outdf).to_csv(f'{args.out}/gcorr_local_{g2}.txt', sep = '\t', index = True, header = True)
     else:
         for z in summary.pheno2.unique():
             outdf = summary.loc[summary.pheno2 == z,:]
-            outdf.to_csv(f'{args.out}/gcorr_local_{z}.long.txt', sep = '\t', 
+            norm.normalise(outdf).to_csv(f'{args.out}/gcorr_local_{z}.long.txt', sep = '\t', 
                          index = False, header = True)
             outdf = outdf.pivot(columns = 'group1', index = 'pheno1', values = 'rg')
             outdf.columns.name = None

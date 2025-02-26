@@ -25,12 +25,13 @@ def parse_coloc_cluster(entry, groups):
     groups: pandas DataFrame with 'group' and 'pheno' columns
     '''
     import pandas as pd
+    import numpy as np
     groups['names'] = groups['group'] + '_' + groups['pheno']
     
     # initialise output
     snp = entry['candidate_snp']
-    clusters = pd.DataFrame(data = 0, index = [snp], columns = groups['names'])
-    summary = pd.DataFrame(data = 0, index = [snp], columns = groups['group'].unique())
+    clusters = pd.DataFrame(data = np.nan, index = [snp], columns = groups['names'])
+    summary = pd.DataFrame(data = np.nan, index = [snp], columns = groups['group'].unique())
     
     for trait in entry['traits'].split(', '):
         group = groups.loc[groups.names==trait, 'group']
@@ -47,6 +48,7 @@ def main(args):
     import os
     import pandas as pd
     from fnmatch import fnmatch
+    from _utils.path import normaliser
     
     pheno = '_'.join(sorted(args.pheno))
     os.chdir(f'{args._in}/{pheno}')
@@ -61,6 +63,7 @@ def main(args):
             groups.append(pd.DataFrame(dict(group = p, pheno = [prefix])))
     groups = pd.concat(groups).reset_index(drop = True)        
     
+    orig = []
     summary = []
     clusters = []
     for x in sorted(os.listdir(f'{args._in}/{pheno}')):
@@ -81,14 +84,24 @@ def main(args):
             s.insert(loc = 2, column = 'END', value = end)
             summary.append(s)
             clusters.append(c)
+        df = df[['candidate_snp','regional_prob','posterior_prob','posterior_explained_by_snp','traits']]
+        df = df.set_index('candidate_snp')
+        df.insert(loc = 0, column = 'chromosome', value = chrom)
+        df.insert(loc = 1, column = 'start', value = start)
+        df.insert(loc = 2, column = 'end', value = end)
+        orig.append(df)
+    orig = pd.concat(orig)
     summary = pd.concat(summary)
     summary.sort_values(by = summary.columns.tolist(), inplace = True)
     clusters = pd.concat(clusters)
     summary.index.name = 'SNP'
     clusters.index.name = 'SNP'
     clusters = clusters.T
-    summary.to_csv(f'{args.out}/{pheno}_coloc_summary.txt', sep = '\t', index = True)
-    clusters.to_csv(f'{args.out}/{pheno}_coloc_clusters.txt', sep = '\t', index = True)
+    
+    norm = normaliser()
+    norm.normalise(orig).to_csv(f'{args.out}/{pheno}_coloc_raw.txt', sep = '\t', index = True)
+    norm.normalise(summary).to_csv(f'{args.out}/{pheno}_coloc_summary.txt', sep = '\t', index = True)
+    norm.normalise(clusters).to_csv(f'{args.out}/{pheno}_coloc_clusters.txt', sep = '\t', index = True)
     return
 
 if __name__ == '__main__':

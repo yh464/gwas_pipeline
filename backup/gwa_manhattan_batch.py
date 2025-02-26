@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-generates manhattan plots for all fastGWA files in a directory
+generates manhattan plots for all fastGWA files in a directory and merges autosome and X
 '''
 
 def main(args):
@@ -23,22 +23,31 @@ def main(args):
         )
     
     for y in args.pheno:
-        os.chdir(args._in)
-        if not os.path.isdir(y): continue # sanity check especially for default y = ls(args._in)
-        os.chdir(y)
-        flist = []
-        for x in os.listdir():
-            if fnmatch(x, '*.fastGWA') and not fnmatch(x, '*X.fastGWA'): 
-                flist.append(x)
+      os.chdir(args._in)
+      if not os.path.isdir(y): continue # sanity check especially for default y = ls(args._in)
+      os.chdir(y)
+      flist = []
+      for x in os.listdir():
+        if fnmatch(x, '*.fastGWA') and (not fnmatch(x, '*X.fastGWA')) and \
+          (not fnmatch(x, '*all_chrs.fastGWA')): 
+          # excludes X chromosomes
+          flist.append(x)
+      
+      if not os.path.isdir(args.out+y):
+        os.system(f'mkdir -p {args.out}/{y}')
+      
+      for x in flist:
+        out_fname = f'{args.out}/{x}'.replace('.fastGWA','.manhattan.png')
+        out_df = x.replace('.fastGWA','_all_chrs.fastGWA')
         
-        if not os.path.isdir(args.out+y):
-            os.system(f'mkdir -p {args.out}/{y}')
+        skip = True
         
-        for x in flist:
-            out_fname = f'{args.out}/{x}'.replace('.fastGWA','.manhattan.png')
-            if os.path.isfile(out_fname) and not args.force: continue
-            submitter.add('python '+
-              f'gwa_manhattan.py {y} --file {x} -i {args._in} -o {args.out} {f}')
+        if not os.path.isfile(out_fname): skip = False
+        if not args.a and not os.path.isfile(out_df): skip = False
+        if skip and (not args.force) and (not args.p): continue
+      
+        submitter.add('python '+
+          f'gwa_manhattan.py {y} --file {x} -i {args._in} -o {args.out} {f}')
     
     submitter.submit()
     # submitter.debug()

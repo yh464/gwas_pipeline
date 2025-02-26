@@ -13,8 +13,9 @@ Required workflow:
 def main(args):
     import os
     import pandas as pd
-    os.chdir(args._in)
-    
+    from _utils.path import normaliser
+    norm = normaliser()
+
     out_fname = f'{args.out}/prscorr_'+'_'.join(args.pheno)
     
     # read all summary files
@@ -25,6 +26,8 @@ def main(args):
         summary.append(pd.read_table(f))
     summary = pd.concat(summary)
     
+    summary = norm.normalise(summary)
+    summary.to_csv(f'{out_fname}.txt', sep = '\t', index =False)
     from _plots import corr_heatmap
     fig = corr_heatmap(summary)
     fig.savefig(f'{out_fname}.pdf', bbox_inches = 'tight')
@@ -42,6 +45,7 @@ if __name__ == '__main__':
     args._in = os.path.realpath(args._in)
     if args.out == None: args.out = args._in
     else: args.out = os.path.realpath(args.out)
+    args.pheno.sort()
         
     from _utils import cmdhistory, logger
     logger.splash(args)

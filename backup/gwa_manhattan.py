@@ -14,10 +14,10 @@ parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
   default = '../gwa/manhattan/')
 parser.add_argument('-f','--force',dest = 'force', help = 'force output',
   default = False, action = 'store_true')
-# parser.add_argument('-p','--plot-only', dest = 'p', help = 'skip concatenation, only plot graphs',
-#   default = False, action = 'store_true')
-# parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
-#   default = False, action = 'store_true')
+parser.add_argument('-p','--plot-only', dest = 'p', help = 'skip concatenation, only plot graphs',
+  default = False, action = 'store_true')
+parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
+  default = False, action = 'store_true')
 args = parser.parse_args()
 
 import os
@@ -40,14 +40,14 @@ x = args.file
 out_fname = f'{args.out}/{args.pheno}/{x}'.replace('.fastGWA','.manhattan.png')
 _,ax = plt.subplots(figsize = (36,12), constrained_layout = True)
 
-# if ((not os.path.isfile(x.replace('.fastGWA','_all_chrs.fastGWA'))) or args.force) \
-#   and (not args.a):
-#   df_a = pd.read_csv(x,sep = '\t')
-#   df_x = pd.read_csv(x.replace('.fastGWA','_X.fastGWA'), sep = '\t')
-#   df = pd.concat([df_a, df_x], axis = 0).sort_values(by = ['CHR','POS'])
-#   df.to_csv(x.replace('.fastGWA','_all_chrs.fastGWA'), sep = '\t', index = False)
-# toc = time.perf_counter() - tic
-# print(f'GWA files concatenated, time = {toc:.3f} seconds')
+if ((not os.path.isfile(x.replace('.fastGWA','_all_chrs.fastGWA'))) or args.force) \
+  and (not args.a):
+  df_a = pd.read_csv(x,sep = '\t')
+  df_x = pd.read_csv(x.replace('.fastGWA','_X.fastGWA'), sep = '\t')
+  df = pd.concat([df_a, df_x], axis = 0).sort_values(by = ['CHR','POS'])
+  df.to_csv(x.replace('.fastGWA','_all_chrs.fastGWA'), sep = '\t', index = False)
+toc = time.perf_counter() - tic
+print(f'GWA files concatenated, time = {toc:.3f} seconds')
 
 if (not os.path.isfile(out_fname)) or args.force or args.p:
   if args.a:
@@ -66,7 +66,7 @@ if (not os.path.isfile(out_fname)) or args.force or args.p:
                 sign_marker_color="r",
                 logp = True,
                 ld_block_size = 1000000,
-                text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
+                text_kws = {'fontfamily': 'sans-serif', 'fontsize': 10},
                 ax = ax)
   # fig = plt.gcf()
   # fig.set_size_inches(12,4)

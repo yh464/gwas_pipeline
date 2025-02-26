@@ -20,6 +20,7 @@ def main(args):
     import numpy as np
     import seaborn as sns
     import matplotlib.pyplot as plt
+    import scipy.stats as sts
     
     m2m = pd.read_csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv')
     m2m = m2m[['label1','label2']]
@@ -65,7 +66,9 @@ def main(args):
               se = float(l[-1].replace('(','').replace(')',''))
           except:
               h2 = np.nan; se = np.nan
-          summary.append(pd.DataFrame(dict(roi = [name], pheno = x, h2 = h2, se = se, z = h2/se, glob_h2 = glob_h2, glob_se = glob_se)))
+          summary.append(pd.DataFrame(dict(roi = [name], pheno = x, h2 = h2, se = se, z = h2/se, 
+                                           p = 1-sts.chi2.cdf(h2**2/se**2, df = 1),
+                                           glob_h2 = glob_h2, glob_se = glob_se)))
       
         s = pd.concat(summary)
         s['z'] = s.h2 / s.se
@@ -83,23 +86,15 @@ def main(args):
             plt.close()
         except:
             print('Check naming conventions, no fig plotted')
-
-    # tmp = summary.roi.unique()
-    # glasser = []
-    # for i in tmp:
-    #   i = i.replace('_ROI','')
-    #   i = 'lh_'+ i if i[0]=='L' else 'rh_'+i
-    #   glasser.append(i)
-    # glasser = pd.Series(glasser, name = 'label')
     
     all_summary = pd.concat(all_summary)
-    all_summary.to_csv(f'{args.out}/local_h2_summary.txt', sep = '\t', index = False)
     h2_all = all_summary.pivot_table(values = 'h2', index = 'roi', columns = 'pheno')
     h2_all.index.name = 'label'
-    # h2_all = pd.concat([glasser]+all_h2, axis = 1).sort_values(by = 'label')
-    h2_all.to_csv(f'{args.out}/local_h2_summary.wide.txt', sep = '\t', index = False)
-    # z_all = pd.concat([glasser]+all_z, axis = 1).sort_values(by = 'label')
-    # z_all.to_csv(f'{args.out}/local_z_summary.csv', sep = '\t', index = False)
+    
+    from _utils.path import normaliser
+    norm = normaliser()
+    norm.normalise(all_summary).to_csv(f'{args.out}/local_h2_summary.txt', sep = '\t', index = False)
+    norm.normalise(h2_all).to_csv(f'{args.out}/local_h2_summary.wide.txt', sep = '\t', index = False)
 
 if __name__ == '__main__':
     import argparse
@@ -107,9 +102,9 @@ if __name__ == '__main__':
       'Creates a heritability summary table for local phenotypes')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
       default=['deg_local','degi_local','degc_local','clu_local','eff_local','mpl_local'])
-    parser.add_argument('-g','--glob', dest = 'glob', help = 'global phenotype', default = 'global')
+    parser.add_argument('-g','--glob', dest = 'glob', help = 'global phenotype', default = 'global_graph')
     parser.add_argument('-i','--in', dest = '_in', help = 'LDSC h2 log directory, sub-directories are PHENO elements',
-      default = '../gene_corr/ldsc_sumstats/')
+      default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('-o','--out', dest = 'out', help = 'Summary table output directory',
       default = '../local_corr/')
     # always overwrites

@@ -40,14 +40,23 @@ def main(args):
     
     for i in range(len(prefix_1)):
       for j in range(len(prefix_2)):
-        out_rg = f'{args.out}/{pheno_1[i]}_{prefix_1[i]}.{pheno_2[j]}_{prefix_2[j]}.rg.log'
-        out_rg1 = f'{args.out}/{pheno_2[j]}_{prefix_2[j]}.{pheno_1[i]}_{prefix_1[i]}.rg.log'
+        g1 = pheno_1[i]; p1 = prefix_1[i]
+        g2 = pheno_2[j]; p2 = prefix_2[j]
+        if g2 < g1: g1,g2 = (g2,g1); p1,p2 = (p2,p1)
+        
+        out_rg = f'{args.out}/{g1}.{g2}/{g1}_{p1}.{g2}_{p2}.rg.log'
+        if not os.path.isdir(f'{args.out}/{g1}.{g2}'): 
+            os.mkdir(f'{args.out}/{g1}.{g2}')
         
         # check for duplicate files
-        if os.path.isfile(out_rg) and os.path.isfile(out_rg1):
-            os.remove(out_rg1)
-        if not os.path.isfile(out_rg) and os.path.isfile(out_rg1):
-            out_rg = out_rg1
+        for out_rg1 in [f'{args.out}/{g1}.{g2}/{g1}_{p1}.{g2}_{p2}.rg.log',
+                        f'{args.out}/{g1}.{g2}/{g2}_{p2}.{g1}_{p1}.rg.log',
+                        f'{args.out}/{g2}.{g1}/{g1}_{p1}.{g2}_{p2}.rg.log',
+                        f'{args.out}/{g2}.{g1}/{g2}_{p2}.{g1}_{p1}.rg.log']:
+            if os.path.isfile(out_rg) and os.path.isfile(out_rg1) and out_rg1 != out_rg:
+                os.remove(out_rg1)
+            if not os.path.isfile(out_rg) and os.path.isfile(out_rg1):
+                os.rename(out_rg1, out_rg)
         
         # QC out_rg file
         if os.path.isfile(out_rg):
@@ -88,11 +97,11 @@ if __name__ == '__main__':
     parser.add_argument('-p2', help = 'Second group of phenotypes to correlate, usually disorders', nargs = '*',
       default = ['global_structural','disorders','gradients'])
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
-      default = '../gene_corr/ldsc_sumstats/')
+      default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../gene_corr/gcorr/')
+      default = '../gcorr/rglog/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
@@ -100,7 +109,8 @@ if __name__ == '__main__':
     for arg in ['_in','out','ldsc']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
     
-    from _utils import cmdhistory, path
+    from _utils import cmdhistory, path, logger
+    logger.splash(args)
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng_%pheno_%maf.sumstats', __file__)

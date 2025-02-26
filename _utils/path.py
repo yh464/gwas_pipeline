@@ -58,29 +58,41 @@ class normaliser():
                 pd.DataFrame(index = [before], columns =['after'], data = after)))
             self.save()
     
-    def _normalise_df(self, df):
+    def _normalise_df(self, df_in):
         def n(series, x, y):
-            series = pd.Series(series).str.lower()
+            series = pd.Series(series)
+            if series.dtype in [int, float]: return series
             if x[0] == '_':
-                series = series.str.replace(x, y)
+                series = series.str.replace(x, y, regex = True, case = False)
             else:
-                series = series.replace(x,y)
+                series = series.replace(x,y).replace(x.lower(), y).replace(x.upper(),y)
                 series = '_' + series + '_'
-                series = series.str.replace(f'_{x}_',f'_{y}_').str.removeprefix(
-                    '_').str.removesuffix('_')
+                series = series.str.replace(f'_{x}_',f'_{y}_', regex = True, case = False).str.replace(
+                f' {x}_',f' {y}_', regex = True, case = False).str.removeprefix('_').str.removesuffix('_')
             return series
         
+        df = df_in.copy()
         for x in self._dict.index:
             y = str(self._dict.loc[x, 'after'])
             for col in df.columns:
-                try: # we do not replace numbers 
-                    df[col].astype(float)
-                    continue
-                except: # we execute replace operations below
-                    df.loc[:,col] = n(df[col], x, y)
-            try: df.index.astype(float)
-            except: df.index = n(df.index, x, y)
-            df.columns = n(df.columns, x, y)
+                if col == 'SNP': continue # NEVER change SNP IDs
+                try: df.loc[:,col] = n(df[col], x, y)
+                except: pass
+                
+            col = df.columns.to_frame()
+            for c in col.columns:
+                try: col.loc[:,c] = n(col[c],x,y)
+                except: pass
+            if col.shape[1] > 1:
+                df.columns = pd.MultiIndex.from_frame(col)
+            else: df.columns = col.iloc[:,0]
+            idx = df.index.to_frame()
+            for c in idx.columns:
+                try: idx.loc[:,c] = n(idx[c],x,y)
+                except: pass
+            if idx.shape[1] > 1:
+                df.set_index(pd.MultiIndex.from_frame(idx), inplace = True)
+            else: df.index = idx.iloc[:,0]
         return df
     
     def normalise(self, data, backup = None):

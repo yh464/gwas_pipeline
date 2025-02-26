@@ -22,6 +22,8 @@ def main(args):
     import numpy as np
     import pandas as pd
     from scipy.stats import false_discovery_control as fdr
+    from _utils.path import normaliser
+    norm = normaliser()
     os.chdir(args._in)
     
     qtl_list = []
@@ -73,6 +75,7 @@ def main(args):
             all_qtls.to_csv(f'{args._in}/{x}/{y}.txt', sep = '\t', index = False)
             all_phenos.append(all_qtls)
         all_phenos = pd.concat(all_phenos).sort_values(by = ['q','p_heidi'])
+        all_phenos = norm.normalise(all_phenos)
         all_phenos.to_csv(f'{args._in}/{x}.txt', sep = '\t', index = False)
         all_phenos.loc[all_phenos.p < 0.05,:].to_csv(f'{args._in}/{x}_sig.txt', sep = '\t', index = False)
         

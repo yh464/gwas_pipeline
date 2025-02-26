@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('-p2', nargs = '*', help = 'correlates phenotype groups',
       default = ['disorders','gradients'])
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
-      default = '../gene_corr/ldsc_sumstats/')
+      default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
       default = '../local_corr/')
     parser.add_argument('-c','--corresponding', dest = 'corresponding', 

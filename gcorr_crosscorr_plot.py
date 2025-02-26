@@ -30,16 +30,18 @@ def main(args):
     for p in args.p1:
         c = 0
         for x in sorted(os.listdir(p)):
-            if fnmatch(x,'*.sumstats'):
-                prefix_1.append(x.replace('.sumstats','')); pheno_1.append(p)
-                c += 1
+            if not fnmatch(x,'*.sumstats'): continue
+            if any([x.find(ex) > -1 for ex in args.exclude]): continue
+            prefix_1.append(x.replace('.sumstats','')); pheno_1.append(p)
+            c += 1
         count_1.append(c)
     for p in args.p2:
         c = 0
         for x in sorted(os.listdir(p)):
-            if fnmatch(x,'*.sumstats'):
-                prefix_2.append(x.replace('.sumstats','')); pheno_2.append(p)
-                c += 1
+            if not fnmatch(x,'*.sumstats'): continue
+            if any([x.find(ex) > -1 for ex in args.exclude]): continue
+            prefix_2.append(x.replace('.sumstats','')); pheno_2.append(p)
+            c += 1
         count_2.append(c)
 
     # parse LDSC log files
@@ -47,9 +49,8 @@ def main(args):
     os.chdir(args._in)
     for p1,x1 in zip(pheno_1, prefix_1): # usually imaging phenotypes
         for p2,x2 in zip(pheno_2, prefix_2):
-            fname = f'{p1}_{x1}.{p2}_{x2}.rg.log'
-            if not os.path.isfile(fname):
-                fname = f'{p2}_{x2}.{p1}_{x1}.rg.log'
+            if p1 < p2: fname = f'{p1}.{p2}/{p1}_{x1}.{p2}_{x2}.rg.log'
+            else: fname = f'{p2}.{p1}/{p2}_{x2}.{p1}_{x1}.rg.log'
             
             # The following section reads the RG and SE statistics from the log file
             if os.path.isfile(fname):
@@ -82,13 +83,14 @@ def main(args):
             summary.loc[(summary.pheno1==x1)&(summary.group1==p1) & ~np.isnan(summary.p),'p'])
     
     norm = normaliser()
-    summary = norm.normalise(summary)
+    
     
     # tabular output, wide and long
     fout = f'{args.out}/crosscorr_' + '_'.join(args.p1)+'.'+'_'.join(args.p2)
     rg_tbl = summary.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
-    rg_tbl.to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
+    norm.normalise(rg_tbl).to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
                   header = True, index = True)
+    summary = norm.normalise(summary)
     summary.to_csv(f'{fout}.txt', index = False, sep = '\t')
     
     # plot figure
@@ -104,9 +106,10 @@ if __name__ == '__main__':
     parser.add_argument('-p2', help = 'Second group of phenotypes to correlate, usually disorders', nargs = '*',
       default = ['global_structural','disorders','gradients'])
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory for rg logs',
-      default = '../gene_corr/gcorr/')
+      default = '../gcorr/rglog/')
+    parser.add_argument('--exclude', help = 'phenotypes to exclude', nargs = '*', default = [])
     parser.add_argument('--sumstats', help = 'sumstats directory to be scanned for file names',
-      default = '../gene_corr/ldsc_sumstats/')
+      default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory')
     # always forces output
     args = parser.parse_args()
@@ -119,7 +122,7 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheno_%maf.%pheno.rg.log', __file__)
+    proj.add_input(args._in+'/%pheno.%pheno.rg.log', __file__)
     proj.add_output(args.out+'/crosscorr_.*.pdf', __file__)
     try: main(args)
     except: cmdhistory.errlog()

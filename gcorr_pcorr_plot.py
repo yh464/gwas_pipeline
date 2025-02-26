@@ -178,11 +178,11 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype file directory',
       default = '../pheno/ukb/')
     parser.add_argument('--corr', dest = 'corr', help = 'correlational logfile directory',
-      default = '../gene_corr/gcorr/')
+      default = '../gcorr/rglog/')
     parser.add_argument('--h2', dest = 'h2', help = 'Heritability logfile directory',
       default = '../gwa/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../gene_corr/')
+      default = '../gcorr/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()

@@ -371,6 +371,7 @@ main = function(args){
     print(res)
     
     # tabular outputs for QC tests
+    write.table(het, paste0(prefix, '_heterogeneity.txt'), sep = '\t')
     write.table(direc, paste0(prefix,'_dirtest.txt'), sep = '\t')
     write.table(single, paste0(prefix,'_singlesnp.txt'), sep = '\t')
     write.table(pleio, paste0(prefix,'_pleiotropy.txt'), sep = '\t')

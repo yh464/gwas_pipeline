@@ -36,6 +36,9 @@ def main(args):
     import os
     import pandas as pd
     from fnmatch import fnmatch
+    from _utils.path import normaliser
+    
+    norm = normaliser()
     
     crosstrait_clumps = []
     # for each phenotype
@@ -51,7 +54,9 @@ def main(args):
         dflist = []
         prefix_list = []
         for f in flist:
-            df = pd.read_csv(f'{args._in}/{p}/{f}', sep = '\s+')
+            df = pd.read_table(f'{args._in}/{p}/{f}', sep = '\\s+').drop(['CHR','F','BP','P'], axis = 1)
+            df1 = pd.read_table(f'{args._in}/{p}/{f}'.replace('clumped','siglist'), sep = '\\s+')
+            df = pd.merge(df1, df, on = 'SNP')
             prefix = f.replace(f'_{args.p:.0e}.clumped','')
             prefix = prefix.replace('_0.01','')
             prefix_list.append(prefix)
@@ -60,7 +65,7 @@ def main(args):
             dflist.append(df)
         
         # summary table of significant clumps
-        outdf = pd.concat(dflist).sort_values(by = ['CHR','BP','P']).dropna()
+        outdf = pd.concat(dflist).sort_values(by = ['CHR','POS','P']).dropna()
         outdf.to_csv(f'{args._in}/{p}_{args.p:.0e}_clumps.txt', sep = '\t', index = False)
         crosstrait_clumps.append(outdf)
         
@@ -83,7 +88,6 @@ def main(args):
     
     crosstrait_clumps = pd.concat(crosstrait_clumps)
     ct_prefix = '_'.join(args.pheno)
-    crosstrait_clumps.to_csv(f'{args._in}/all_clumps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t', index = False)
     # identify overlaps as above
     clumps = identify_clumps(crosstrait_clumps)
     overlaps = pd.DataFrame(data = 0, index = pd.MultiIndex.from_frame(crosstrait_clumps[['phen_group','phenotype']]),
@@ -97,9 +101,9 @@ def main(args):
                     if not snp in clump: continue
                     idx_snp = clump[0]
                     overlaps.loc[(pheng,phen), idx_snp] = 1
-    overlaps.to_csv(f'{args._in}/all_overlaps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t')
-    
-        
+                    
+    norm.normalise(crosstrait_clumps).to_csv(f'{args._in}/all_clumps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t', index = False)
+    norm.normalise(overlaps).to_csv(f'{args._in}/all_overlaps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t')
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='This programme uses PLINK1.9'+
@@ -114,7 +118,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     import os
     args._in = os.path.realpath(args._in)
-
+    args.pheno.sort()
+    
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()

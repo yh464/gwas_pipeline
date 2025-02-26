@@ -63,7 +63,7 @@ def main(args):
       scripts_path = os.path.realpath(__file__)
       scripts_path = os.path.dirname(scripts_path)
       submitter.add('bash '+
-        f'{scripts_path}/greml_by_trait.sh {args.gcta}'+
+        f'{scripts_path}/heri_greml_by_trait.sh {args.gcta}'+
         f' {args.grm} {args._in}/{f} {mpheno} {args.cov} {args.qcov}'+
         f' {out_fname}.greml --threads 5')
     
@@ -77,7 +77,7 @@ if __name__ == '__main__':
       'This programme runs GREML for any phenotype given as the 1st positional argument')
     parser.add_argument('pheno', help = 'Phenotype file in TXT format - please supply ONLY ONE')
     parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory',
-      default = '../pheno/conn/')
+      default = '../pheno/ukb/')
     parser.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
       default = '../toolbox/gcta-1.94.1-linux-kernel-3-x86_64/gcta-1.94.1')
     parser.add_argument('-o','--out',dest  = 'out', help = 'Output directory',

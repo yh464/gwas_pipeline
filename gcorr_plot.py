@@ -22,6 +22,9 @@ def main(args):
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     import scipy.stats as sts
+    from _utils.path import normaliser
+    
+    normer = normaliser()
     
     # Red-blue colour map
     cdict = dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
@@ -41,10 +44,11 @@ def main(args):
     for p in args.pheno:
         c = 0
         for x in sorted(os.listdir(p)):
-            if fnmatch(x,'*.sumstats'):
-                prefix_list.append(x.replace('.sumstats','')); 
-                pheno_list.append(p)
-                c += 1
+            if not fnmatch(x,'*.sumstats'): continue
+            if any([x.find(ex) > -1 for ex in args.exclude]): continue
+            prefix_list.append(x.replace('.sumstats','')); 
+            pheno_list.append(p)
+            c += 1
         counts.append(c)
     
     # parse LDSC log files
@@ -71,9 +75,18 @@ def main(args):
         # rg logs
         for j in range(i):
             p2 = pheno_list[j]; x2 = prefix_list[j]
-            fname = f'{p1}_{x1}.{p2}_{x2}.rg.log'
-            if not os.path.isfile(fname):
-                fname = f'{p2}_{x2}.{p1}_{x1}.rg.log'
+            if p1 < p2: fname = f'{p1}.{p2}/{p1}_{x1}.{p2}_{x2}.rg.log'
+            else: fname = f'{p2}.{p1}/{p2}_{x2}.{p1}_{x1}.rg.log'
+            
+            # check for irregularly named files:
+            for fname1 in [f'{p1}.{p2}/{p2}_{x2}.{p1}_{x1}.rg.log',
+                           f'{p1}.{p2}/{p1}_{x1}.{p2}_{x2}.rg.log',
+                           f'{p2}.{p1}/{p2}_{x2}.{p1}_{x1}.rg.log',
+                           f'{p2}.{p1}/{p1}_{x1}.{p2}_{x2}.rg.log']:
+                if os.path.isfile(fname1) and not os.path.isfile(fname):
+                    os.rename(fname1, fname)
+                if os.path.isfile(fname1) and os.path.isfile(fname) and fname1 != fname:
+                    os.remove(fname1)
             
             # The following section reads the RG and SE statistics from the log file
             if os.path.isfile(fname):
@@ -107,9 +120,6 @@ def main(args):
     # tabular output, wide and long
     fout = f'{args.out}/corr_' + '_'.join(args.pheno)
     rg_tbl = summary.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
-    rg_tbl.to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
-                  header = True, index = True)
-    summary.to_csv(f'{fout}.txt', index = False, sep = '\t')
     
     # flip the table around for plotting
     summary1 = summary[['group2','pheno2','group1','pheno1','rg','se','p','q']]
@@ -170,7 +180,13 @@ def main(args):
     # colour bar
     norm = mpl.colors.Normalize(vmin=-1, vmax=1)
     plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), cax = fig.add_axes((0.92, 0.25, 0.02, 0.50)))
+    
+    # output
     plt.savefig(f'{fout}.pdf', bbox_inches = 'tight')
+    normer.normalise(summary).to_csv(f'{fout}.txt', index = False, sep = '\t')
+    normer.normalise(rg_tbl).to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
+                  header = True, index = True)
+    
     
 if __name__ == '__main__':
     import argparse
@@ -178,9 +194,10 @@ if __name__ == '__main__':
       'This programme parses genetic cross-correlation between two groups of phenotypes')
     parser.add_argument('pheno', help = 'Phenotypes to correlate', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory for rg logs',
-      default = '../gene_corr/gcorr/')
+      default = '../gcorr/rglog/')
     parser.add_argument('--sumstats', help = 'sumstats directory to be scanned for file names',
-      default = '../gene_corr/ldsc_sumstats/')
+      default = '../gcorr/ldsc_sumstats/')
+    parser.add_argument('--exclude', help = 'phenotypes to exclude', nargs = '*', default = [])
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory')
     # always forces output
     args = parser.parse_args()

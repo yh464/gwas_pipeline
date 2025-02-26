@@ -27,7 +27,9 @@ def main(args):
             df2 = pd.read_table(f'{args._in}/{g2}.txt', sep = '\\s+', index_col = ['FID','IID'])
             merge = pd.concat([df1, df2], axis = 1)
             for t1 in df1.columns: # excludes FID and IID
+                if any([t1.find(ex) > -1 for ex in args.exclude]): continue
                 for t2 in df2.columns:
+                    if any([t2.find(ex) > -1 for ex in args.exclude]): continue
                     tmp = merge[[t1, t2]].dropna()
                     r = tmp[t1].corr(tmp[t2])
                     n = tmp.shape[0]
@@ -59,6 +61,7 @@ if __name__ == '__main__':
       default = '../pheno/ukb/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
       default = '../gene_corr/')
+    parser.add_argument('--exclude', help = 'phenotypes to exclude', nargs = '*', default = [])
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()

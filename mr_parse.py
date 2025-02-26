@@ -186,7 +186,8 @@ if __name__ == '__main__':
     # default output to the same directory
     # always overwrites
     args = parser.parse_args()
-    
+    args.p1.sort()
+    args.p2.sort()
     import os
     for arg in ['gwa','_in']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
