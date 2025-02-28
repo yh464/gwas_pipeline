@@ -91,7 +91,8 @@ def main(args):
     norm.normalise(rg_tbl).to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
                   header = True, index = True)
     summary = norm.normalise(summary)
-    summary.to_csv(f'{fout}.txt', index = False, sep = '\t')
+    if not os.path.isfile(f'{fout}.txt') or len(args.exclude) == 0:
+        summary.to_csv(f'{fout}.txt', index = False, sep = '\t')
     
     # plot figure
     from _plots import corr_heatmap

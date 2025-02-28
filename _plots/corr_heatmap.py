@@ -35,9 +35,13 @@ def corr_heatmap(summary, absmax = None):
     # style sheet
     sns.set_theme(style = 'whitegrid')
     
+    # normalise labels
+    for col in range(4):
+        summary.iloc[:,col] = summary.iloc[:,col].str.replace('_',' ').str.capitalize()
+    
     # determine figure size and aspect ratios
-    group1 = summary.iloc[:, 0].unique()
-    group2 = summary.iloc[:, 2].unique()
+    group1 = summary.iloc[:, 0].unique() # sorted
+    group2 = summary.iloc[:, 2].unique() # sorted
     
     count1 = [summary.loc[summary.iloc[:,0] == x, summary.columns[1]].unique().size for x in group1]
     count2 = [summary.loc[summary.iloc[:,2] == x, summary.columns[3]].unique().size for x in group2]
@@ -79,6 +83,7 @@ def corr_heatmap(summary, absmax = None):
         for j in range(len(group2)):
             g1 = group1[i]; g2 = group2[j]
             tmp = summary.loc[(summary.iloc[:,0] == g1) & (summary.iloc[:,2] == g2),:]
+            tmp = tmp.sort_values(by = [tmp.columns[1], tmp.columns[3]]) # important for alignment
             sns.scatterplot(
                 tmp,
                 x = summary.columns[3], y = summary.columns[1],
@@ -86,10 +91,20 @@ def corr_heatmap(summary, absmax = None):
                 palette = 'redblue',
                 size = 'Significance', sizes = sizes,
                 edgecolor = '.7',
-                # legend = legend_param if i == len(group1) - 1 and j == 0 else False,
                 legend = False,
                 ax = ax[i,j]
                 )
+            if tmp.loc[tmp.Significance == 'FDR-sig',:].size > 0:
+                sns.scatterplot(
+                    tmp.loc[tmp.Significance == 'FDR-sig',:],
+                    x = summary.columns[3], y = summary.columns[1],
+                    hue = summary.columns[4], hue_norm = (-absmax, absmax),
+                    palette = 'redblue',
+                    size = 'Significance', sizes = sizes,
+                    edgecolor = 'k', linewidths = 1.5,
+                    legend = False,
+                    ax = ax[i,j]
+                    )
             
             # remove x labels except for last row
             if i != len(group1) - 1:
@@ -117,7 +132,7 @@ def corr_heatmap(summary, absmax = None):
     
     # colour bar
     norm = mpl.colors.Normalize(vmin = -absmax, vmax = absmax)
-    cax = fig.add_axes((0.95, 0.4, 0.03, 0.35))
+    cax = fig.add_axes((0.95, 0.4, 0.04, 0.35))
     cax.set_title(summary.columns[4])
     plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), cax = cax)
     
@@ -135,7 +150,7 @@ def corr_heatmap(summary, absmax = None):
             mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = 125**0.5, 
                 markeredgecolor = '.7', markerfacecolor = '.7', label = 'nominal'),
             mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = 250**0.5, 
-                markeredgecolor = '.7', markerfacecolor = '.7', label = 'FDR-corrected')
+                markeredgecolor = 'k', markeredgewidth = 1.5, markerfacecolor = '.7', label = 'FDR-corrected')
             ]
         fig.legend(handles=handles, title = 'Significance',
                    frameon = False, loc = 'upper left', bbox_to_anchor=(0.91, 0.4))

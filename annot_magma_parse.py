@@ -138,7 +138,7 @@ def main(args):
       toc = time.perf_counter()-tic
       print(f'FINISHED {idx}/{len(args.pheno)}. Time = {toc:.3f} seconds')
      
-    fig = corr_heatmap(pd.concat(overall_fig))
+    fig = corr_heatmap(norm.normalise(pd.concat(overall_fig)))
     fig.savefig(f'{args._in}/ENSG_enrichment_'+'_'.join(args.pheno)+'.pdf', bbox_inches = 'tight')
       
 if __name__ == '__main__':

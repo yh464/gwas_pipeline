@@ -74,7 +74,6 @@ def main(args):
       norm.normalise(overlaps).to_csv(f'{args._in}/{x}/all_siggenes_overlaps.txt', sep = '\t', index = True, header = True)
       
 if __name__ == '__main__':
-
     import argparse
     parser = argparse.ArgumentParser(description = 'Parses the raw ***.genes.out MAGMA output for each pheno')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -83,8 +82,9 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--annot', dest ='annot', help = 'directory to annotation files',
       default = '../toolbox/hmagma')
     parser.add_argument('-r', '--ref', dest = 'ref', help = 'Gene label document',
-      default = '../toolbox/magma/ENSG.gene.loc')
-    # always overwrites
+      default = '../params/genes_ref.txt')
+    parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
+      default = False, action = 'store_true')
     args=parser.parse_args()
     
     # path normalisation

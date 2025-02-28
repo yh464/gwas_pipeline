@@ -165,7 +165,7 @@ if __name__ == '__main__':
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/') # intentionally absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
       default = '../annot/smr')
-    parser.add_argument('-f','--force',dest = 'force', help = 'force output',
+    parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
