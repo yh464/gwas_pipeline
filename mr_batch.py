@@ -141,11 +141,11 @@ def main(args):
             pval_thr = max([pval1, pval2])
             
             # check rg and h2 information
-            if os.path.isfile(f'{args.rg}/{p1}_{f1}.{p2}_{f2}.rg.log'):
-                rglog = f'{args.rg}/{p1}_{f1}.{p2}_{f2}.rg.log'
-            elif os.path.isfile(f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'):
-                rglog = f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'
+            if p1 < p2 or f1 < f2:
+                rglog = f'{args.rg}/{p1}.{p2}/{p1}_{f1}.{p2}_{f2}.rg.log'
             else:
+                rglog = f'{args.rg}/{p2}.{p1}/{p2}_{f2}.{p1}_{f1}.rg.log'
+            if not os.path.isfile(rglog):
                 print(f'Missing rg information, {p1}_{f1} & {p2}_{f2}')
                 rglog = f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'
             

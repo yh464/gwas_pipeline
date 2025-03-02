@@ -199,7 +199,7 @@ if __name__ == '__main__':
       default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--exclude', help = 'phenotypes to exclude', nargs = '*', default = [])
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory')
-    # always forces output
+    # always overwrites
     args = parser.parse_args()
     
     import os

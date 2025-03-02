@@ -1,10 +1,15 @@
 #### Information ####
 # Constructs brain plots for local phenotypes
-# including PRS correlations, H2, RG and sig for particular clump
+# accepts LONG format tables in the following format
+# col1: phenotype
+# col2: region
+# col3: (not used)
+# col4: correlate phenotype
+# col5: signed statistics (rg, beta, etc.)
+# contains a 'p' column for significance
 # Author: Yuankai He (yh464@cam.ac.uk)
-# Date:   2024-10-29
+# Date:   2025-03-02
 
-#### Main ####
 require(tidyverse)
 require(ggsegExtra)
 require(ggsegGlasser)
@@ -13,41 +18,80 @@ setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
 
 ref <- glasser$data
 
+theme_set(theme_void())
+
 for (f in list.files()){
   out = paste0(f%>%gsub('.txt','',.)%>%gsub('.csv','',.),'.pdf')
-  if (file.exists(out)) next
   if (endsWith(f, '.pdf') | endsWith(f, '.png')) next
   if (grepl('yeo',f) | grepl('mes',f)) next
-  if (! endsWith(f, '.csv')) sep <- '' else sep <- ','
+  if (! endsWith(f, '.csv')) sep <- '\t' else sep <- ','
   print(f)
-  df <- read.csv(f, sep = sep)
-  if (is.null(df$label)) df$label = rownames(df)
-  df$label <- gsub('_0.01','',df$label, ignore.case = T)
-  df$label <- gsub('_ROI','',df$label, ignore.case = T)
-  df$label <- gsub('^L','lh_L',df$label, ignore.case = T)
-  df$label <- gsub('^R','rh_R',df$label, ignore.case = T)
-  m <- merge(df, ref, by = 'label', all.y = T, all.x = F)
+  df <- read.delim(f, sep = sep)
   
-  # for some plots, we can zero the NaN bits
-  if (nrow(df) < 376) m[is.na(m)] <- 0
+  # normalise columns names
+  col = colnames(df)
+  col[1] = 'phenotype'
+  df[,1] = df[,1] %>% gsub('_','\n',.) %>% tolower()
+  roi = df[,2]
+  roi = gsub('_0.01','',roi, ignore.case = T)
+  bilateral = sum(startsWith(roi,'L_'),startsWith(roi,'lh_L_'),
+                  startsWith(roi,'R_'),startsWith(roi,'rh_R_'))
+  bilateral = (bilateral > 0)
+  if (bilateral) {
+    col[2] = 'label'
+    roi = gsub('_ROI','',roi, ignore.case = T)
+    roi = gsub('^L','lh_L',roi, ignore.case = T)
+    roi = gsub('^R','rh_R',roi, ignore.case = T)
+    
+    # plot parameters for bilateral plots
+    pos = position_brain(hemi + side ~ .)
+    height = 3
+  } else {
+    col[2] = 'region'
+    
+    # plot parameters for symmetric/unilateral plots
+    pos = position_brain(side ~ .)
+    height = 1.5
+  }
+  df[,2] = roi
+  colnames(df) = col
+  if (! 'q' %in% col & 'p' %in% col) {
+    df = df %>% group_by(phenotype) %>% mutate(q = p.adjust(p, 'BH'))
+  }
+  if ('q' %in% colnames(df)){
+    df = rbind(df %>% filter(q < 0.05) %>% mutate(significance = 'FDR-sig.'),
+               df %>% filter(q > 0.05) %>% mutate(significance = 'NS/nominal'))
+  } else {
+    df = df %>% mutate(significance = 'NA')
+    warning('No p-value available')
+  }
   
-  m <- m %>% select(-tail(names(.),2)) %>% pivot_longer(cols = -c('label','hemi','region'))
-  plt <- m %>% group_by(name) %>%
+  m <- merge(df, ref)
+  
+  plt <- m %>% group_by(phenotype) %>%
     ggplot() + geom_brain(
       atlas = glasser,
-      aes(fill = value),
-      position = position_brain(hemi + side ~ .)) +
+      aes(fill = .data[[colnames(df)[5]]], 
+          colour = significance),
+      position = pos) +
     scale_fill_gradient2(low='blue', mid = 'white', high='red',
                          midpoint = 0) +
-    facet_wrap(~name, nrow = 1) + 
-    theme(axis.ticks = element_blank(),
-          axis.text = element_blank())
+    scale_colour_manual(values = c(
+      'NS/nominal' = '#AFAFAF6F',
+      'FDR-sig.' = 'black',
+      'NA' = '#AFAFAF'
+    ), guide = 'none') +
+    facet_wrap(~phenotype, nrow = 1) + 
+    theme(
+      strip.text = element_text(size = 12),
+      axis.ticks = element_blank(),
+      axis.text = element_blank())
   options()
   ggsave(
     out,
     plot = plt,
     device = 'pdf',
-    width = m$name %>% unique() %>% length(), height = 3
+    width = m$phenotype %>% unique() %>% length(), height = height
   )
   print(plt)
 }

@@ -294,6 +294,7 @@ main = function(args){
     }
     
     #### Plots for TwoSampleMR ####
+    theme_set(theme_classic())
     # scatter plot
     scatter = mr_scatter_plot(res,harm)
     ggsave(paste0(prefix,'_scatterplot.pdf'))

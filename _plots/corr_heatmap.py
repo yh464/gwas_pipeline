@@ -7,7 +7,7 @@ Version 1: 2025-01-07
 A generalised plotting tool to plot scatterplot-style heatmaps for correlations
 '''
 
-def corr_heatmap(summary, absmax = None):
+def corr_heatmap(summary, absmax = None, autocor = False, annot = ''):
     '''
     Required input format: long format pd.DataFrame
         1st column: group label (x axis, as xlabel)
@@ -37,21 +37,25 @@ def corr_heatmap(summary, absmax = None):
     
     # normalise labels
     for col in range(4):
-        summary.iloc[:,col] = summary.iloc[:,col].str.replace('_',' ').str.capitalize()
+        tmp = summary.iloc[:,col].str.replace('_',' ')
+        tmp.loc[~tmp.str.isupper()] = tmp.loc[~tmp.str.isupper()].str.capitalize()
+        summary.iloc[:,col] = tmp
     
     # determine figure size and aspect ratios
-    group1 = summary.iloc[:, 0].unique() # sorted
-    group2 = summary.iloc[:, 2].unique() # sorted
+    group1 = summary.iloc[:, 0].unique(); group1.sort()
+    group2 = summary.iloc[:, 2].unique(); group2.sort()
+    if all(group1 == group2): autocor = True # diagonal lines to be plotted if auto-correlating
     
     count1 = [summary.loc[summary.iloc[:,0] == x, summary.columns[1]].unique().size for x in group1]
     count2 = [summary.loc[summary.iloc[:,2] == x, summary.columns[3]].unique().size for x in group2]
     
     fig, ax = plt.subplots(len(group1), len(group2),
                            figsize = (sum(count2)/3, sum(count1)/3),
-                           width_ratios = count2, height_ratios = count1)
+                           width_ratios = count2, height_ratios = count1[::-1])
     
     if len(group1) == 1 and len(group2) == 1: ax = np.array([ax])
     ax = ax.reshape((len(group1), len(group2)))
+    ax = ax[::-1,:] # invert y axis
     
     # estimate significance:
     if 'fdr' in summary.columns: summary['q'] = summary['fdr']
@@ -107,7 +111,7 @@ def corr_heatmap(summary, absmax = None):
                     )
             
             # remove x labels except for last row
-            if i != len(group1) - 1:
+            if i > 0:
                 ax[i,j].set_xlabel('')
                 ax[i,j].set_xticklabels([''] * len(ax[i,j].get_xticklabels()))
             else:
@@ -129,6 +133,11 @@ def corr_heatmap(summary, absmax = None):
             # despine
             for _, spine in ax[i,j].spines.items():
                 spine.set_visible(False)
+            
+            # diagonal line
+            if i == j and autocor: ax[i,j].axline((0,0), slope = 1, c = 'k', zorder = 0)
+    
+    if autocor: ax[0,0].annotate(annot,(0,0),xytext=(-4,-3.5), rotation = 45)
     
     # colour bar
     norm = mpl.colors.Normalize(vmin = -absmax, vmax = absmax)
@@ -138,12 +147,6 @@ def corr_heatmap(summary, absmax = None):
     
     # move legend location
     if legend_param:
-        # leg = ax[len(group1)-1, 0].get_legend()
-        # handles = leg.legend_handles
-        # remove colour bar related items
-        # handles = [handles[i] for i in [-3, -1, -2]]
-        # ax[len(group1)-1,0].legend().remove()
-        
         handles = [
             mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = 25**0.5, # Seaborn point size correspond to the square of diameter 
                 markeredgecolor = '.7', markerfacecolor = '.7', label = 'not significant'),
@@ -155,6 +158,4 @@ def corr_heatmap(summary, absmax = None):
         fig.legend(handles=handles, title = 'Significance',
                    frameon = False, loc = 'upper left', bbox_to_anchor=(0.91, 0.4))
         
-    # ax[len(group1)-1, 0].legend(bbox_to_anchor=(0.2, 1.05))
-    
     return fig

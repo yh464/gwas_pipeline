@@ -21,10 +21,16 @@ def plot_magma(magma, ref):
     df = pd.merge(magma[['GENE','P']], ref, how = 'left').sort_values(by = ['CHR','POS'])
     df.loc[df['LABEL'].isna(), 'LABEL'] = df.loc[df.LABEL.isna(), 'GENE']
     df.loc[df['POS'].isna(),'POS'] = ((magma.loc[df['POS'].isna(), 'START'] + magma.loc[df['POS'].isna(), 'STOP'])/2).astype(int)
-    df.loc['FDR',:] = fdr(df.P)
-    sig = df.loc[df.FDR < 0.05,'P'].min()
+    df['FDR'] = fdr(df.P)
+    if any(df['FDR'] < 0.05):
+        sig = df.loc[df.FDR < 0.05,'P'].max()
+    else: sig = 0
+    sig = max([sig, 0.05/df.shape[0]])
     pmin = magma.P.min()
+    df.dropna(inplace = True, subset = ['CHR','POS'])
+    df['CHR'] = df['CHR'].astype(int)
     fig,ax = plt.subplots(figsize = (12,4))
+    xtick = set(list(range(1, 10)) + [11,13,15,18,21])
     manhattanplot(data = df,
                   chrom = 'CHR',
                   pos = 'POS',
@@ -39,6 +45,7 @@ def plot_magma(magma, ref):
                   logp = True,
                   ld_block_size = 1000000,
                   text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
+                  xtick_label_set=xtick,
                   ax = ax)
     return fig
     
@@ -49,10 +56,14 @@ def plot_smr(smr):
     smr.loc[smr['Gene'].isna(),'Gene'] = smr.loc[smr['Gene'].isna(),'probeID']
     sig = 0.05/smr.shape[0]
     pmin = smr.p_SMR.min()
-    smr.loc['FDR',:] = fdr(smr.p_SMR)
-    sig = smr.loc[smr.FDR < 0.05,'p_SMR'].min()
-    
+    smr['FDR'] = fdr(smr.p_SMR)
+    if any(smr.FDR < 0.05): sig = smr.loc[smr.FDR < 0.05,'p_SMR'].max()
+    else: sig = 0
+    sig = max([sig, 0.05/smr.shape[0]])
+    smr.dropna(inplace = True, subset = ['ProbeChr','Probe_bp'])
+    smr['ProbeChr'] = smr['ProbeChr'].astype(int)
     fig,ax = plt.subplots(figsize = (12,4))
+    xtick = set(list(range(1, 10)) + [11,13,15,18,21])
     manhattanplot(data = smr,
                   chrom = 'ProbeChr',
                   pos = 'Probe_bp',
@@ -67,6 +78,7 @@ def plot_smr(smr):
                   logp = True,
                   ld_block_size = 1000000,
                   text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
+                  xtick_label_set=xtick,
                   ax = ax)
     return fig
 

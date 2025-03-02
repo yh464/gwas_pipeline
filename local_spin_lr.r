@@ -18,7 +18,7 @@ if (endsWith(args$input,'csv')) {sep <- ','} else {sep <- '\t'}
 f <- args$force
 tic <- proc.time()
 
-tmpdir <- '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
+tmpdir <- '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
 if (! dir.exists(tmpdir)) dir.create(tmpdir)
 
 #### Mapping from HCP to broader cortical types ####
@@ -28,14 +28,9 @@ hcp2mesulam <- read.csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh
 colnames(hcp2mesulam) <- c("annot1","annot2","Gof","Parcellation","Class")
 hcp2mesulam <-hcp2mesulam[!(hcp2mesulam$Parcellation=="no matching lookup"),]
 
-
 hcp2yeo <- read.csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
 colnames(hcp2yeo) <- c("annot1","annot2","Gof","Parcellation","Class")
 hcp2yeo <-hcp2yeo[!(hcp2yeo$Parcellation=="no matching lookup"),]
-
-hcp2eco <- read.csv("https://github.com/ucam-department-of-psychiatry/maps_and_parcs/raw/refs/heads/master/Map2map_Revised/Transform_HCP+subcort_TO_economo.csv", header=T)
-colnames(hcp2eco) <- c("annot1","annot2","Gof","Parcellation","Class")
-hcp2eco <-hcp2eco[!(hcp2eco$Parcellation=="no matching lookup"),]
 
 # create a mapping per class
 hcp2yeo$Parcellation <- gsub("_ROI","",hcp2yeo$Parcellation)
@@ -48,20 +43,14 @@ hcp2mesulam$Parcellation <- gsub("L_","lh_L_",hcp2mesulam$Parcellation)
 hcp2mesulam$Parcellation <- gsub("R_","rh_R_",hcp2mesulam$Parcellation)
 hcp2mesulam$label <- hcp2mesulam$Parcellation
 
-hcp2eco$Parcellation <- gsub("_ROI","",hcp2eco$Parcellation)
-hcp2eco$Parcellation <- gsub("L_","lh_L_",hcp2eco$Parcellation)
-hcp2eco$Parcellation <- gsub("R_","rh_R_",hcp2eco$Parcellation)
-hcp2eco$label <- hcp2eco$Parcellation
-
 # load all things for running permutation
-require(matrixStats)
-coord <- read.table("https://raw.githubusercontent.com/rb643/rotate_parcellation/master/sphere_HCP.txt", header=F)
-source('https://raw.githubusercontent.com/rb643/rotate_parcellation/master/R/rotate.parcellation.R')
-
-permfile <- '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/spin_perms.rdata'
+permfile <- '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/spin_perms.rdata'
 if (file.exists(permfile)){
   load(permfile)
 } else {
+  require(matrixStats)
+  coord <- read.table("https://raw.githubusercontent.com/rb643/rotate_parcellation/master/sphere_HCP.txt", header=F)
+  source('https://raw.githubusercontent.com/rb643/rotate_parcellation/master/R/rotate.parcellation.R')
   perms <- rotate.parcellation(coord.l = as.matrix(coord[1:180,]), coord.r = as.matrix(coord[181:360,]), nrot = 10000)
   save(perms, file = permfile)
 }
@@ -71,7 +60,7 @@ print(paste0('working on ',prefix))
 if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
   load(paste0(prefix,'.spinlr.stats.rdata'))
 } else {
-  data <- read.csv(args$input, sep = sep)
+  data <- read.delim(args$input, sep = sep)
   colnames(data)[1] <- 'label'
   data$label <- gsub('_ROI_0.01','',data$label)
   data$label <- gsub('_ROI','',data$label)
@@ -80,11 +69,9 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
   
   enrich.mes <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
   enrich.yeo <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
-  enrich.eco <- data.frame(Var2=factor(),Var1=factor(),value=numeric(),realT=numeric(),feature=factor())
   
   stats.mes <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
   stats.yeo <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
-  stats.eco <- data.frame(Class=factor(),meanV=numeric(),sdV=numeric(),x=numeric(),p1tail=numeric(),p2tail=numeric(),feature=factor(), fdr = numeric())
   
   for (feature in 2:length(unique(colnames(data)))){
     print(paste0('Working on: ',colnames(data)[feature]))
@@ -96,8 +83,7 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
     
     refs <- list(hcp2mesulam,hcp2yeo)
     refname <- c('mesulam','yeo')
-    # refs <- list(hcp2mesulam, hcp2yeo, hcp2eco))
-    # refname <- c('mesulam','yeo','economo')
+
     for (j in 1:length(refname)){
       ref <- refs[[j]]
       cache_fname <- paste0(tmpdir,'_',basename(prefix),'_',colnames(data)[feature],
@@ -118,9 +104,7 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
       z$x <- null$Real # real value
       null$Real <- NULL
       
-      if (file.exists(cache_fname) 
-          # && !f
-          ){
+      if (file.exists(cache_fname)){
         load(cache_fname)
       } else {
         for (i in 1:10000){
@@ -183,9 +167,6 @@ if (file.exists(paste0(prefix,'.spinlr.stats.rdata')) && !f){
       if (tmpidx == 2){
         stats.yeo <- bind_rows(stats.yeo,z)
         enrich.yeo <- bind_rows(enrich.yeo,null)}
-      if (tmpidx == 3){
-        stats.eco <- bind_rows(stats.eco,z)
-        enrich.eco <- bind_rows(enrich.eco,null)}
     }
   }
   
@@ -223,25 +204,6 @@ write.table(apply(stats.yeo,2,as.character),file = paste0(prefix,'.spinlr.yeo.tx
             quote = F, sep = '\t')
 
 #### Permutation plots ####
-# Reset labels
-enrich.yeo$Var2 <- enrich.yeo$Var2 %>%
-  gsub('7Networks_1', 'Visual',.) %>%
-  gsub('7Networks_2', 'Somatomotor',.) %>%
-  gsub('7Networks_3', 'D_Attention',.) %>%
-  gsub('7Networks_4', 'V_Attention',.) %>%
-  gsub('7Networks_5', 'Limbic',.) %>%
-  gsub('7Networks_6', 'Frontoparietal',.) %>%
-  gsub('7Networks_7', 'Default',.)
-
-stats.yeo$Class <- stats.yeo$Class %>%
-  gsub('7Networks_1', 'Visual',.) %>%
-  gsub('7Networks_2', 'Somatomotor',.) %>%
-  gsub('7Networks_3', 'D_Attention',.) %>%
-  gsub('7Networks_4', 'V_Attention',.) %>%
-  gsub('7Networks_5', 'Limbic',.) %>%
-  gsub('7Networks_6', 'Frontoparietal',.) %>%
-  gsub('7Networks_7', 'Default',.)
-
 require(ggplot2)
 require(ggridges)
 # custom colormap for mesulam
@@ -290,24 +252,3 @@ yeo <- ggplot(data=enrich.yeo, aes(y=Var2,x=value,fill=Var2)) +
   coord_flip() + facet_wrap(~feature, scales = "free")
 ggsave(paste(prefix,'.spinlr.yeo.pdf',sep=''))
 ggsave(paste(prefix,'.spinlr.yeo.png',sep=''))
-
-# eco <- ggplot(data=enrich.eco, aes(y=Var2,x=value,fill=Var2)) +
-#   geom_density_ridges(alpha = 0.2) +
-#   geom_point(aes(y=Var2,x=realT, fill=Var2),size=5,shape=21) +
-#   scale_fill_manual(values = cmap_eco) +
-#   scale_colour_manual(values = cmap_eco) +
-#   theme_minimal() +
-#   theme(
-#     axis.text.x = element_blank(),
-#     strip.background = element_blank(),
-#     #strip.text.x = element_blank(),
-#     panel.spacing = unit(2, "lines")
-#   ) +
-#   theme(legend.position = "bottom",
-#         legend.title = element_blank(),
-#         title = element_blank()) +
-#   coord_flip() + facet_wrap(~feature, scales = "free")
-# ggsave(paste(prefix,'.spinlr.eco.pdf',sep=''))
-
-# library(tableone)
-# table1::table1(~ z + p + x| feature + Var2, data=stats.mes, transpose = F)

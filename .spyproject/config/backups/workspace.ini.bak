@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['mr_parse.py', '_utils\\array_submitter.py', 'gcorr_pcorr_plot.py', 'heri_compare.py', 'pcorr_crosscorr_plot.py', 'gcorr_crosscorr_local_batch.py', 'gcorr_crosscorr_plot.py', 'gwa_manhattan.py', 'annot_manhattan.py', 'annot_magma_siggenes.py', '_plots\\corr_heatmap.py', '..\\..\\..\\bridge\\dealer\\dealer.py']
+recent_files = ['annot_magma_siggenes.py', '..\\..\\..\\bridge\\dealer\\dealer.py', 'annot_smr_batch.py', 'annot_manhattan.py', 'annot_manhattan_batch.py']
 
 [main]
 version = 0.2.0

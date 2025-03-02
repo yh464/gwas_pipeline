@@ -12,7 +12,8 @@ parser$add_argument('gwa', help = 'GWAS summary stats', nargs = '*')
 parser$add_argument('-s','--snp', dest = 'snp', help = 'index SNP')
 parser$add_argument('-c','--chr', dest = 'chr', type = "numeric", help = 'chromosome') # these take priority over SNP
 parser$add_argument('-p','--pos', dest = 'pos', type = "numeric", help = 'genomic position') # these take priority over SNP
-parser$add_argument('-l', '--ld', help = 'flanking window', type = "numeric", default = 1000000)
+parser$add_argument('-l', '--ld', help = 'flanking window', type = "numeric", default = 250000)
+parser$add_argument('--ref',help = 'LD reference panel', default = '')
 parser$add_argument('-o','--out', dest = 'out', help = 'output file name')
 parser$add_argument('--build', choices = c('hg19','hg38'), default = 'hg19',help = 'Human genome assembly version')
 parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',

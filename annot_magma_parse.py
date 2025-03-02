@@ -137,9 +137,11 @@ def main(args):
       norm.normalise(all_annot).to_csv(f'{args._in}/{x}/all_enrichment_summary.txt', sep = '\t', index = False)
       toc = time.perf_counter()-tic
       print(f'FINISHED {idx}/{len(args.pheno)}. Time = {toc:.3f} seconds')
-     
-    fig = corr_heatmap(norm.normalise(pd.concat(overall_fig)))
+      
+    overall_fig = norm.normalise(pd.concat(overall_fig))
+    fig = corr_heatmap(overall_fig)
     fig.savefig(f'{args._in}/ENSG_enrichment_'+'_'.join(args.pheno)+'.pdf', bbox_inches = 'tight')
+    overall_fig.to_csv(f'{args._in}/ENSG_enrichment_'+'_'.join(args.pheno)+'.txt', sep = '\t', index = False)
       
 if __name__ == '__main__':
     import argparse
