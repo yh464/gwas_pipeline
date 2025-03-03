@@ -16,7 +16,7 @@ def main(args):
     submitter = array_submitter.array_submitter(
         name = 'local_spin', n_cpu = 1,
         timeout = 30, env = 'rwd',
-        debug = False
+        debug = True
         )
     
     force = '-f' if args.force else ''
