@@ -136,9 +136,10 @@ for (map in names(maps)){
   #### plot results ####
   all_null = bind_rows(all_null, .id = 'phenotype')
   all_stats = bind_rows(all_stats, .id = 'phenotype')
-  width = all_stats$label %>% unique() %>% length() * 0.5
-  # save(all_null, all_stats, file = paste0(prefix,'.spin.',map,'.rdata'))
+  all_null$phenotype = all_null$phenotype %>% gsub('_','\n',.) %>% tolower()
+  width = all_stats$label %>% unique() %>% length() * 0.4
   write_delim(all_stats, paste0(prefix,'.spin.',map,'.txt'), delim ='\t')
+  all_stats$phenotype = all_stats$phenotype %>% gsub('_','\n',.) %>% tolower()
   if (bilateral) {
     all_null$hemi = 'left'
     all_null[startsWith(all_null$label,'R_'),'hemi'] = 'right'
@@ -148,11 +149,11 @@ for (map in names(maps)){
     all_stats[startsWith(all_stats$label,'R_'),'hemi'] = 'right'
     all_stats$label = all_stats$label %>% gsub('L_','',.) %>% gsub('R_','',.)
     
-    fw = facet_wrap(phenotype ~ hemi, scales = 'free', ncol = 2)
+    fw = facet_grid(rows = vars(phenotype), cols = vars(hemi), scales = 'free')
   } else {
     all_null$label = as.factor(all_null$label)
     all_stats$label = as.factor(all_stats$label)
-    fw = facet_wrap(. ~ phenotype, scales = 'free', ncol = 1)
+    fw = facet_wrap(~phenotype, scales = 'free', ncol = 1)
     width = 2
   }
   
@@ -162,9 +163,9 @@ for (map in names(maps)){
     scale_fill_manual(values = palettes[[map]]) +
     scale_colour_manual(values = palettes[[map]]) +
     theme(axis.text.x = element_blank(), strip.background = element_blank(),
-          strip.text = element_text(size = 12), panel.spacing = unit(1,'lines'),
-          legend.position = "bottom", legend.title = element_blank(),
-          title = element_blank()
+          strip.text = element_text(size = 12),
+          anel.spacing = unit(1,'lines'),title = element_blank(), 
+          legend.position = "bottom", legend.title = element_blank()
     ) + coord_flip() + fw
   
   height = all_stats$phenotype %>% unique() %>% length() * 2.5
