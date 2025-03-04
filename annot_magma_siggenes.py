@@ -17,7 +17,6 @@ Changelog:
 '''
 
 def main(args):
-       
     import os
     from fnmatch import fnmatch
     import pandas as pd
@@ -26,8 +25,7 @@ def main(args):
     norm = normaliser()
     
     # reference gene labelling
-    ref = pd.read_csv(args.ref, sep = '\t', header = None)
-    ref.columns = ['GENE','CHR','START','STOP','STRAND','LABEL']
+    ref = pd.read_table(args.ref)
     ref_lbl = ref[['GENE','LABEL']]
     
     # annotation method
@@ -56,7 +54,7 @@ def main(args):
               fdr = sts.false_discovery_control(tmp)
               df['Pfdr']= fdr
               df.insert(0, 'annot', value = annot)
-              df.insert(0, 'pheno', value = prefix)
+              df.insert(0, 'pheno', value = prefix)        
               dflist.append(df)
           
           summary = pd.concat(dflist).sort_values(by = 'Pfdr')

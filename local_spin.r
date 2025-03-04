@@ -163,7 +163,7 @@ for (map in names(maps)){
     scale_fill_manual(values = palettes[[map]]) +
     scale_colour_manual(values = palettes[[map]]) +
     theme(axis.text.x = element_blank(), strip.background = element_blank(),
-          strip.text = element_text(size = 12),
+          strip.text = element_text(size=15), legend.text = element_text(size=15),
           anel.spacing = unit(1,'lines'),title = element_blank(), 
           legend.position = "bottom", legend.title = element_blank()
     ) + coord_flip() + fw

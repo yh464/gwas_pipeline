@@ -18,9 +18,9 @@ def plot_magma(magma, ref):
     import matplotlib.pyplot as plt
     from qmplot import manhattanplot
     from scipy.stats import false_discovery_control as fdr
-    df = pd.merge(magma[['GENE','P']], ref, how = 'left').sort_values(by = ['CHR','POS'])
-    df.loc[df['LABEL'].isna(), 'LABEL'] = df.loc[df.LABEL.isna(), 'GENE']
-    df.loc[df['POS'].isna(),'POS'] = ((magma.loc[df['POS'].isna(), 'START'] + magma.loc[df['POS'].isna(), 'STOP'])/2).astype(int)
+    df = pd.merge(magma[['GENE','P','START','STOP']], ref, how = 'inner').sort_values(by = ['CHR','POS'])
+    # df.loc[df['LABEL'].isna(), 'LABEL'] = df.loc[df.LABEL.isna(), 'GENE']
+    df.loc[df['POS'].isna(),'POS'] = ((df.loc[df['POS'].isna(), 'START'] + df.loc[df['POS'].isna(), 'STOP'])/2).astype(int)
     df['FDR'] = fdr(df.P)
     if any(df['FDR'] < 0.05):
         sig = df.loc[df.FDR < 0.05,'P'].max()
@@ -29,8 +29,7 @@ def plot_magma(magma, ref):
     pmin = magma.P.min()
     df.dropna(inplace = True, subset = ['CHR','POS'])
     df['CHR'] = df['CHR'].astype(int)
-    fig,ax = plt.subplots(figsize = (12,4))
-    xtick = set(list(range(1, 10)) + [11,13,15,18,21])
+    fig,ax = plt.subplots(figsize = (6,2))
     manhattanplot(data = df,
                   chrom = 'CHR',
                   pos = 'POS',
@@ -45,15 +44,16 @@ def plot_magma(magma, ref):
                   logp = True,
                   ld_block_size = 1000000,
                   text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
-                  xtick_label_set=xtick,
                   ax = ax)
+    xtick = list(range(9)) + [10,12,14,17,20]
+    ax.set_xticks(ax.get_xticks()[xtick], [x+1 for x in xtick])
     return fig
     
 def plot_smr(smr):
     import matplotlib.pyplot as plt
     from qmplot import manhattanplot
     from scipy.stats import false_discovery_control as fdr
-    smr.loc[smr['Gene'].isna(),'Gene'] = smr.loc[smr['Gene'].isna(),'probeID']
+    smr['Gene'] = smr['Gene'].fillna(smr['probeID'])
     sig = 0.05/smr.shape[0]
     pmin = smr.p_SMR.min()
     smr['FDR'] = fdr(smr.p_SMR)
@@ -62,8 +62,8 @@ def plot_smr(smr):
     sig = max([sig, 0.05/smr.shape[0]])
     smr.dropna(inplace = True, subset = ['ProbeChr','Probe_bp'])
     smr['ProbeChr'] = smr['ProbeChr'].astype(int)
-    fig,ax = plt.subplots(figsize = (12,4))
-    xtick = set(list(range(1, 10)) + [11,13,15,18,21])
+    smr = smr.sort_values(by = ['ProbeChr','Probe_bp'])
+    fig,ax = plt.subplots(figsize = (6,2))
     manhattanplot(data = smr,
                   chrom = 'ProbeChr',
                   pos = 'Probe_bp',
@@ -78,8 +78,9 @@ def plot_smr(smr):
                   logp = True,
                   ld_block_size = 1000000,
                   text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
-                  xtick_label_set=xtick,
                   ax = ax)
+    xtick = list(range(9)) + [10,12,14,17,20]
+    ax.set_xticks(ax.get_xticks()[xtick], [x+1 for x in xtick])
     return fig
 
 def main(args):
@@ -100,7 +101,6 @@ def main(args):
             '.annot','').replace('.out','')
         if os.path.isfile(f'{outdir}/{args.prefix}.{gset}.manhattan.pdf') and not args.force:
             continue
-        
         df = pd.read_table(f'{magma_dir}/{x}', sep = '\\s+')
         fig = plot_magma(df, ref)
         fig.savefig(f'{outdir}/{args.prefix}.{gset}.manhattan.pdf', bbox_inches = 'tight')

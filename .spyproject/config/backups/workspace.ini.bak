@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['annot_magma_siggenes.py', '..\\..\\..\\bridge\\dealer\\dealer.py', 'annot_smr_batch.py', 'annot_manhattan.py', 'annot_manhattan_batch.py']
+recent_files = ['..\\..\\..\\bridge\\dealer\\dealer.py', '..\\rpt\\manual\\manual_plots.py', 'ukb_extract.py']
 
 [main]
 version = 0.2.0
