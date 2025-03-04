@@ -48,8 +48,13 @@ main = function(args) {
       
       tmp = read.table(args$gwa[f], header=T) %>% as_tibble() %>% column_to_rownames('SNP')
       
-      if (is.null(args$chr) | is.null(args$pos)) {chrom = tmp[args$snp,'CHR']; pos = tmp[args$snp,'POS']
-      } else {chrom = args$chr; pos = args$pos}
+      if (is.null(args$chr) | is.null(args$pos)) {
+        chrom = tmp[args$snp,'CHR']; pos = tmp[args$snp,'POS']
+        snp = args$snp
+      } else {
+        chrom = args$chr; pos = args$pos; 
+        snp = tmp %>% filter(CHR == chrom) %>% filter(POS==pos) %>% pull(SNP)
+      }
       
       tmp = tmp %>% filter(CHR == chrom)
       tmp = tmp[between(tmp$POS, pos-args$ld, pos+args$ld),]
@@ -60,7 +65,7 @@ main = function(args) {
     }
     write.table(all_sumstats, gsub('pdf','txt',args$out), sep = '\t', row.names = F)
   } else {
-    all_sumstats = read.table(gsub('pdf','txt',args$out), header=T) %>% as_tibble()
+    all_sumstats = read.delim(gsub('pdf','txt',args$out)) %>% as_tibble()
     if (is.null(args$chr) | is.null(args$pos)) {
       prefix = all_sumstats[1,'Phenotype']
       tmp = all_sumstats %>% filter(Phenotype == prefix) %>% filter(SNP == args$snp)
@@ -83,8 +88,9 @@ main = function(args) {
                  ' --ld-window-kb ',args$ld/1000, ' --ld-snp ', snp,
                  ' --out ', gsub('.pdf','',args$out)))
     print(paste0(args$plink,' --r2-phased --bfile ', args$bed, '/chr', chrom,
-                 ' --ld-window-kb ',args$ld/1000, ' --ld-snp ', snp,
-                 ' --ld-window-r2 0 --out ', gsub('.pdf','',args$out)))
+                 ' --ld-window-kb ',args$ld/1000, 
+                 ' --ld-window-r2 0 --ld-snp ', snp,
+                 ' --out ', gsub('.pdf','',args$out)))
   }
   r2 = read.delim(vcor) %>% as_tibble() %>% select(ID_B,PHASED_R2) %>%
     bind_rows(list(ID_B = snp, PHASED_R2 = 1)%>% as.data.frame())
