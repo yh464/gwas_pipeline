@@ -100,11 +100,11 @@ def main(args):
     
     if line[qc_col_ids[3]] == 'NA': continue
     pc1 = float(line[qc_col_ids[3]])
-    if pc1 < -272.541 or pc1 > 270.278: pc += 1; continue # first genetic PC, 5SD is manually calculated
+    if pc1 < -39.574 or pc1 > 16.714: pc += 1; continue # first genetic PC, 5SD is manually calculated
     
     if line[qc_col_ids[4]] == 'NA': continue
     pc2 = float(line[qc_col_ids[4]])
-    if pc2 < -138.931 or pc2 > 139.650: pc += 1; continue # second genetic PC, 5SD manually calculated
+    if pc2 < -17.145 or pc2 > 23.645: pc += 1; continue # second genetic PC, 5SD manually calculated
     if not line[qc_col_ids[1]] in ['1','1001','1002','1003','1004']: eth += 1; continue # European ancestry
     # if QC is passed, then write out to output file
     line_out = [line[i] for i in valid_col_ids]
