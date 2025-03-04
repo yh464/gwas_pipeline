@@ -14,10 +14,6 @@ parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
   default = '../gwa/manhattan/')
 parser.add_argument('-f','--force',dest = 'force', help = 'force output',
   default = False, action = 'store_true')
-# parser.add_argument('-p','--plot-only', dest = 'p', help = 'skip concatenation, only plot graphs',
-#   default = False, action = 'store_true')
-# parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
-#   default = False, action = 'store_true')
 args = parser.parse_args()
 
 import os
@@ -37,17 +33,8 @@ print(f'Loaded modules. Time = {toc:.3f} seconds')
 
 os.chdir(f'{args._in}/{args.pheno}')
 x = args.file
-out_fname = f'{args.out}/{args.pheno}/{x}'.replace('.fastGWA','.manhattan.png')
-_,ax = plt.subplots(figsize = (36,12), constrained_layout = True)
-
-# if ((not os.path.isfile(x.replace('.fastGWA','_all_chrs.fastGWA'))) or args.force) \
-#   and (not args.a):
-#   df_a = pd.read_csv(x,sep = '\t')
-#   df_x = pd.read_csv(x.replace('.fastGWA','_X.fastGWA'), sep = '\t')
-#   df = pd.concat([df_a, df_x], axis = 0).sort_values(by = ['CHR','POS'])
-#   df.to_csv(x.replace('.fastGWA','_all_chrs.fastGWA'), sep = '\t', index = False)
-# toc = time.perf_counter() - tic
-# print(f'GWA files concatenated, time = {toc:.3f} seconds')
+out_fname = f'{args.out}/{args.pheno}/{x}'.replace('.fastGWA','.manhattan.pdf')
+_,ax = plt.subplots(figsize = (6,2), constrained_layout = True)
 
 if (not os.path.isfile(out_fname)) or args.force or args.p:
   if args.a:
@@ -68,15 +55,15 @@ if (not os.path.isfile(out_fname)) or args.force or args.p:
                 ld_block_size = 1000000,
                 text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
                 ax = ax)
-  # fig = plt.gcf()
-  # fig.set_size_inches(12,4)
-  # plt.title(x.replace('.fastGWA','').replace('_0.01',''),fontsize = 14)
-  plt.savefig(out_fname, dpi = 400)
+  xtick = list(range(9)) + [10,12,14,17,20]
+  ax.set_xticks(ax.get_xticks()[xtick], [x+1 for x in xtick])
+  plt.savefig(out_fname, bbox_inches = 'tight')
+  plt.savefig(out_fname.replace('.pdf','.png'), dpi = 400)
   plt.close()
   qqplot(data = df['P'], title = x.replace('.fastGWA',''),
          marker= '.', xlabel=r"Expected $-log_{10}{(P)}$",
            ylabel=r"Observed $-log_{10}{(P)}$")
-  plt.savefig(out_fname.replace('manhattan.png','qqplot.png'), dpi = 400)
+  plt.savefig(out_fname.replace('manhattan','qqplot'), bbox_inches = 'tight')
   plt.close()
   toc = time.perf_counter()-tic
   print(f'Fig plotted, time = {toc:.3f} seconds.')
