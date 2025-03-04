@@ -4,21 +4,25 @@
 def main(args):
   from time import perf_counter as t
   from fnmatch import fnmatch
+  import os
   tic = t()
   idx = 0
-  subj = open(args.subj,'r').read().splitlines()
-  if args.pheno == ['null']: pheno = [] # just quality control
-  elif os.path.isfile(args.pheno): pheno = open(args.pheno,'r').read().splitlines()
+  if args.subj != 'all': 
+      subj = open(args.subj,'r').read().splitlines()
+      for i in range(len(subj)):
+          if subj[i][:3] == 'UKB': subj[i] = subj[i][3:]
+  else: subj = 'all'
+  if len(args.pheno) > 0 and os.path.isfile(args.pheno[0]): pheno = open(args.pheno[0],'r').read().splitlines()
   else: pheno = args.pheno
   fout = open(args.out+'.txt','w')
   flog = open(args.out+'.log','w')
   fin = open(args._in,'r')
   
-  print(f'requesting data for {len(subj)} subjects and {len(pheno)} phenotypes=\n', file = flog)
-  
-  # process subjects list
-  for i in range(len(subj)):
-      if subj[i][:3] == 'UKB': subj[i] = subj[i][3:]
+  n = len(subj) if subj != 'all' else 'all'
+  print(f'requesting data for {n} subjects and {len(pheno)} phenotypes\n')
+  print(f'phenotypes to be extracted: {pheno}')
+  print(f'requesting data for {n} subjects and {len(pheno)} phenotypes\n', file = flog)
+  print(f'phenotypes to be extracted: {pheno}', file = flog)
   
   # input data is in format something\tsomething\tsomething
   hdr = fin.readline().replace('\n','').split('\t')
@@ -54,7 +58,7 @@ def main(args):
     if not (j in valid_col_match):
       error_list.append(j)
   if len(error_list) > 0:
-    print('following phenotypes are not found in this UKB fetch:', file = flog)
+    print('following phenotypes are not found in this UKB fetch:')
     for j in error_list:
       print(pheno[j], file = flog)
     print('\n', file = flog)
@@ -69,7 +73,6 @@ def main(args):
   print(f'header contains {n_cols} columns')
   print(f'header contains {n_cols} columns', file = flog)
   
-  # counts for filtered out subjects
   sex = 0
   eth = 0
   pc = 0
@@ -90,8 +93,8 @@ def main(args):
         print(f'{line[0]}: length does not match header, {len(line)} columns')
         print(f'{line[0]}: length does not match header, {len(line)} columns', file = flog)
         continue
-    if not line[0] in subj: continue # skip unwanted subjects
-    subj.remove(line[0])
+    if subj != 'all' and not line[0] in subj: continue # skip unwanted subjects
+    if subj != 'all': subj.remove(line[0])
     
     # first QC subjects
     if not line[qc_col_ids[0]] == line[qc_col_ids[2]]: sex += 1; continue # genetic sex ~ self-reported
@@ -109,7 +112,7 @@ def main(args):
     line_out = [line[i] for i in valid_col_ids]
     print('\t'.join(line_out), file = fout)
   
-  if len(subj) > 0:
+  if subj != 'all' and len(subj) > 0:
     print('following subjects are not found in this UKB fetch:', file = flog)
     for j in subj:
       print(j, file = flog)
@@ -126,17 +129,18 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(
     description = 'this script extracts selected subjects and columns from ukb')
   parser.add_argument('-s','--subj', dest = 'subj', help = 'subjects list',
-    default = '../params/subjlist_phenotyped.txt')
-  parser.add_argument('-p','--pheno', dest = 'pheno', help = 'phenotypes list', nargs = '*',
-    default = ['../params/ukb_pheno.txt'])
+    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/subjlist_full.txt')
+  parser.add_argument('-p','--pheno', dest = 'pheno', nargs = '*', help = 'phenotypes list',
+    default = [])
   parser.add_argument('-i','--in', dest = '_in', help = 'input ukb fetch file, TAB format, NOT csv',
-    default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Phenotype/DataFetch_20022024/ukb677594.tab')
+    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Phenotype/DataFetch_20022024/ukb677594.tab')
   parser.add_argument('-o','--out', dest = 'out', help = 'output prefix', required = True)
   args = parser.parse_args()
   import os
-  for arg in ['_in','out','subj']:
+  for arg in ['_in','out']:
       exec(f'args.{arg} = os.path.realpath(args.{arg})')
-  if os.path.isfile(args.pheno[0]): args.pheno = os.path.realpath(args.pheno[0])
+  if args.subj != 'all': args.subj = os.path.realpath(args.subj)
+  if len(args.pheno) > 0 and os.path.isfile(args.pheno[0]): args.pheno = os.path.realpath(args.pheno[0])
     
   from _utils import cmdhistory, path
   cmdhistory.log()
