@@ -293,26 +293,6 @@ main = function(args){
       ))
     }
     
-    #### Plots for TwoSampleMR ####
-    theme_set(theme_classic())
-    # scatter plot
-    scatter = mr_scatter_plot(res,harm)
-    ggsave(paste0(prefix,'_scatterplot.pdf'))
-    ggsave(paste0(prefix,'_scatterplot.png'))
-    remove(scatter)
-    
-    # forest plot
-    forest = mr_forest_plot(single)
-    ggsave(paste0(prefix,'_forest.pdf'))
-    ggsave(paste0(prefix,'_forest.png'))
-    remove(forest)
-    
-    # leave-one-out plot
-    loo_plot = mr_leaveoneout_plot(loo)
-    ggsave(paste0(prefix,'_looplot.pdf'))
-    ggsave(paste0(prefix,'_looplot.png'))
-    remove(loo_plot)
-    
     #### MRlap correction ####
     source('https://github.com/n-mounier/MRlap/raw/refs/heads/master/R/get_correction.R')
     tryCatch({
@@ -366,6 +346,24 @@ main = function(args){
       cat('MR-APSS correction failed, check for missing data\n')
       }
     )
+    
+    #### Plots for TwoSampleMR ####
+    theme_set(theme_classic())
+    # scatter plot
+    scatter = mr_scatter_plot(res,harm)
+    ggsave(paste0(prefix,'_scatterplot.pdf'), width = 4, height = 4)
+    remove(scatter)
+    
+    # forest plot
+    forest = mr_forest_plot(single)
+    ggsave(paste0(prefix,'_forest.pdf'))
+    remove(forest)
+    
+    # leave-one-out plot
+    loo_plot = mr_leaveoneout_plot(loo)
+    ggsave(paste0(prefix,'_looplot.pdf'))
+    remove(loo_plot)
+    
     #### tabular outputs ####
     # tabular output
     write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
