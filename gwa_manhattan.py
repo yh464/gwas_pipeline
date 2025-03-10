@@ -33,33 +33,42 @@ print(f'Loaded modules. Time = {toc:.3f} seconds')
 
 os.chdir(f'{args._in}/{args.pheno}')
 x = args.file
+if not os.path.isdir(f'{args.out}/{args.pheno}'): os.mkdir(f'{args.out}/{args.pheno}')
 out_fname = f'{args.out}/{args.pheno}/{x}'.replace('.fastGWA','.manhattan.pdf')
 _,ax = plt.subplots(figsize = (6,2), constrained_layout = True)
 
 if (not os.path.isfile(out_fname)) or args.force:
-  df = pd.read_table(x)
-  sig = df.loc[df.P < 5e-8,:]
-  df_sig = []
-  for chrom, pos in zip(sig.CHR, sig.POS):
-      df_sig.append(df.loc[(df.CHR == chrom) & (df.POS > pos - 2e5) & 
-                           (df.POS < pos + 2e5),:])
-  df_0 = df.loc[df.P < 0.003,:]
-  df_1 = df.loc[(df.P >= 0.001) & (df.P < 0.003),:]
-  df_2 = df.loc[(df.P >= 0.003) & (df.P < 0.01),:]
-  df_3 = df.loc[(df.P >= 0.01) & (df.P < 0.03),:]
-  df_4 = df.loc[(df.P >= 0.03) & (df.P < 0.1),:]
-  df_5 = df.loc[(df.P >= 0.1) & (df.P < 0.3),:]
-  df_6 = df.loc[(df.P >= 0.3)]
-  df = pd.concat([df_0,df_1.iloc[::int(df_1.shape[0]/4000),:],
-                  df_2.iloc[::int(df_2.shape[0]/4000),:], 
-                  df_3.iloc[::int(df_3.shape[0]/4000),:], 
-                  df_4.iloc[::int(df_4.shape[0]/4000),:], 
-                  df_5.iloc[::int(df_5.shape[0]/4000),:], 
-                  df_6.iloc[::int(df_6.shape[0]/4000),:]] + df_sig).drop_duplicates()
-  print(df.shape)
-  df.sort_values(by = ['CHR','POS'], inplace = True)
+  df = pd.read_table(x).sort_values(by = ['CHR','POS'])
+  sig = df.loc[df.P < 1e-3,:]
+  
+  qqplot(data = df['P'], title = '',
+         marker= '.', xlabel=r"Expected $-log_{10}{(P)}$",
+           ylabel=r"Observed $-log_{10}{(P)}$")
+  plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 500, bbox_inches = 'tight')
+  plt.close()
+  
+  # full Manhattan plot
   _,ax = plt.subplots(figsize = (6,2))
-  manhattanplot(data = df,
+  manhattanplot(data = sig,
+                chrom = 'CHR',
+                pos = 'POS',
+                pv = 'P',
+                snp = 'SNP',
+                is_annotate_topsnp=True, # annotate sig. SNPs
+                sign_marker_p = 5e-8,  # Genome wide significant p-value
+                sign_marker_color="r",
+                logp = True,
+                ld_block_size = 1000000,
+                text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
+                ax = ax)
+  xtick = list(range(9)) + [10,12,14,17,20]
+  ax.set_xticks(ax.get_xticks()[xtick], [x+1 for x in xtick])
+  plt.savefig(out_fname.replace('pdf','png'), dpi = 500, bbox_inches = 'tight')
+  plt.close()
+  
+  # truncated Manhattan plot, pdf
+  _,ax = plt.subplots(figsize = (6,2))
+  manhattanplot(data = sig,
                 chrom = 'CHR',
                 pos = 'POS',
                 pv = 'P',
@@ -74,12 +83,6 @@ if (not os.path.isfile(out_fname)) or args.force:
   xtick = list(range(9)) + [10,12,14,17,20]
   ax.set_xticks(ax.get_xticks()[xtick], [x+1 for x in xtick])
   plt.savefig(out_fname, bbox_inches = 'tight')
-  plt.savefig(out_fname.replace('.pdf','.png'), dpi = 400)
-  plt.close()
-  qqplot(data = df['P'], title = x.replace('.fastGWA',''),
-         marker= '.', xlabel=r"Expected $-log_{10}{(P)}$",
-           ylabel=r"Observed $-log_{10}{(P)}$")
-  plt.savefig(out_fname.replace('.manhattan','.qqplot'), bbox_inches = 'tight')
   plt.close()
   toc = time.perf_counter()-tic
   print(f'Fig plotted, time = {toc:.3f} seconds.')

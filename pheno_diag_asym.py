@@ -41,27 +41,29 @@ os.chdir('/rds/user/yh464/rds-rb643-ukbiobank2/Data_Users/yh464/pheno/ukb')
 if not os.path.isdir('diagnostics'): os.mkdir('diagnostics')
 
 # distribution of global phenotypes
-glob = pd.read_table('global.txt', sep = '\\s+').set_index('IID')
+glob = pd.read_table('global_graph.txt', sep = '\\s+').set_index('IID')
 asym = pd.read_table('global_asym_diag.txt', sep = '\\s+').set_index('IID')
 rois = pd.Index(open('deg_local.txt').readline().replace('\n','').split()[2:]) # only read header
 if not os.path.isfile('diagnostics/global_asym_dist.svg') or force:
     tmp = glob[['deg_global','degi_global','degc_global','eff_global','mpl_global',
-                'clu_global','smw_global']].melt(var_name = 'phenotype')
-    tmp['phenotype'] = tmp.phenotype.str.replace('_global','')
+                'clu_global','smw_global']]
+    tmp.columns = ['Degree','Ipsilateral degree','Contralateral degree','Efficiency',
+                   'Path length', 'Clustering', 'Small-worldness']
+    tmp = tmp.melt(var_name = 'phenotype')
     plt.subplots(figsize = (5,5))
     sns.histplot(tmp, x = 'value', hue = 'phenotype', element = 'step')
     plt.title('Global phenotypes', fontsize = 'large')
-    plt.savefig('diagnostics/global_dist.pdf', bbox_inches = 'tight')
-    plt.savefig('diagnostics/global_dist.svg', bbox_inches = 'tight')
+    plt.savefig('diagnostics/global_graph_dist.pdf', bbox_inches = 'tight')
     plt.close()
     tmp = asym[['deg_asym_corr','degi_asym_corr','degc_asym_corr','eff_asym_corr',
-                'mpl_asym_corr','clu_asym_corr']].melt(var_name = 'phenotype')
-    tmp['phenotype'] = tmp.phenotype.str.replace('_asym_corr','')
+                'mpl_asym_corr','clu_asym_corr']]
+    tmp.columns = ['Degree','Ipsilateral degree','Contralateral degree','Efficiency',
+                   'Path length', 'Clustering']
+    tmp = tmp.melt(var_name = 'phenotype')
     plt.subplots(figsize = (5,5))
     sns.histplot(tmp, x = 'value', hue = 'phenotype', element = 'step')
     plt.title('Asymmetry phenotypes', fontsize = 'large')
     plt.savefig('diagnostics/global_asym_dist.pdf', bbox_inches = 'tight')
-    plt.savefig('diagnostics/global_asym_dist.svg', bbox_inches = 'tight')
     plt.close()
 
 # correlate left v right
@@ -70,7 +72,9 @@ ax0 = ax0.reshape(6)
 fig1, ax1 = plt.subplots(2, 3, figsize = (15, 10))
 ax1 = ax1.reshape(6)
 i = 0
-for p in ['deg','degi','degc','clu','eff','mpl']:
+for p, heading in zip(['deg','degi','degc','clu','eff','mpl'],
+                      ['Degree','Ipsilateral degree','Contralateral degree',
+                       'Efficiency','Path length', 'Clustering']):
     tmp = asym[f'{p}_asym_corr']
     asym_max = asym.loc[tmp.idxmax(), 'FID']
     asym_min = asym.loc[tmp.idxmin(), 'FID']
@@ -81,14 +85,14 @@ for p in ['deg','degi','degc','clu','eff','mpl']:
     df = pd.read_table(f'{p}_local.txt', sep = '\\s+').set_index('FID').iloc[:,1:]
     # for x, lab in zip([asym_min, asym_q1, asym_q2, asym_q3, asym_max],
     #                   ['min','25%','median','75%','max']):
-    for x, lab in zip([asym_q1, asym_q2, asym_q3],
-                      ['25%','median','75%']):
-        tmp = df.loc[x,:]
-        if tmp.size > 376:
-            tmp = tmp.iloc[0,:]
-        tmp = tmp.to_numpy().reshape(376)
-        ax0[i].scatter(tmp[:188], tmp[188:], s=2, label = f'{lab} asymmetry')
-    
+    # for x, lab in zip([asym_q1, asym_q2, asym_q3],
+    #                   ['25%','median','75%']):
+    #     tmp = df.loc[x,:]
+    #     if tmp.size > 376:
+    #         tmp = tmp.iloc[0,:]
+    #     tmp = tmp.to_numpy().reshape(376)
+    #     ax0[i].scatter(tmp[:188], tmp[188:], s=2, label = f'{lab} asymmetry')
+    ax0[i].scatter(df.iloc[21894,:188],df.iloc[21894,188:], s = 3, label = 'Example individual')
     df = df.describe()
     left = df.iloc[1:,:188].T
     right = df.iloc[1:, 188:].T
@@ -102,7 +106,7 @@ for p in ['deg','degi','degc','clu','eff','mpl']:
         ax0[i].errorbar(x = df.l_q2, y = df.r_q2, xerr = abs(df[['l_q1','l_q3']].T-df.l_q2),
                        yerr = abs(df[['r_q1', 'r_q3']].T - df.r_q2), linestyle = '', markersize = 2,
                        label = 'Quartiles', color = 'k', linewidth = 0.4,zorder = 0.5)
-        ax0[i].set_title(p, fontsize = 'large')
+        ax0[i].set_title(heading, fontsize = 'large')
         ax0[i].axline((0,0), slope = 1, color = 'k')
         # ax0[i].legend(fontsize = 'large')
         ax0[i].set_xlabel('L hemisphere', fontsize = 'large')
@@ -115,7 +119,7 @@ for p in ['deg','degi','degc','clu','eff','mpl']:
         except: pass
         try: ax1[i].scatter(x = asym[f'{p}_asym_corr'], y = asym[f'{p}_asym_abs'], label = 'abs')
         except: pass
-        ax1[i].set_title(p)
+        ax1[i].set_title(heading)
         ax1[i].legend()
     i += 1
 

@@ -14,6 +14,7 @@ def main(args):
     if args.a: f += ' -a'
     if len(args.pheno) == 0:
         args.pheno = os.listdir(args._in)
+    if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     
     submitter = array_submitter.array_submitter(
         name = f'gwa_manhattan_{args.pheno[0]}',
@@ -24,6 +25,7 @@ def main(args):
     
     for y in args.pheno:
         os.chdir(args._in)
+        if not os.path.isdir(f'{args.out}/{y}'): os.mkdir(f'{args.out}/{y}')
         if not os.path.isdir(y): continue # sanity check especially for default y = ls(args._in)
         os.chdir(y)
         flist = []
