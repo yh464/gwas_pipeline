@@ -45,7 +45,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 
-      'This script generates PRS by continuous shrinkage from external sumstats')
+      'This script extract selected SNPs from GWAS sumstats')
     parser.add_argument('snp',help = 'list of SNPs to extract', nargs = '*')
     parser.add_argument('-p', dest = 'pheno', help = 'list of phenotype groups to extract SNPs',
       nargs = '*', default = ['global','global_asym'])
