@@ -8,8 +8,9 @@ def main(args):
     # load input files
     os.chdir(args._in)
     flist = []
-    for f in os.listdir():
-        if fnmatch(f, '*.txt'): flist.append(f)
+    for g in args.pheno:
+        for f in os.listdir(f'{args._in}/{g}'):
+            if fnmatch(f, '*.txt'): flist.append(f'{args._in}/{g}/{f}')
     
     # merge datasets
     df = pd.read_table(args.ref).drop('FID', axis = 'columns')
@@ -48,6 +49,8 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(
       description = 'this script quality controls PRS scores')
+    parser.add_argument('pheno', help = 'Phenotype groups to generate PRS',
+      nargs = '*', default = ['disorders','disorders_subtypes'])
     parser.add_argument('-i','--in', dest = '_in', help = 'input directory',
       default='../prs/prs_score/')
     parser.add_argument('-r','--ref',dest = 'ref', help = 'reference standard UKB PRS',

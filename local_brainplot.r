@@ -14,15 +14,17 @@ require(tidyverse)
 require(ggsegExtra)
 require(ggsegGlasser)
 
-# setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
-setwd('d:/.cam-pg/2025_psych-img-gwa/brainplots')
+setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
+# setwd('d:/.cam-pg/2025_psych-img-gwa/brainplots')
 
+force <- F
 ref <- glasser$data
 
 theme_set(theme_void())
 
 for (f in list.files()){
   out = paste0(f%>%gsub('.txt','',.)%>%gsub('.csv','',.),'.pdf')
+  if (file.exists(out) & !force) next
   if (endsWith(f, '.pdf') | endsWith(f, '.png')) next
   if (grepl('yeo',f) | grepl('mes',f)) next
   if (! endsWith(f, '.csv')) sep <- '\t' else sep <- ','

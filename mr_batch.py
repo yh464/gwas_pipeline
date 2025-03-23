@@ -119,7 +119,9 @@ def main(args):
           n1 = n1_tbl.loc[f1, 'n']
           
           for f2 in prefix2:
-            if not os.path.isdir(f'{args.out}/{p2}/{f2}'): os.mkdir(f'{args.out}/{p2}/{f2}')  
+            if not os.path.isdir(f'{args.out}/{p2}/{f2}'): 
+                os.mkdir(f'{args.out}/{p2}/{f2}')  
+            
             # find h2 log for trait 1
             h2log = f'{args.h2}/{p2}/{f2}.h2.log'
             h22, h2se2 = parse_h2_log(h2log)
@@ -132,16 +134,20 @@ def main(args):
             nco = '' if np.isnan(nco) else f'--nco {nco}'
             
             # input file name specification
-            gwa1 = f'{args._in}/{p1}/{f1}.{args.ext1}'
-            clump1, pval1 = find_clump(f'{args.clump}/{p1}',f1, args.pval)
-            clump001, _ = find_clump(f'{args.clump}/{p1}',f1, 0.001)
-            gwa2 = f'{args._in}/{p2}/{f2}.{args.ext2}'
-            clump2, pval2 = find_clump(f'{args.clump}/{p2}',f2, args.pval)
-            clump002, _ = find_clump(f'{args.clump}/{p2}',f2, 0.001)
+            try:
+                gwa1 = f'{args._in}/{p1}/{f1}.{args.ext1}'
+                clump1, pval1 = find_clump(f'{args.clump}/{p1}',f1, args.pval)
+                clump001, _ = find_clump(f'{args.clump}/{p1}',f1, 0.001)
+            except: print(f'{f1} missing clumped GWAS sumstats'); continue
+            try: 
+                gwa2 = f'{args._in}/{p2}/{f2}.{args.ext2}'
+                clump2, pval2 = find_clump(f'{args.clump}/{p2}',f2, args.pval)
+                clump002, _ = find_clump(f'{args.clump}/{p2}',f2, 0.001)
+            except: print(f'{f2} missing clumped GWAS sumstats'); continue
             pval_thr = max([pval1, pval2])
             
             # check rg and h2 information
-            if p1 < p2 or f1 < f2:
+            if p1 < p2 or (p1 == p2 and f1 < f2):
                 rglog = f'{args.rg}/{p1}.{p2}/{p1}_{f1}.{p2}_{f2}.rg.log'
             else:
                 rglog = f'{args.rg}/{p2}.{p1}/{p2}_{f2}.{p1}_{f1}.rg.log'

@@ -50,8 +50,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
       default = '../pheno/ukb/')
     parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS to select', nargs = '*',
-      default = ['an2019','asd2022','ptsd2024','mdd2023','scz2022','bip2021','adhd2022',
-     'sud2023'])
+      default = ['disorders','disorders_subtypes'])
     parser.add_argument('--prsdir', dest = 'prsdir', help = 'PRS score directory',
       default = '../prs/prs_score/')
     parser.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
@@ -66,7 +65,9 @@ if __name__ == '__main__':
     import os
     for arg in ['_in','out','prsdir','dcov','qcov']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
-        
+    args.pheno.sort()
+    args.prs.sort()
+    
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()

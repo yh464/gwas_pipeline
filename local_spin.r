@@ -137,7 +137,7 @@ for (map in names(maps)){
   all_null = bind_rows(all_null, .id = 'phenotype')
   all_stats = bind_rows(all_stats, .id = 'phenotype')
   all_null$phenotype = all_null$phenotype %>% gsub('_','\n',.) %>% tolower()
-  width = all_stats$label %>% unique() %>% length() * 0.4
+  width = all_stats$hemi %>% unique() %>% length() * 1.5
   write_delim(all_stats, paste0(prefix,'.spin.',map,'.txt'), delim ='\t')
   all_stats$phenotype = all_stats$phenotype %>% gsub('_','\n',.) %>% tolower()
   if (bilateral) {
@@ -154,7 +154,6 @@ for (map in names(maps)){
     all_null$label = as.factor(all_null$label)
     all_stats$label = as.factor(all_stats$label)
     fw = facet_wrap(~phenotype, scales = 'free', ncol = 1)
-    width = 2
   }
   
   plt = ggplot(data = all_null, aes(y = label, x = .data[[signstat]], fill = label)) + 
@@ -163,12 +162,12 @@ for (map in names(maps)){
     scale_fill_manual(values = palettes[[map]]) +
     scale_colour_manual(values = palettes[[map]]) +
     theme(axis.text.x = element_blank(), strip.background = element_blank(),
-          strip.text = element_text(size=15), legend.text = element_text(size=15),
+          strip.text = element_text(size=20), legend.text = element_text(size=20),
           anel.spacing = unit(1,'lines'),title = element_blank(), 
           legend.position = "bottom", legend.title = element_blank()
     ) + coord_flip() + fw
   
-  height = all_stats$phenotype %>% unique() %>% length() * 2.5
+  height = all_stats$phenotype %>% unique() %>% length() * 1.5
   ggsave(paste0(prefix,'.spin.',map,'.pdf'), plot = plt, width = width, height = height)
   ggsave(paste0(prefix,'.spin.',map,'.png'), plot = plt, width = width, height = height)
 }

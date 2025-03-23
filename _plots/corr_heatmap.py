@@ -37,9 +37,8 @@ def corr_heatmap(summary, absmax = None, autocor = False, annot = ''):
     
     # normalise labels
     for col in range(4):
-        tmp = summary.iloc[:,col].str.replace('_',' ')
-        tmp.loc[~tmp.str.isupper()] = tmp.loc[~tmp.str.isupper()].str.capitalize()
-        summary.iloc[:,col] = tmp
+        summary.iloc[:,col] = summary.iloc[:,col].str.replace('_',' ').str.replace(
+            ' l$',' L', regex = True).str.replace(' r$',' R', regex = True)
     
     # determine figure size and aspect ratios
     group1 = summary.iloc[:, 0].unique(); group1.sort()

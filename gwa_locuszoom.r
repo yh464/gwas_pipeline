@@ -98,6 +98,9 @@ main = function(args) {
   all_sumstats = merge(all_sumstats, r2)
   
   #### Plot locuszoom plot ####
+  # change column name
+  all_sumstats[['-log10(P)']] = all_sumstats$logP
+  
   library(locuszoomr)
   if (args$build == 'hg19'){
     library(EnsDb.Hsapiens.v75) # hg19
@@ -107,11 +110,11 @@ main = function(args) {
     gtloc = locus(seqname = chrom, xrange = c(pos-args$ld, pos+args$ld), ens_db = 'EnsDb.Hsapiens.v86')
   }
   gt = gg_genetracks(gtloc, maxrows = 20, text_pos = 'left')
-  loc = ggplot(all_sumstats, aes(POS, logP, colour = r2)) + geom_point() +
+  loc = ggplot(all_sumstats, aes(POS, .data[['-log10(P)']], colour = r2)) + geom_point() +
     theme_classic() + theme(strip.background = element_blank()) + 
     scale_colour_gradient2(low = '#abdda4', mid = '#fdae61', high = '#d7191c', midpoint = 0.5) +
     xlab(paste0('Chromosome ',chrom)) +
-    geom_point(aes(POS, logP), data = all_sumstats %>% dplyr::filter(SNP == snp),
+    geom_point(aes(POS, .data[['-log10(P)']]), data = all_sumstats %>% dplyr::filter(SNP == snp),
                shape = 18, fill = 'red')+
     facet_wrap(~Phenotype, ncol = 1)
   n_pheno = length(unique(all_sumstats$Phenotype))

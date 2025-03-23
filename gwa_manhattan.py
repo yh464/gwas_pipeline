@@ -28,6 +28,10 @@ import pandas as pd
 from qmplot import manhattanplot, qqplot
 import matplotlib.pyplot as plt
 
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['font.size'] = 20
+
 toc = time.perf_counter() - tic
 print(f'Loaded modules. Time = {toc:.3f} seconds')
 
@@ -41,7 +45,8 @@ if (not os.path.isfile(out_fname)) or args.force:
   df = pd.read_table(x).sort_values(by = ['CHR','POS'])
   sig = df.loc[df.P < 1e-3,:]
   
-  qqplot(data = df['P'], title = '',
+  _, ax = plt.subplots(figsize = (3,3))
+  qqplot(data = df['P'], title = '', ax = ax,
          marker= '.', xlabel=r"Expected $-log_{10}{(P)}$",
            ylabel=r"Observed $-log_{10}{(P)}$")
   plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 500, bbox_inches = 'tight')

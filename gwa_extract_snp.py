@@ -12,34 +12,50 @@ Requires following inputs:
 
 def main(args):
     import os
-    from fnmatch import fnmatch
     import pandas as pd
+    from _utils.path import normaliser
     
+    norm = normaliser()
     all_files = []
+    tmpdir = os.path.realpath('../temp')
     
     for x in args.pheno:
         os.chdir(args._in)
         os.chdir(x)
-      
-        # filter out required GWA files
-        for y in os.listdir():
-            if fnmatch(y, '*_X.fastGWA'): continue
-            if fnmatch(y, '*_all_chrs.fastGWA'): continue
-            if not fnmatch(y, '*.fastGWA') or fnmatch(y, '*.txt') or fnmatch(y, '*.tsv'): continue
-            df = pd.read_table(y, sep = '\s+', usecols = ['SNP','BETA','SE','P'], index_col = 'SNP')
-            df = df.loc[[args.snp],:].reset_index(names='SNP')
-            prefix = '.'.join(y.split('.')[:-1]) # remove extension
-            df['Phenotype'] = prefix
-            df['Group'] = x
-            df['Z'] = df.BETA/df.SE
-            all_files.append(df[['Group','Phenotype','SNP','BETA','Z','P']])
-        
+        print(x)
+        # search for required SNP using grep
+        hdr = open(os.listdir()[0]).readline().replace('\n','').split()
+        hdr[0] = 'Phenotype'
+        for snp in args.snp:
+            cache = f'{tmpdir}/sigsnp_{snp}_{x}.txt'
+            if os.path.isfile(cache):
+                df = pd.read_table(cache)
+                all_files.append(df)
+                continue
+            os.system(f'grep {snp} *.fastGWA | xclip -selection clipboard') # quick search for selected SNP
+            df = pd.read_clipboard(header = None)
+            df.columns = hdr
+            print(df.head())
+            df = df.loc[df.SNP == snp,['Phenotype','SNP','BETA','SE','P']]
+            df.columns = ['Phenotype','SNP','beta','se','p']
+            phen = df.Phenotype
+            phen = [y.split('.fastGWA')[0] for y in phen]
+            df['Phenotype'] = phen
+            df = df.loc[
+                (~df.Phenotype.str.endswith('all_chrs')) & 
+                (~df.Phenotype.str.endswith('_X')),:]
+            df.insert(loc = 0, column = 'Group', value = x)
+            df.insert(loc = 2, column = 'q', value = df.p * 1e+6)
+            df.insert(loc = 4, column = 'Z', value = df.beta/df.se)
+            df.to_csv(cache, sep = '\t', index = False)
+            all_files.append(df)
+            
     all_files = pd.concat(all_files)
-    if args.out != None: all_files.to_csv(args.out, sep = '\t', index = False)
-    all_files.to_clipboard(index = False)
-    all_files_wide = all_files.pivot_table(values = 'P', index = 'SNP', columns = 'Phenotype')
+    if args.out != None: norm.normalise(all_files).to_csv(args.out, sep = '\t', index = False)
+    norm.normalise(all_files).to_clipboard(index = False)
+    all_files_wide = all_files.pivot_table(values = 'p', index = 'snp', columns = 'Phenotype')
     all_files_wide.insert(loc = 0, column = 'min_pval', value = all_files.min(axis = 1))
-    print(all_files_wide)
+    print(norm.normalise(all_files_wide))
     
     
 if __name__ == '__main__':
@@ -55,6 +71,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     import os
     args._in = os.path.realpath(args._in)
+    if args.out != None: args.out = os.path.realpath(args.out)
+    args.pheno.sort()
     
     from _utils import cmdhistory, logger
     logger.splash(args)

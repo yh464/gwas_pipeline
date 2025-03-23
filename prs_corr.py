@@ -8,8 +8,7 @@ parser = argparse.ArgumentParser(description='Computes correlational plots betwe
 parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
   default = '../pheno/ukb/')
 parser.add_argument('-p','--prs', dest = 'prs', help = 'PRS to select', nargs = '*',
-  default = ['an2019','asd2022','ptsd2024','mdd2023','scz2022','bip2021','adhd2022',
- 'sud2023'])
+  default = ['disorders','disorders_subtypes'])
 parser.add_argument('--prsdir', dest = 'prsdir', help = 'PRS score directory',
   default = '../prs/prs_score/')
 parser.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
@@ -61,59 +60,59 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
     
     summary = []
     # correlate for each PRS
-    os.chdir(args.prsdir)
-    prs_list = args.prs
-    for x in prs_list:
-        if not os.path.isfile(f'{args.prsdir}/{x}.txt') and not os.path.isdir(f'{args.prsdir}/{x}'):
-            prs_list.remove(x)
-    
-    for prs in prs_list:
-        if prs == 'qc': continue
-        if not os.path.isdir(prs) and not os.path.isfile(f'{prs}.txt'): continue
-        print(prs)
-        # sum PRS across all chromosomes
-        if (not os.path.isfile(f'{args.prsdir}/{prs}.txt') or \
-            args.force) and os.path.isdir(f'{args.prsdir}/{prs}'):
-            chrom = []
-            for j in range(22):
-                df = pd.read_table(f'{prs}/{prs}.chr{j+1}.sscore').sort_values('IID').drop_duplicates()
-                col = df.columns.tolist()
-                col[0] = 'FID'
-                df.columns = col
-                df = df.set_index(['FID','IID'])
-                chrom.append(df.iloc[:,-1].to_frame())
-            chrom = pd.concat(chrom, axis = 1)
-            out = pd.DataFrame(index = chrom.index, columns = [])
-            out['score_total'] = chrom.sum(axis = 1)
-            out['score_norm'] = out.score_total/out.score_total.std()
-            out.to_csv(f'{args.prsdir}/{prs}.txt', index = True, sep = '\t')
-        else:
-            out = pd.read_table(f'{args.prsdir}/{prs}.txt', index_col = ['FID','IID'])
-        print(f'    {args.prsdir}/{prs}.txt')
+    for p in args.prs:
+        prs_list = []
+        for x in os.listdir(f'{args.prsdir}/{p}'):
+            if x == 'qc': continue
+            if os.path.isfile(f'{args.prsdir}/{p}/{x}.txt') or os.path.isdir(f'{args.prsdir}/{p}/{x}'):
+                prs_list.append(x)
         
-        tmp = out[['score_norm']]
-        tmp.columns = [prs]
-        tmp_merge = pd.concat([phen_cov.copy(),tmp], axis = 1, join = 'inner')
-        print(f'    Sample size: {tmp_merge.shape[0]}')
-        for phen in phen_list:
-            tmp = tmp_merge[cov_list + [prs] + [phen]].dropna().astype(float)
-            endog = tmp[phen].values
-            exog = tmp[cov_list + [prs]].values
-            try:
-                md = OLS(endog, exog).fit()
-                summary.append(
-                    pd.DataFrame(dict(
-                        group1 = prefix,
-                        pheno1 = phen,
-                        group2 = ['PRS'],
-                        pheno2 = prs,
-                        beta = md.params[-1],
-                        z = md.tvalues[-1],
-                        n = tmp.shape[0]                        
-                        ))
-                    )
-            except:
-                print(f'        {phen} correlation failed with {prs}')
+        for prs in prs_list:
+            print(prs)
+            # sum PRS across all chromosomes
+            if (not os.path.isfile(f'{args.prsdir}/{p}/{prs}.txt') or \
+                args.force) and os.path.isdir(f'{args.prsdir}/{p}/{prs}'):
+                chrom = []
+                for j in range(22):
+                    df = pd.read_table(f'{args.prsdir}/{p}/{prs}/{prs}.chr{j+1}.sscore'
+                        ).sort_values('IID').drop_duplicates()
+                    col = df.columns.tolist()
+                    col[0] = 'FID'
+                    df.columns = col
+                    df = df.set_index(['FID','IID'])
+                    chrom.append(df.iloc[:,-1].to_frame())
+                chrom = pd.concat(chrom, axis = 1)
+                out = pd.DataFrame(index = chrom.index, columns = [])
+                out['score_total'] = chrom.sum(axis = 1)
+                out['score_norm'] = out.score_total/out.score_total.std()
+                out.to_csv(f'{args.prsdir}/{p}/{prs}.txt', index = True, sep = '\t')
+            else:
+                out = pd.read_table(f'{args.prsdir}/{p}/{prs}.txt', index_col = ['FID','IID'])
+            print(f'    {args.prsdir}/{p}/{prs}.txt')
+            
+            tmp = out[['score_norm']]
+            tmp.columns = [prs]
+            tmp_merge = pd.concat([phen_cov.copy(),tmp], axis = 1, join = 'inner')
+            print(f'    Sample size: {tmp_merge.shape[0]}')
+            for phen in phen_list:
+                tmp = tmp_merge[cov_list + [prs] + [phen]].dropna().astype(float)
+                endog = tmp[phen].values
+                exog = tmp[cov_list + [prs]].values
+                try:
+                    md = OLS(endog, exog).fit()
+                    summary.append(
+                        pd.DataFrame(dict(
+                            group1 = prefix,
+                            pheno1 = phen,
+                            group2 = [p],
+                            pheno2 = prs,
+                            beta = md.params[-1],
+                            z = md.tvalues[-1],
+                            n = tmp.shape[0]                        
+                            ))
+                        )
+                except:
+                    print(f'        {phen} correlation failed with {prs}')
     summary = pd.concat(summary).dropna()
     summary['p'] = 1 - sts.chi2.cdf(summary['z']**2, df = 1)
     summary['q'] = sts.false_discovery_control(summary['p'])

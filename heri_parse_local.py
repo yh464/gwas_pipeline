@@ -66,9 +66,10 @@ def main(args):
               se = float(l[-1].replace('(','').replace(')',''))
           except:
               h2 = np.nan; se = np.nan
-          summary.append(pd.DataFrame(dict(roi = [name], pheno = x, h2 = h2, se = se, z = h2/se, 
-                                           p = 1-sts.chi2.cdf(h2**2/se**2, df = 1),
-                                           glob_h2 = glob_h2, glob_se = glob_se)))
+          summary.append(pd.DataFrame(dict(
+              pheno = x, roi = [name], metric = 'heritability', method = 'LDSC', # placeholder to put h2 on 5th column
+              h2 = h2, se = se, z = h2/se, p = 1-sts.chi2.cdf(h2**2/se**2, df = 1),
+              glob_h2 = glob_h2, glob_se = glob_se)))
       
         s = pd.concat(summary)
         s['z'] = s.h2 / s.se

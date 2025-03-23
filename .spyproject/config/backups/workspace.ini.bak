@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['..\\rpt\\manual\\manual_plots.py', 'ukb_extract.py', 'ukb_extract_nodep.py', 'annot_manhattan.py', 'gwa_manhattan.py', 'mr_batch.py', 'pheno_diag_asym.py', 'gwa_manhattan_batch.py']
+recent_files = ['..\\rpt\\manual\\manual_plots.py', '_plots\\corr_heatmap.py', 'gwa_extract_snp.py', 'pheno_diag_asym.py', 'mr_batch.py', 'finemap_parse.py', 'finemap_batch.py', 'finemap_by_trait.py', 'gwa_manhattan.py', 'annot_manhattan.py', '..\\rpt\\corr_plots\\corr_heatmap_local.py', 'prs_corr_batch.py']
 
 [main]
 version = 0.2.0

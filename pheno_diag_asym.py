@@ -35,7 +35,7 @@ try:
 except:
   pass
 sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2})
-sns.set_theme(style = 'whitegrid')
+sns.set_theme(style = 'ticks')
 
 os.chdir('/rds/user/yh464/rds-rb643-ukbiobank2/Data_Users/yh464/pheno/ukb')
 if not os.path.isdir('diagnostics'): os.mkdir('diagnostics')
@@ -47,7 +47,7 @@ rois = pd.Index(open('deg_local.txt').readline().replace('\n','').split()[2:]) #
 if not os.path.isfile('diagnostics/global_asym_dist.svg') or force:
     tmp = glob[['deg_global','degi_global','degc_global','eff_global','mpl_global',
                 'clu_global','smw_global']]
-    tmp.columns = ['Degree','Ipsilateral degree','Contralateral degree','Efficiency',
+    tmp.columns = ['Degree','Ipsilateral\ndegree','Contralateral\ndegree','Efficiency',
                    'Path length', 'Clustering', 'Small-worldness']
     tmp = tmp.melt(var_name = 'phenotype')
     plt.subplots(figsize = (5,5))
@@ -57,7 +57,7 @@ if not os.path.isfile('diagnostics/global_asym_dist.svg') or force:
     plt.close()
     tmp = asym[['deg_asym_corr','degi_asym_corr','degc_asym_corr','eff_asym_corr',
                 'mpl_asym_corr','clu_asym_corr']]
-    tmp.columns = ['Degree','Ipsilateral degree','Contralateral degree','Efficiency',
+    tmp.columns = ['Degree','Ipsilateral\ndegree','Contralateral\ndegree','Efficiency',
                    'Path length', 'Clustering']
     tmp = tmp.melt(var_name = 'phenotype')
     plt.subplots(figsize = (5,5))

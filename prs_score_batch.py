@@ -12,8 +12,6 @@ Upstream workflow:
 '''
     
 def main(args):
-    import os
-    import numpy as np
     from fnmatch import fnmatch
     
     from _utils import array_submitter
@@ -22,7 +20,6 @@ def main(args):
         timeout = 20, mode = 'long')
     
     # parse input
-    flist = np.loadtxt(args._list, dtype = 'U')
     if fnmatch(args.bed, '*.bed'):
         bed_list = [args.bed[:-4]]
     elif os.path.isfile(f'{args.bed}.bed'):
@@ -40,29 +37,27 @@ def main(args):
     if len(bed_list) == 1: bed_list *= 22
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
-    for i in range(flist.shape[0]):
-      f = flist[i,0]
-      prefix = f.split('/')[-1].replace('.txt','')
-      in_dir = args._in + '/'+ prefix + '/'
-      out_dir = args.out +'/'+ prefix +'/'                                     # scores by chr in args.out/prefix/
-      if not os.path.isdir(out_dir): os.mkdir(out_dir)
-      
-      # Score by chromosome
-      for j in range(22):
-        effsz = in_dir + f'chr{j+1}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt'
-        out_fname = f'{out_dir}/{prefix}.chr{j+1}'
-        if not os.path.isfile(out_fname+'.sscore') or args.force:
-          submitter.add(f'{args.plink} --bfile {bed_list[j]} --chr {j+1} --score {effsz} 2 4 6 center '+
-                  f'cols=fid,denom,dosagesum,scoresums --out {out_fname}')
+    for p in args.pheno:
+        for x in os.listdir(f'{args._in}/{p}'):
+            in_dir = f'{args._in}/{p}/{x}'
+            out_dir = f'{args.out}/{p}/{x}'
+            if not os.path.isdir(out_dir): os.system(f'mkdir -p {out_dir}')
+          
+            # Score by chromosome
+            for j in range(22):
+                effsz = f'{in_dir}/{x}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt'
+                out_fname = f'{out_dir}/{x}.chr{j+1}'
+                if not os.path.isfile(out_fname+'.sscore') or args.force:
+                    submitter.add(f'{args.plink} --bfile {bed_list[j]} --chr {j+1} --score {effsz} 2 4 6 center '+
+                      f'cols=fid,denom,dosagesum,scoresums --out {out_fname}')
     submitter.submit()
      
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 
       'This script concatenates the PRS-cs output to produce individual level PRS scores')
-    parser.add_argument('--list', dest = '_list',
-      help = 'list of GWA files to generate PRS. FORMAT: ${absolute path} \t ${sample size}',
-      default = '../params/gwa_for_prs.list')
+    parser.add_argument('pheno', help = 'Phenotype groups to generate PRS',
+      nargs = '*', default = ['disorders','disorders_subtypes'])
     parser.add_argument('-i','--in', dest = '_in', help = 'input directory',
       default = '../prs/prs_effsize/')
     parser.add_argument('--plink', dest = 'plink', help = 'Location of plink2 executable',
@@ -77,14 +72,15 @@ if __name__ == '__main__':
                         default = False, help = 'force overwrite')
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','plink','bed','_list']:
+    for arg in ['_in','out','plink','bed']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    args.pheno.sort()
     
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheno.txt', __file__)
+    proj.add_input(args._in+'/%pheno/%pheno*.txt', __file__)
     proj.add_output(args.out+'/%pheno.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()

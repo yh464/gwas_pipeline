@@ -12,6 +12,8 @@ def main(args):
     import pandas as pd
     import numpy as np
     from fnmatch import fnmatch
+    from _utils.path import normaliser
+    norm = normaliser()
     
     dflist = []
     for x in args.pheno:
@@ -33,7 +35,7 @@ def main(args):
         dflist.append(df)
     
       out_df = pd.concat(dflist, axis = 0).sort_values(by = ['CHR','BP'])
-      out_df.to_csv(f'{args.out}/{x}_sig_variants.txt', header = True, index = False, sep = '\t')
+      norm.normalise(out_df).to_csv(f'{args.out}/{x}_sig_variants.txt', header = True, index = False, sep = '\t')
       np.savetxt(f'{args.out}/{x}_sig_variants_list.txt',out_df['SNP'].unique(),fmt = '%s')
     
 if __name__ == '__main__':

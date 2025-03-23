@@ -92,6 +92,7 @@ class array_submitter():
         self._count = 1
         self._fileid = 0
         self._jobid += 1
+        self._nfiles = -1
         
         # reset job name and directories to avoid confusion
         self.name = self.name.replace(f'_{self._jobid-1}',f'_{self._jobid}')

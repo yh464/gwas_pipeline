@@ -61,7 +61,9 @@ for g2, p2 in zip(pheno_2, prefix_2):
     for g1, p1 in zip(pheno_1, prefix_1):
         if args.corresponding:
             if p2.find(g1.replace('local','')) == -1: continue
-            if fnmatch(p2, '*_l_*') or fnmatch(p2, '*_r_*'): continue
+            if fnmatch(p2, '*_l_*') or fnmatch(p2, '*_r_*') or \
+                fnmatch(p2, '*_l') or fnmatch(p2, '*_r'): 
+                continue
         fname = f'{args._in}/{g1}/{g2}/{g1}_{p1}.{g2}_{p2}.rg.log'
         if not os.path.isfile(fname):
             print(f'{fname} does not exist')

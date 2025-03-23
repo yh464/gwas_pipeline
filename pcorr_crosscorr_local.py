@@ -10,6 +10,14 @@ Requires following inputs:
     Phenotype file ready for GWAS analysis (with FID and IID)
 '''
 
+def corresp_global(loc, glob):
+    from fnmatch import fnmatch
+    if fnmatch(glob, '*_l_*') or fnmatch(glob, '*_r_*') or \
+        fnmatch(glob, '*_l') or fnmatch(glob, '*_r'): return False
+    glob = glob.replace('global','').replace('meta','')
+    loc = loc.replace('local','').replace('regional','')
+    return glob.find(loc) > -1
+    
 def compatible_roi(a, b):
     a = a.lower(); b = b.lower()
     if a[0] == 'x': a = a[1:] # unilateral regions starting with a number may be masked with 'x'
@@ -32,21 +40,22 @@ def compatible_roi(a, b):
 def main(args):
     import pandas as pd
     import scipy.stats as sts
+    from _utils.path import normaliser
+    norm = normaliser()
     
     for g2 in args.p2:
         print(f'Processing phenotype: {g2}')
         prefix = f'{args.out}/pcorr_local_{g2}.'+'_'.join(args.p1)
         
         summary = []
-        df2 = pd.read_table(f'{args._in}/{g2}.txt', sep = '\s+')
+        df2 = pd.read_table(f'{args._in}/{g2}.txt', index_col = ['FID','IID'])
         for g1 in args.p1:
-            df1 = pd.read_table(f'{args._in}/{g1}.txt', sep = '\s+')
-            eid = pd.merge(df1[['FID','IID']], df2[['FID','IID']])
-            df1m = pd.merge(df1, eid); df2m = pd.merge(df2, eid) # this design is to prevent duplicate column names
-            for t1 in df1.columns[2:]: # excludes FID and IID
-                for t2 in df2.columns[2:]:
-                    if not compatible_roi(t1, t2): continue
-                    tmp = pd.concat([df1m[t1], df2m[t2]],axis = 1).dropna()
+            df1 = pd.read_table(f'{args._in}/{g1}.txt', sep = '\\s+', index_col = ['FID','IID'])
+            df_m = pd.concat([df1, df2], axis = 1)
+            for p1 in df1.columns:
+                for p2 in df2.columns:
+                    if not compatible_roi(p1, p2) and not corresp_global(g1, p2): continue
+                    tmp = df_m[[p1,p2]].dropna()
                     tmp.columns = [g1, g2]
                     r = tmp[g1].corr(tmp[g2])
                     n = tmp.shape[0]
@@ -55,15 +64,15 @@ def main(args):
                     p = sts.norm.cdf(-abs(z)) * 2
                     summary.append(
                         pd.DataFrame(dict(
-                            pheno = g1, roi = t1,
+                            group1 = g1, pheno1 = p1, group2 = g2, pheno2 = p2,
                             r = r, p = [p]))
                         )
         summary = pd.concat(summary)
-        summary.to_csv(f'{prefix}.txt', sep = '\t', index = False)
-        wide = summary.pivot(index = 'roi', columns = 'pheno', values = 'r')
+        norm.normalise(summary).to_csv(f'{prefix}.txt', sep = '\t', index = False)
+        wide = summary.pivot_table(index = 'pheno1', columns = 'group1', values = 'r')
         wide.columns.name = None
         wide.index.name = 'label'
-        wide.to_csv(f'{prefix}.wide.txt', sep = '\t', header = True, index = True)
+        norm.normalise(wide).to_csv(f'{prefix}.wide.txt', sep = '\t', header = True, index = True)
     
 if __name__ == '__main__':
     import argparse
@@ -71,7 +80,7 @@ if __name__ == '__main__':
       'This programme parses genetic correlation outputs and generates heatmaps')
     parser.add_argument('-p1', help = 'Group of local phenotypes', nargs = '*',
         default = ['deg_local','degi_local','degc_local', 'eff_local', 'clu_local','mpl_local'])
-    parser.add_argument('-p2', help = 'Correlate local phenotype', nargs = '*')
+    parser.add_argument('-p2', help = 'Correlate phenotype, local or global', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype file directory',
         default = '../pheno/ukb/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',

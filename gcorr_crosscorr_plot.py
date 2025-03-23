@@ -87,7 +87,7 @@ def main(args):
     
     # tabular output, wide and long
     fout = f'{args.out}/crosscorr_' + '_'.join(args.p1)+'.'+'_'.join(args.p2)
-    rg_tbl = summary.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
+    rg_tbl = summary.pivot_table(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
     norm.normalise(rg_tbl).to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
                   header = True, index = True)
     summary = norm.normalise(summary)
@@ -116,6 +116,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     import os
+    args.p1.sort()
+    args.p2.sort()
     args._in = os.path.realpath(args._in)
     args.sumstats = os.path.realpath(args.sumstats)
     if type(args.out) == type(None): args.out = os.path.realpath(f'{args._in}/../')

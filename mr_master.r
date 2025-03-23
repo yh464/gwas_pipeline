@@ -55,9 +55,9 @@ print(args)
 #### Utility to read summary stats ####
 merge_gwa_clump = function(gwa, clump, prefix) {
   # gwa file should have 'SNP' column, clump should be the standard PLINK output
-  snp = read.table(clump, header = T)['SNP']
+  snp = read.delim(clump, header = T)['SNP']
   if (is.null(snp)) stop(paste0('Clump file missing ',clump))
-  gwa = read.table(gwa, header = T)
+  gwa = read.delim(gwa, header = T) %>% na.omit()
   gwa = subset(gwa, gwa$AF1 > 0.01 & gwa$AF1 < 0.99)
   if ('OR' %in% colnames(gwa)) {gwa['BETA'] = log(gwa['OR'])}
   gwa$Phenotype = prefix
