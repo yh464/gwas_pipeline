@@ -1,0 +1,24 @@
+{
+    "id": "13A956D7",
+    "path": "D:/.cam-pg/gwas_pipeline/mr_master.r",
+    "project_path": "mr_master.r",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1742834744284.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1742154397,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1742154397,
+    "read_only": false,
+    "read_only_alternatives": []
+}
