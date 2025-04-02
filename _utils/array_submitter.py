@@ -27,6 +27,7 @@ class array_submitter():
                  mode = None,
                  env = 'wd', # default working environment
                  modules = [], # modules to load
+                 dependency = [], # dependent jobs
                  account = None,
                  wd = '.',
                  debug = False,
@@ -40,6 +41,10 @@ class array_submitter():
         self.n_cpu = n_cpu
         self.env = env
         self.wd = os.path.abspath(wd)
+        self.dep = []
+        for dep in dependency:
+            if type(dep) == int or type(dep) == array_submitter:
+                self.dep.append(dep)
         arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 500
         
         self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
@@ -63,6 +68,10 @@ class array_submitter():
         self._mode = 'long' if timeout > 15 else 'short'
         if type(mode) != type(None): self._mode = mode # override mode option if given
         self._debug = debug
+        
+        # status features
+        self._submitted = False
+        self._slurmid = []
         
         # limit per file
         max_time = 720 if self._mode == 'long' else 15 # timeout = 12 hrs max
@@ -104,7 +113,9 @@ class array_submitter():
         os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
         
     # adds a command
-    def add(self,cmd):
+    def add(self,*cmd):
+        # can append multiple commands at once if they need to be run successively
+        # they are considered a single command and take care of the time limit!
         if self._mode == 'long':
             # first iteration: reset files
             if self._count == 1:
@@ -114,7 +125,7 @@ class array_submitter():
             # append command
             fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
             _file = open(fname,'a')
-            print(cmd, file = _file)
+            print(*cmd, file = _file, sep = '\n')
             _file.close() # I do not want 2000 file handles!
             
             # proceed to next file
@@ -137,7 +148,7 @@ class array_submitter():
             
             fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
             _file = open(fname,'a')
-            print(cmd, file = _file)
+            print(*cmd, file = _file, sep = '\n')
             _file.close() # I do not want 2000 file handles!
             
             # if the total time reaches the file size limit, start a new file
@@ -167,6 +178,15 @@ class array_submitter():
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
         print(f'#SBATCH --array=0-{self._nfiles}', file = wrap)
+        for dep in self.dep: 
+            if type(dep) == int:
+                print(f'#SBATCH -d 0:{dep}', file = wrap)
+            elif type(dep) == array_submitter:
+                if not dep.submitted:
+                    dep.submit()
+                    print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
+                for idx in dep._slurmid:
+                    print(f'#SBATCH -d 0:{idx}', file = wrap)
         if len(self._email) > 0: print(f'#SBATCH {self._email}', file = wrap)
         if len(self._account) > 0: print(f'#SBATCH {self._account}', file = wrap)
         print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
@@ -184,7 +204,6 @@ class array_submitter():
         # debug command also outputs the submit command
         time = self.timeout * self._count
         
-        if self._nfiles < 0: return
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {self._email} {self._account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
@@ -207,4 +226,6 @@ class array_submitter():
                   f' --array=0-{self._nfiles} {self._wrap_name}', shell = True) 
         jobid = int(msg.split()[-1])
         print(msg)
+        self._slurmid.append(jobid)
+        self.submitted = True
         return jobid

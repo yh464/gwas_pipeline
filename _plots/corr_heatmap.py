@@ -43,7 +43,8 @@ def corr_heatmap(summary, absmax = None, autocor = False, annot = ''):
     # determine figure size and aspect ratios
     group1 = summary.iloc[:, 0].unique(); group1.sort()
     group2 = summary.iloc[:, 2].unique(); group2.sort()
-    if all(group1 == group2): autocor = True # diagonal lines to be plotted if auto-correlating
+    if len(group1) == len(group2):
+        if all(group1 == group2): autocor = True # diagonal lines to be plotted if auto-correlating
     
     count1 = [summary.loc[summary.iloc[:,0] == x, summary.columns[1]].unique().size for x in group1]
     count2 = [summary.loc[summary.iloc[:,2] == x, summary.columns[3]].unique().size for x in group2]
