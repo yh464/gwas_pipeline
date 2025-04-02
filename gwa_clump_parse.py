@@ -15,6 +15,7 @@ def identify_clumps(df):
     from fnmatch import fnmatch
     clumps = []
     snps = df['SNP'].unique()
+    if len(snps) == 0: return []
     current_clump = [snps[0]]
     for i in snps[1:]:
         for j in current_clump:
@@ -43,6 +44,7 @@ def main(args):
     crosstrait_clumps = []
     # for each phenotype
     for p in args.pheno:
+        print(p)
         # scan directory for clump files at desired p value threshold
         flist = []
         for f in os.listdir(f'{args._in}/{p}'):
@@ -120,7 +122,8 @@ if __name__ == '__main__':
     args._in = os.path.realpath(args._in)
     args.pheno.sort()
     
-    from _utils import cmdhistory, path
+    from _utils import cmdhistory, path, logger
+    logger.splash(args)
     cmdhistory.log()
     proj = path.project()
     proj.add_var('%pheng',r'.+', 'phenotype group')

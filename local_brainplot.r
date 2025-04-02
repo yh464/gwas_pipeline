@@ -59,6 +59,8 @@ for (f in list.files()){
   }
   df[,2] = roi
   colnames(df) = col
+  if ('P' %in% col) df = df %>% rename(p = P)
+  if ('Q' %in% col) df = df %>% rename(q = Q)
   if (! 'q' %in% col & 'p' %in% col) {
     df = df %>% group_by(phenotype) %>% mutate(q = p.adjust(p, 'BH'))
   }
