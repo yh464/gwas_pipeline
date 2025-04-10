@@ -13,8 +13,8 @@ Requires following inputs:
 '''
 
 def main(args):
-    import os
-    import fnmatch
+    import pandas as pd
+    from fnmatch import fnmatch
     
     # parse bed files
     if fnmatch(args.bed, '*.bed'):
@@ -58,12 +58,19 @@ def main(args):
     
     if not args.xchr: return
     if not os.path.isfile(f'{args.out}_X.fastGWA') or args.force:
-        os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm}'+
+        xkeep_file = args.keep.replace('.txt','_X.txt')
+        if not os.path.isfile(xkeep_file):
+            xkeep = pd.read_table(args.keep)
+            xfam = pd.read_table(f'{xbfile}.fam'.replace('--bfile ',''), header = None, usecols = [0,1])
+            xfam.columns = ['FID','IID']
+            xkeep = pd.merge(xkeep, xfam)
+            xkeep.to_csv(xkeep_file, sep = '\t', index = False)
+        
+        os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
             f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
-            f' {ft} --keep {args.keep} --model-only --out {args.out}_Xmodel')
+            f' {ft} --keep {xkeep_file} --model-only --out {args.out}_Xmodel')
         os.system(f'{args.gcta} {xbfile} --load-model {args.out}_Xmodel.fastGWA --geno 0.1 --out {args.out}_X')
         os.system(f'tail -n +2 {args.out}_X.fastGWA >> {args.out}.fastGWA')
-        os.remove(f'{args.out}_Xmodel.fastGWA')
 
 if __name__ == '__main__':
     import argparse

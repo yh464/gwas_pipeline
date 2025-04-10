@@ -3,11 +3,21 @@
 Author: Yuankai He
 Correspondence: yh464@cam.ac.uk
 Version 1: 2025-01-07
+Version 2: 0225-04-03
 
 A generalised plotting tool to plot scatterplot-style heatmaps for correlations
 '''
 
-def corr_heatmap(summary, absmax = None, autocor = False, annot = ''):
+def capitalise(series):
+    out = []
+    for x in range(len(series)):
+        tmp = series.iloc[x]
+        if type(tmp) != str: out.append(tmp)
+        tmp = tmp[0].upper() + tmp[1:]
+        out.append(tmp)
+    return out
+
+def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = ''):
     '''
     Required input format: long format pd.DataFrame
         1st column: group label (x axis, as xlabel)
@@ -39,7 +49,8 @@ def corr_heatmap(summary, absmax = None, autocor = False, annot = ''):
     for col in range(4):
         summary.iloc[:,col] = summary.iloc[:,col].str.replace('_',' ').str.replace(
             ' l$',' L', regex = True).str.replace(' r$',' R', regex = True)
-    
+        summary.iloc[:,col] = capitalise(summary.iloc[:,col])
+        
     # determine figure size and aspect ratios
     group1 = summary.iloc[:, 0].unique(); group1.sort()
     group2 = summary.iloc[:, 2].unique(); group2.sort()
@@ -83,11 +94,18 @@ def corr_heatmap(summary, absmax = None, autocor = False, annot = ''):
     # colour bar range (may manually set to 1)
     if type(absmax) == type(None): absmax = np.abs(summary.iloc[:,4]).max()
     
+    # order of columns and rows
+    if not sort:
+        map_order = dict(zip(summary.iloc[:,1].unique(), range(len(summary.iloc[:,1].unique())))) | \
+            dict(zip(summary.iloc[:,3].unique(), range(len(summary.iloc[:,3].unique()))))
+        mapping = lambda x: x.map(map_order)
+    else: mapping = None
+    
     for i in range(len(group1)):
         for j in range(len(group2)):
             g1 = group1[i]; g2 = group2[j]
             tmp = summary.loc[(summary.iloc[:,0] == g1) & (summary.iloc[:,2] == g2),:]
-            tmp = tmp.sort_values(by = [tmp.columns[1], tmp.columns[3]]) # important for alignment
+            tmp = tmp.sort_values(by = [tmp.columns[1], tmp.columns[3]], key = mapping) # important for alignment
             sns.scatterplot(
                 tmp,
                 x = summary.columns[3], y = summary.columns[1],

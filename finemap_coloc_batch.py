@@ -14,7 +14,6 @@ Required input:
 '''
 
 def main(args):
-    import os
     import pandas as pd
     from fnmatch import fnmatch
     import numpy as np
@@ -26,43 +25,57 @@ def main(args):
         env = 'gentoolsr',
         n_cpu = 1,
         timeout = 360,
-        debug = True
+        # debug = True
         )
     
     from time import perf_counter as t
     tic = t()
     force = '-f' if args.force else ''
     
+    # scans directory for fastGWA files
+    from _utils.path import find_gwas, find_clump
+    flist = []
+    gwa = []
+    if len(args.pheno) > 1 and args.filter:
+        gwa1 = find_gwas(args.pheno[0], dirname = args._in)
+        gwa2 = find_gwas(*args.pheno[1:], dirname = args._in)
+        from gcorr_plot import crosscorr_parse
+        rg = crosscorr_parse(gwa1, gwa2, logdir = args.rg)
+        rg = rg.loc[rg.q < 0.05, ['group1','pheno1','group2','pheno2']]
+        
+        # include phenotypes from group 1 if correlated with anything else
+        # include phenotypes from other groups if correlated with anything in group 1
+        rg1 = rg[['group1','pheno1']]; rg2 = rg[['group2','pheno2']]
+        rg2.columns = ['group1','pheno1']
+        rg = pd.concat([rg1,rg2]).drop_duplicates().reset_index(drop = True)
+        for idx in rg.index:
+            x,y = rg.loc[idx,:]
+            flist.append(f'{args._in}/{x}/{y}.fastGWA')
+            gwa.append((x,y))
+    else:
+        gwa = find_gwas(*args.pheno, dirname = args._in)
+        for x, ys in gwa:
+            for y in ys:
+                flist.append(f'{args._in}/{x}/{y}.fastGWA')
+                gwa.append((x,y))
+    print(f'Found {len(flist)} GWAS summary statistics files.')
+    submitter.config(timeout = len(flist) * 5)
+    
     # identify blocks of fine-mapping segments
     blocks = []
-    # read clump outputs for each phenotype group
-    for x in args.pheno:
-        print(f'Identifying blocks for {x}')
-        try:
-            overlaps = pd.read_table(f'{args.clump}/{x}_{args.p:.0e}_overlaps.txt').set_index('label')
-        except: # identify overlaps with lowest p-value above the p threshold
-            flist = [] 
-            for y in os.listdir(args.clump):
-                if fnmatch(y,f'{x}_?e-??_overlaps.txt'): flist.append(y)
-            plist = [float(z.split('_')[-2]) for z in flist]
-            overlaps = pd.read_table(f'{args.clump}/{x}_{min(plist):.0e}_overlaps.txt').set_index('label')
-            
-        snps = overlaps.columns.tolist()
+    # read clump outputs for each phenotype
+    for x,y in gwa:
+        print(f'Identifying blocks for {x}/{y}')
+        clump,_ = find_clump(f'{args.clump}/{x}',y,args.p)
+        try: clump = pd.read_table(clump, sep = '\\s+', usecols = ['CHR','BP'])
+        except: continue
         
-        # read a fastGWA file to determine the CHR and POS of the SNPs
-        for y in os.listdir(f'{args._in}/{x}'):
-            if fnmatch(y, '*.fastGWA') and not fnmatch(y, '*all_chrs*') and not fnmatch(y, '*_X.fastGWA'):
-                tmp = pd.read_table(f'{args._in}/{x}/{y}', usecols = ['CHR','SNP','POS'], index_col = 'SNP')
-                break
-
         # select 1MB chunks for fine-mapping
-        tmp = tmp[['CHR','POS']]
-        tmp.columns = ['chr','pos']
-        tmp = tmp.loc[tmp.index.isin(snps), :]
-        tmp['start'] = tmp['pos']- 5e+5
-        tmp['stop'] = tmp['pos'] + 5e+5
-        blocks.append(tmp[['chr','start','stop']])
-        del tmp
+        clump = clump[['CHR','BP']]
+        clump.columns = ['chr','pos']
+        clump['start'] = clump['pos']- 5e+5
+        clump['stop'] = clump['pos'] + 5e+5
+        blocks.append(clump[['chr','start','stop']])
     
     # identify overlaps between blocks from different phenotype groups
     blocks = pd.concat(blocks).sort_values(by = ['chr','start']).reset_index(drop=True)
@@ -74,14 +87,6 @@ def main(args):
     blocks = blocks.dropna().reset_index(drop=True)
     toc = t()-tic
     print(f'Identified {blocks.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
-    
-    # scans directory for fastGWA files
-    flist = []
-    for x in args.pheno:
-        for y in os.listdir(f'{args._in}/{x}'):
-            if fnmatch(y, '*.fastGWA') and not fnmatch(y, '*all_chrs*') and not fnmatch(y, '*_X.fastGWA'):
-                flist.append(f'{args._in}/{x}/{y}')
-    print(f'Found {len(flist)} GWAS summary statistics files.')
     
     # specify output
     outdir = f'{args.out}/'+'_'.join(sorted(args.pheno))
@@ -108,12 +113,16 @@ if __name__ == '__main__':
       default = '../clump/')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory',
       default = '../coloc/')
-    parser.add_argument('-p', dest = 'p', help = 'p-value', default = 3.1076e-11, type = float)
+    parser.add_argument('--filter', help = 'Filter for significantly correlated phenotypes',
+      default = False, action = 'store_true')
+    parser.add_argument('-r','--rg', help = 'Directory for rg logs, to filter traits',
+      default = '../gcorr/rglog/')
+    parser.add_argument('-p', dest = 'p', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','clump']:
+    for arg in ['_in','out','clump', 'rg']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
     
     from _utils import path, cmdhistory, logger

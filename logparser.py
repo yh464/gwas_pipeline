@@ -12,54 +12,6 @@ import os
 from fnmatch import fnmatch
 import pandas as pd
 import numpy as np
-import warnings
-
-def find_gwas(*pheno, 
-              dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
-              ext = 'fastGWA'):
-    '''
-    Data structure: {dirname}/{pheno[0]}/*.{ext}
-    pheno: phenotype groups
-    dirname: directory of all GWAS sumstats
-    ext: extension, usually fastGWA
-    '''
-    out = []
-    for p in pheno:
-        for x in os.listdir(f'{dirname}/{p}'):
-            if not fnmatch(x, f'*.{ext}') or fnmatch (x,f'*_X.{ext}'): continue
-            out.append((p,x.replace(f'.{ext}','')))
-    return out
-
-def find_clump(dirname, prefix, pval):
-    '''
-    Find PLINK clump files for a specific trait
-    Quality controls to find strictest p-value threshold with >5 SNP
-    dirname: Directory to look for clumps
-    prefix: name of phenotype
-    pval: p-value
-    '''
-    if os.path.isfile(f'{dirname}/{prefix}_{pval:.0e}.clumped'):
-        # min 5 SNPs
-        if len(open(f'{dirname}/{prefix}_{pval:.0e}.clumped').read().splitlines()) > 5:
-            return f'{dirname}/{prefix}_{pval:.0e}.clumped', pval
-    # identify clump file with lowest p-value with >=5 SNPs
-    flist = [] 
-    for y in os.listdir(dirname):
-        if fnmatch(y,f'{prefix}_?e-??.clumped'): 
-            if len(open(f'{dirname}/{y}').read().splitlines()) > 5:
-                flist.append(y)
-    if len(flist) > 0:
-        plist = [float(z[-13:-8]) for z in flist]
-        return f'{dirname}/{prefix}_{min(plist):.0e}.clumped', min(plist)
-    
-    for y in os.listdir(dirname):
-        if fnmatch(y,f'{prefix}_?e-??.clumped'): 
-             flist.append(y)
-    if len(flist) > 0:
-        plist = [float(z[-13:-8]) for z in flist]
-        warnings.warn(f'{prefix} has <5 SNPs')
-        return f'{dirname}/{prefix}_{max(plist):.0e}.clumped', max(plist)
-    raise FileNotFoundError(f'No clump found for {prefix}')
     
 def parse_h2_log(file):
     '''
@@ -77,25 +29,55 @@ def parse_h2_log(file):
         h2 = np.nan; se = np.nan
     return h2, se
 
-def parse_rg_log(file):
+def parse_greml_h2_log(file):
     '''
-    Parses LDSC H2 logs
-    input: file name *.rg.log
-    output: rg and se
+    Parses GREML H2 logs
+    input: file name *.greml.hsq
+    output: h2 and se
     '''
-    tmp = open(file)
-    tmp_stats = tmp.read().splitlines()
-    tmp_stats = tmp_stats[-4].split()
-    while tmp_stats.count('') > 0:
-      tmp_stats.remove('')
-    try: 
-        rg = float(tmp_stats[2])
-        if rg > 1: rg = 1
-        if rg < -1: rg = -1
-    except: 
-      rg = np.nan
-      print(f'{file} shows NA correlation!')
-    try: se = max((float(tmp_stats[3]),10**-20))
-    except: se = np.nan
+    try:
+        tmp = open(file).read().splitlines()[4].split()
+        h2 = float(tmp[-2])
+        se = float(tmp[-1])
+    except: h2 = np.nan; se = np.nan
+    return h2, se
 
-    return rg, se
+def parse_rg_log(file, full = False):
+    '''
+    Parses LDSC rg log for only one pair of phenotypes
+    input: file name *.rg.log
+    output: data frame with following columns: group1, pheno1, group2, pheno2, rg, se, p
+    full output (specify full = True): in addition to above output, z scores;
+        h2_obs, h2_int, gcov_int and their SE
+    '''
+    def floatna(x):
+        try: return float(x)
+        except: return np.nan
+    hdr = ['group1','pheno1','group2','pheno2','rg','se','z','p','h2_obs',
+           'h2_obs_se','h2_int','h2_int_se','gcov_int','gcov_int_se']
+    all_stats = []
+    tmp = open(file)
+    skip = True
+    line = 'placeholder'
+    while len(line) > 0:
+        line = tmp.readline()
+        if line.find('gcov_int_se') > -1: skip = False; continue
+        if line.find('Analysis finished') > -1: skip = True; continue
+        if skip: continue
+        tmp_stats = line.replace('\n','').split()
+        if len(tmp_stats) == 0: continue
+        group1 = os.path.basename(os.path.dirname(tmp_stats[0]))
+        pheno1 = os.path.basename(tmp_stats[0]).replace('.sumstats','').replace('.gz','')
+        group2 = os.path.basename(os.path.dirname(tmp_stats[1]))
+        pheno2 = os.path.basename(tmp_stats[1]).replace('.sumstats','').replace('.gz','')
+        tmp_stats = [group1, pheno1, group2, pheno2] + [floatna(x) for x in tmp_stats[2:]]
+        all_stats.append(tmp_stats)
+    
+    if len(all_stats) == 0: return pd.DataFrame(data = [], index = [], columns = hdr)
+    all_stats = pd.DataFrame(data = all_stats, columns = hdr)
+    all_stats.loc[all_stats.rg > 1, 'rg'] = 1
+    all_stats.loc[all_stats.rg < -1, 'rg'] = -1
+    all_stats.loc[all_stats.se < 1e-20, 'se'] = 1e-20
+
+    if full: return all_stats
+    else: return all_stats[['group1','pheno1','group2','pheno2','rg','se','p']]

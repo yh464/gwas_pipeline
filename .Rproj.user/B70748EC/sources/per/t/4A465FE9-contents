@@ -11,7 +11,7 @@ parser = ArgumentParser(description = 'This script runs multivariable MR for a s
 parser$add_argument('-i','--in', dest = 'gwa', help = 'GWAS summary stats', nargs = '*')
 parser$add_argument('--p1', help = 'Exposure', nargs = '*')
 parser$add_argument('--p2', help = 'Outcome') # only one outcome
-parser$add_argument('-c','--clump', help = 'Clumping output for outcome')
+parser$add_argument('--pval', help = 'P-value threshold', type = 'numeric', default = 5e-8)
 parser$add_argument('-o','--out', help = 'Output prefix')
 parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
                     default = F, action = 'store_true')

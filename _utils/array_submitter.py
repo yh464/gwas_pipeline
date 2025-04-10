@@ -12,6 +12,26 @@ CHECK LOG
 import os
 
 class array_submitter():
+    '''
+    Attributes of an array submitter
+    Required:
+        Name (must be unique, will overwrite other submitters)
+        Timeout (per command or group of commands)
+    Optional:
+        n_node, n_task, n_cpu (resource allocation)
+        log (log file directory)
+        tmpdir (stores batch scripts)
+        lim (limit of commands per file)
+        arraysize (limit of number of files before starting a new array job)
+        email: True/False
+        mode: 'short' or 'long' jobs
+        env (conda environment)
+        modules (module load *)
+        dependency (can be another submitter or an array job ID)
+        account
+        wd (working directory)
+        debug: True/False
+    '''
     def __init__(self,
                  name, # name of project
                  timeout, # time limit per command, minutes; will raise an error if not given
@@ -19,8 +39,8 @@ class array_submitter():
                  n_node = 1,
                  n_task = 1,
                  n_cpu = 1,
-                 log = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
-                 tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
+                 log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
+                 tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  lim = -1, # number of commands per file, default -1
                  arraysize = 500, # array size limit, default 2000 for CSD3 cluster, QOS max CPU per user limit 500
                  email = True,
@@ -82,7 +102,11 @@ class array_submitter():
         else:
             self.lim = min((lim, math.floor(max_time/timeout)))
         del math, max_time
-        
+    
+    def config(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+            
     # a new file requires a shebang line, so this func resets the file
     def _newfile(self):
         fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
@@ -114,6 +138,10 @@ class array_submitter():
         
     # adds a command
     def add(self,*cmd):
+        '''
+        Adds commands to the submitter utility
+        Can pass any number of commands that need to be run in order
+        '''
         # can append multiple commands at once if they need to be run successively
         # they are considered a single command and take care of the time limit!
         if self._mode == 'long':
@@ -193,23 +221,29 @@ class array_submitter():
         wrap.close()
     
     def debug(self):
+        '''
+        Prints one sample command file and the sbatch command
+        '''
         if self._nfiles < 0:
             print('No files to submit (!)')
             return
         
         import os
         os.system(f'cat {self.tmpdir}/{self.name}_0.sh')
+        print(f'\n\nbash {self.tmpdir}/{self.name}_0.sh\n\n')
         self._write_wrap()
         
         # debug command also outputs the submit command
         time = self.timeout * self._count
-        
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {self._email} {self._account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles} {self._wrap_name}') 
     
     def submit(self):
+        '''
+        Submits all commands to the cluster (SLURM manager)
+        '''
         # if debug mode is on, debug instead
         if self._nfiles < 0: return
         if self._debug:

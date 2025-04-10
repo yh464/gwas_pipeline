@@ -15,77 +15,53 @@ Changelog:
     Applied a wide- and long-format tabular output
 '''
 
-def main(args):
-    import os
-    from fnmatch import fnmatch
-    import pandas as pd
+def crosscorr_parse(gwa1, gwa2, 
+        logdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog', 
+        exclude = []):
+    '''
+    gwa1 and gwa2 are lists of (group, pheno) tuples from logparser.find_gwas
+    logdir = 
+    '''
     import numpy as np
+    import pandas as pd
     import scipy.stats as sts
-    from _utils.path import normaliser
-    
-    # scans directories to include sumstats 
-    os.chdir(args.sumstats)
-    prefix_1 = []; pheno_1 = []; count_1 = []
-    prefix_2 = []; pheno_2 = []; count_2 = []
-    for p in args.p1:
-        c = 0
-        for x in sorted(os.listdir(p)):
-            if not fnmatch(x,'*.sumstats'): continue
-            if any([x.find(ex) > -1 for ex in args.exclude]): continue
-            prefix_1.append(x.replace('.sumstats','')); pheno_1.append(p)
-            c += 1
-        count_1.append(c)
-    for p in args.p2:
-        c = 0
-        for x in sorted(os.listdir(p)):
-            if not fnmatch(x,'*.sumstats'): continue
-            if any([x.find(ex) > -1 for ex in args.exclude]): continue
-            prefix_2.append(x.replace('.sumstats','')); pheno_2.append(p)
-            c += 1
-        count_2.append(c)
-
-    # parse LDSC log files
+    from logparser import parse_rg_log
     summary = []
-    os.chdir(args._in)
-    for p1,x1 in zip(pheno_1, prefix_1): # usually imaging phenotypes
-        for p2,x2 in zip(pheno_2, prefix_2):
-            if p1 < p2: fname = f'{p1}.{p2}/{p1}_{x1}.{p2}_{x2}.rg.log'
-            else: fname = f'{p2}.{p1}/{p2}_{x2}.{p1}_{x1}.rg.log'
-            
-            # The following section reads the RG and SE statistics from the log file
-            if os.path.isfile(fname):
-                tmp = open(fname)
-                tmp_stats = tmp.read().splitlines()
-                tmp_stats = tmp_stats[-4].split()
-                while tmp_stats.count('') > 0:
-                  tmp_stats.remove('')
-                try: 
-                    rg = float(tmp_stats[2])
-                    if rg > 1: rg = 1
-                    if rg < -1: rg = -1
-                except: 
-                  rg = np.nan
-                  print(f'{fname} shows NA correlation!')
-                try: se = max((float(tmp_stats[3]),10**-20))
-                except: se = np.nan
-            
-                p = 1-sts.chi2.cdf((rg/se)**2, df = 1) # p value
-                
-                summary.append(pd.DataFrame(dict(group1 = p1, pheno1 = x1,
-                  group2 = p2, pheno2 = x2, rg = rg, se = se, p = [p])))
     
-    # statistics for the summary table
+    for p1,x1 in gwa1: # usually imaging phenotypes
+        for p2,x2 in gwa2:
+            if p1 < p2 or (p1 == p2 and x1 < x2): fname = f'{p1}.{p2}/{p1}_{x1}.{p2}_{x2}.rg.log'
+            else: fname = f'{p2}.{p1}/{p2}_{x2}.{p1}_{x1}.rg.log'
+            if not os.path.isfile(fname): continue
+            
+            rg, se = parse_rg_log(fname)
+            p = 1-sts.chi2.cdf((rg/se)**2, df = 1) # p value
+            summary.append(pd.DataFrame(dict(group1 = p1, pheno1 = x1,
+                group2 = p2, pheno2 = x2, rg = rg, se = se, p = [p])))
+            
     summary = pd.concat(summary) # creates a long format table
     summary.insert(loc = len(summary.columns), column = 'q', value = np.nan)
-    for p1,x1 in zip(pheno_1, prefix_1): # FDR correction for each IDP, which are non-independent
+    for p1,x1 in gwa1: # FDR correction for each IDP, which are non-independent
         summary.loc[(summary.pheno1==x1) & (summary.group1==p1) & ~np.isnan(summary.p),'q'] \
             = sts.false_discovery_control(
             summary.loc[(summary.pheno1==x1)&(summary.group1==p1) & ~np.isnan(summary.p),'p'])
     
-    norm = normaliser()
+    return summary
+
+def main(args):
+    import os
+    from _utils.path import normaliser
+    from logparser import find_gwas
     
+    # scans directories to include sumstats
+    gwa1 = find_gwas(*args.p1, dirname = args.sumstats, ext = 'sumstats')
+    gwa2 = find_gwas(*args.p1, dirname = args.sumstats, ext = 'sumstats')
+
+    # parse LDSC log files
+    summary = crosscorr_parse(gwa1, gwa2, args._in, args.exclude)
     
     # tabular output, wide and long
+    norm = normaliser()
     fout = f'{args.out}/crosscorr_' + '_'.join(args.p1)+'.'+'_'.join(args.p2)
     rg_tbl = summary.pivot_table(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
     norm.normalise(rg_tbl).to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',

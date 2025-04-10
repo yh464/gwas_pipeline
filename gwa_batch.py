@@ -26,7 +26,7 @@ def main(args):
     import fnmatch
     flist = []
     for f in os.listdir(args._in):
-      if fnmatch.fnmatch(f,f'*{args.pheno}*') and not(os.path.isdir(f)):                  # search for all files matching args.pheno
+      if fnmatch.fnmatch(f,f'*{args.pheno}*') and not(os.path.isdir(f)):       # search for all files matching args.pheno
         flist.append(f'{args._in}/{f}')
     if len(flist) != 1: raise ValueError('Please give only ONE phenotype file')
     
@@ -49,7 +49,7 @@ def main(args):
     os.remove(f'{tmpdir}/temp_{args.pheno}.txt')
     
     # create output folder
-    outdir = f'{args.out}/{f}/'.replace('.txt','')
+    outdir = f'{args.out}/{os.path.basename(f)}/'.replace('.txt','')
     print(outdir)
     if not os.path.isdir(outdir):
       os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
@@ -115,7 +115,7 @@ if __name__ == '__main__':
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','gcta','dcov','qcov','grm','mb']:
+    for arg in ['_in','out','gcta','dcov','qcov','grm','bed']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
     
     from _utils import cmdhistory, path, logger

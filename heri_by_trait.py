@@ -24,8 +24,9 @@ scripts_path = os.path.dirname(scripts_path)
 if args.force or (not os.path.isfile(f'{args.out}/{prefix}.sumstats')):
     # this command uses python2 so a separate script for ldsc  
     os.system(f'bash {scripts_path}/ldsc_master.sh munge_sumstats.py --sumstats {args._in} '+ \
-          # f'--merge-alleles {args.ldsc}/ukb_snp_info.txt '+
-          f'--out {args.out}/{prefix}')
+          f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt '+
+          # f'--merge-alleles {args.ldsc}/w_hm3.snplist '
+          f'--out {args.out}/{prefix} --chunksize 50000')
 
 # QC h2 log
 h2log = f'{args.out}/{prefix}.h2.log'

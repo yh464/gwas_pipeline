@@ -12,6 +12,7 @@ def main(args):
     from fnmatch import fnmatch
     import numpy as np
     import scipy.stats as sts
+    from logparser import parse_h2_log, parse_greml_h2_log
     
     summary = []
     for p in args.pheno:
@@ -19,18 +20,9 @@ def main(args):
             if not fnmatch(x,'*.sumstats'): continue
             prefix = x.replace('.sumstats','').replace('.gz','')
             ldsc = f'{args.ldsc}/{p}/{prefix}.h2.log'
-            try:
-                tmp = open(ldsc).read().splitlines()[-7].replace('(','').replace(')','').split()
-                ldsc_h2 = float(tmp[-2])
-                ldsc_se = float(tmp[-1])
-            except: ldsc_h2 = np.nan; ldsc_se = np.nan
-            
+            ldsc_h2, ldsc_se = parse_h2_log(ldsc)
             greml = f'{args.greml}/{p}/{prefix}.greml.hsq'
-            try:
-                tmp = open(greml).read().splitlines()[4].split()
-                greml_h2 = float(tmp[-2])
-                greml_se = float(tmp[-1])
-            except: greml_h2 = np.nan; greml_se = np.nan
+            greml_h2, greml_se = parse_greml_h2_log(greml)
             
             summary.append(pd.DataFrame(dict(
                 group = [p], phenotype = prefix,

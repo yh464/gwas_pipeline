@@ -34,7 +34,7 @@ def main(args):
       
       for y in os.listdir():
         if not fnmatch(y, '*.fastGWA'): continue
-        if fnmatch(y, '*X.fastGWA') or fnmatch(y, '*all_chrs.fastGWA'):
+        if fnmatch(y, '*X.fastGWA'):
             continue                               # autosomes
         prefix = y.replace('.fastGWA','')
         if os.path.isfile(f'{args.out}/{x}/{prefix}.h2.log') and not args.force: continue

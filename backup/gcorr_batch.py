@@ -2,14 +2,21 @@
 '''
 Author: Yuankai He
 Correspondence: yh464@cam.ac.uk
-Version 1: 2024-11-14
+Version 1: 2023-07-13
+Version 2.0: 2024-11-12
+Version 2.1: 2024-11-29
 
-A simplified script to conduct genetic correlation between groups of phenotypes
+Conducts genetic correlation for groups of phenotypes,
+including correlations within and betwwen groups of phenotypes
 
-Requires following inputs: 
-    GWAS summary statistics (scans directory for all files)
+Preceding workflow:
+    heri_batch.py
+Requires following inputs:
+    MUNGED GWAS summary statistics (scans directory for all files)
+Changelog:
+    moved all heritability/munging elements to heri_batch.py
+    Added the feature to check for duplicate files (a with b v b with a)
 '''
-
 
 def main(args):
     import os
@@ -19,31 +26,30 @@ def main(args):
     # array submitter
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
-        name = f'gcorr_{args.p1[0]}_{args.p2[0]}',
-        timeout = 10, mode = 'long')
+        name = 'gcorr_'+'_'.join(args.pheno),
+        timeout = 10, mode = 'long',
+        debug = False
+        )
     
     scripts_path = os.path.realpath(__file__)
     scripts_path = os.path.dirname(scripts_path)
+    prefix_list = []
+    pheno_list = []
     
-    # scans directories to include sumstats 
+    for x in args.pheno:
+      for y in os.listdir(f'{args._in}/{x}'):
+        if fnmatch(y, '*.sumstats'):
+          prefix = y.replace('.sumstats','')
+          prefix_list.append(prefix)
+          pheno_list.append(x)
+          
     os.chdir(args._in)
-    prefix_1 = []; pheno_1 = []
-    prefix_2 = []; pheno_2 = []
-    for p in args.p1:
-        for x in os.listdir(p):
-            if fnmatch(x,'*.sumstats'):
-                prefix_1.append(x.replace('.sumstats','')); pheno_1.append(p)
-    for p in args.p2:
-        for x in os.listdir(p):
-            if fnmatch(x,'*.sumstats'):
-                prefix_2.append(x.replace('.sumstats','')); pheno_2.append(p)
     
-    for i in range(len(prefix_1)):
-      for j in range(len(prefix_2)):
-        g1 = pheno_1[i]; p1 = prefix_1[i]
-        g2 = pheno_2[j]; p2 = prefix_2[j]
+    for i in range(len(prefix_list)):
+      for j in range(i):
+        g1 = pheno_list[i]; p1 = prefix_list[i]
+        g2 = pheno_list[j]; p2 = prefix_list[j]
         if g2 < g1: g1,g2 = (g2,g1); p1,p2 = (p2,p1)
-        
         out_rg = f'{args.out}/{g1}.{g2}/{g1}_{p1}.{g2}_{p2}.rg.log'
         if not os.path.isdir(f'{args.out}/{g1}.{g2}'): 
             os.mkdir(f'{args.out}/{g1}.{g2}')
@@ -57,7 +63,7 @@ def main(args):
                 os.remove(out_rg1)
             if not os.path.isfile(out_rg) and os.path.isfile(out_rg1):
                 os.rename(out_rg1, out_rg)
-        
+            
         # QC out_rg file
         if os.path.isfile(out_rg):
           # if analysis is aborted
@@ -69,22 +75,24 @@ def main(args):
           tmp = open(out_rg).read().splitlines()[-4].split()[2]
           try: float(tmp)
           except:
-            # try constraining intercepts
-            submitter.add('bash '+
-              f'{scripts_path}/ldsc_master.sh ldsc.py --ref-ld-chr {args.ldsc}/baseline/'+
-              f' --w-ld-chr {args.ldsc}/baseline/ '+
-              f'--rg {args._in}/{pheno_1[i]}/{prefix_1[i]}.sumstats,'+
-              f'{args._in}/{pheno_2[j]}/{prefix_2[j]}.sumstats '+
-              f'--out {out_rg[:-4]} --no-intercept')
-            continue
+              # try constraining intercepts
+              submitter.add('bash '+
+                f'{scripts_path}/ldsc_master.sh ldsc.py --ref-ld-chr {args.ldsc}/baseline/'+
+                f' --w-ld-chr {args.ldsc}/baseline/ '+
+                f'--rg {args._in}/{g1}/{p1}.sumstats,'+
+                f'{args._in}/{g2}/{p2}.sumstats '+
+                f'--out {out_rg[:-4]} --no-intercept')
+              continue
         
+        # if out_rg survives QC we continue without doing anything
         if os.path.isfile(out_rg) and (not args.force): continue
         
+        # if no out_rg file is present
         submitter.add('bash '+
           f'{scripts_path}/ldsc_master.sh ldsc.py --ref-ld-chr {args.ldsc}/baseline/'+
           f' --w-ld-chr {args.ldsc}/baseline/ '+
-          f'--rg {args._in}/{pheno_1[i]}/{prefix_1[i]}.sumstats,'+
-          f'{args._in}/{pheno_2[j]}/{prefix_2[j]}.sumstats '+
+          f'--rg {args._in}/{g1}/{p1}.sumstats,'+
+          f'{args._in}/{g2}/{p2}.sumstats '+
           f'--out {out_rg[:-4]}')
     
     submitter.submit()
@@ -92,10 +100,8 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 
-      'This programme estimates genetic cross-correlation between two different sets of phenotypes')
-    parser.add_argument('-p1', help = 'First group of phenotypes to correlate, usually IDP', nargs = '*')
-    parser.add_argument('-p2', help = 'Second group of phenotypes to correlate, usually disorders', nargs = '*',
-      default = ['global_structural','disorders','gradients'])
+      'This programme creates genetic correlation matrices for global phenotypes')
+    parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
       default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
@@ -109,11 +115,10 @@ if __name__ == '__main__':
     for arg in ['_in','out','ldsc']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
     
-    from _utils import cmdhistory, path, logger
-    logger.splash(args)
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng_%pheno_%maf.sumstats', __file__)
-    proj.add_output(args.out+'/%pheng_%pheno_%maf.%pheng_%pheno_%maf.rg.log', __file__)
+    proj.add_output(args._in+'/ldsc_sumstats/%pheng_%pheno_%maf.sumstats', __file__)
+    proj.add_output(args.out+'/rglog/%pheng.%pheng/%pheng_%pheno.%pheng_%pheno.rg.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()
