@@ -18,14 +18,6 @@ def main(args):
     from logparser import parse_rg_log
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     
-    # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
-        name = f'gcorr_{args.p1[0]}',
-        timeout = 10, mode = 'long', wd = args._in,
-        debug = True
-        )
-    
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     
     # scans directories to include sumstats
@@ -33,6 +25,15 @@ def main(args):
     gwa1 = find_gwas(*args.p1, dirname = args._in, ext = 'sumstats', long = False)
     gwa2 = find_gwas(*args.p2, dirname = args._in, ext = 'sumstats', long = False)
     pairwise = pair_gwas(gwa1, gwa2)
+    
+    # array submitter
+    timeout = max([len(x) for _,x in (gwa1+gwa2)])/10
+    from _utils import array_submitter
+    submitter = array_submitter.array_submitter(
+        name = f'gcorr_{args.p1[0]}',
+        timeout = timeout, mode = 'long', wd = args._in,
+        # debug = True
+        )
     
     for g1, p1s, g2, p2s in pairwise:
         # p1s means list of <pheno1>s in group1

@@ -88,12 +88,15 @@ def main(args):
           out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
       toc = time.perf_counter() - tic
       print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
-    
-    out_df = pd.concat(out_df, axis = 0)
+    if len(out_df) > 0:
+        out_df = pd.concat(out_df, axis = 0)
+    else: out_df = pd.DataFrame(columns = ['CHR', 'F', 'SNP', 'BP', 'P', 
+        'TOTAL', 'NSIG','S05','S01', 'S001','S0001','SP2'], index = [])
     out_df.to_csv(out, sep = '\t', index = False)
-    # # clears temp
-    # for x in tmp_flist:
-    #   try: os.remove(x)
-    #   except: pass
+    
+    # clears temp
+    for x in tmp_flist:
+        try: os.remove(x)
+        except: pass
 
 main(args)

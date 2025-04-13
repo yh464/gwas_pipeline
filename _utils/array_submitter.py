@@ -10,6 +10,7 @@ CHECK LOG
 '''
 
 import os
+import warnings
 
 class array_submitter():
     '''
@@ -54,19 +55,30 @@ class array_submitter():
                  ):
         
         self.name = name + '_0'
+        self.debug = debug
+        
+        # SLURM config
         self.partition = partition
         self.timeout = timeout
         self.n_node = n_node
         self.n_task = n_task
         self.n_cpu = n_cpu
+        arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 500
+        self.arraysize = arraysize # the default array job size limit is 2000 for SLURM
+        self.email = '--mail-type=ALL' if email else ''
+        self.account = account
+        
+        # dependencies
         self.env = env
         self.wd = os.path.abspath(wd)
         self.dep = []
         for dep in dependency:
             if type(dep) == int or type(dep) == array_submitter:
                 self.dep.append(dep)
-        arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 500
+        if type(modules) == type('a'): modules = [modules] # single string
+        self.modules = modules
         
+        # directories
         self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
         if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
         os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
@@ -74,26 +86,19 @@ class array_submitter():
         if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
         os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
         
-        if type(modules) == type('a'): modules = [modules] # single string
-        self.modules = modules
-        
         # internal variables
-        self._email = '--mail-type=ALL' if email else ''
-        self._account = f'-A {account}' if type(account) != type(None) else ''
-        self._arraysize = arraysize # the default array job size limit is 2000 for SLURM
         self._count = 1 # number of commands per file
         self._fileid = 0 # current file id
         self._nfiles = -1
         self._jobid = 0
         self._mode = 'long' if timeout > 15 else 'short'
         if type(mode) != type(None): self._mode = mode # override mode option if given
-        self._debug = debug
         
         # status features
         self._submitted = False
         self._slurmid = []
         
-        # limit per file
+        # limit of commands per file
         max_time = 720 if self._mode == 'long' else 15 # timeout = 12 hrs max
         if lim != -1: max_time = 720 # so that time limit can be manually specified
         import math
@@ -103,8 +108,17 @@ class array_submitter():
             self.lim = min((lim, math.floor(max_time/timeout)))
         del math, max_time
     
+    # change settings
     def config(self, **kwargs):
+        valid_keys = [
+            'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
+            'arraysize','email','account','env','wd','dep','modules','logdir',
+            'tmpdir','lim'
+            ]
         for key, value in kwargs.items():
+            if not key in valid_keys:
+                warnings.warn(f'{key} not a valid option for the array submitter')
+                continue
             setattr(self, key, value)
             
     # a new file requires a shebang line, so this func resets the file
@@ -160,7 +174,7 @@ class array_submitter():
             self._fileid += 1
             
             # if array size limit is reached, print a new command to the first file
-            if self._fileid >= self._arraysize:
+            if self._fileid >= self.arraysize:
                 if self._count >= self.lim:
                     self.submit() # because this job is 'full'
                     self._newjob()
@@ -181,7 +195,7 @@ class array_submitter():
             
             # if the total time reaches the file size limit, start a new file
             if self._count >= self.lim:
-                if self._fileid >= self._arraysize:
+                if self._fileid >= self.arraysize:
                     self.submit()
                     self._newjob()
                 else:
@@ -200,7 +214,7 @@ class array_submitter():
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {self.n_cpu}', file = wrap)
-        time = self.timeout * self._count
+        time = int(self.timeout * self._count)
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
@@ -215,12 +229,13 @@ class array_submitter():
                     print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
                 for idx in dep._slurmid:
                     print(f'#SBATCH -d 0:{idx}', file = wrap)
-        if len(self._email) > 0: print(f'#SBATCH {self._email}', file = wrap)
-        if len(self._account) > 0: print(f'#SBATCH {self._account}', file = wrap)
+        
+        if self.email: print('#SBATCH --mail-type=ALL', file = wrap)
+        if self.account: print(f'#SBATCH -A {self.account}', file = wrap)
         print(f'bash {self.tmpdir}/{self.name}_'+'${SLURM_ARRAY_TASK_ID}.sh', file = wrap)
         wrap.close()
     
-    def debug(self):
+    def _print(self):
         '''
         Prints one sample command file and the sbatch command
         '''
@@ -234,9 +249,11 @@ class array_submitter():
         self._write_wrap()
         
         # debug command also outputs the submit command
-        time = self.timeout * self._count
+        time = int(self.timeout * self._count)
+        email = '--mail-type=ALL' if self.email else ''
+        account = f'-A {self.account}' if self.account else ''
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
-                  f'-t {time} -p {self.partition} {self._email} {self._account} '+
+                  f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles} {self._wrap_name}') 
     
@@ -246,16 +263,18 @@ class array_submitter():
         '''
         # if debug mode is on, debug instead
         if self._nfiles < 0: return
-        if self._debug:
-            self.debug()
+        if self.debug:
+            self._print()
             return
         
         self._write_wrap()
-        time = self.timeout * self._count
+        time = int(self.timeout * self._count)
+        email = '--mail-type=ALL' if self.email else ''
+        account = f'-A {self.account}' if self.account else ''
         
         from subprocess import check_output
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
-                  f'-t {time} -p {self.partition} {self._email} {self._account} '+
+                  f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles} {self._wrap_name}', shell = True) 
         jobid = int(msg.split()[-1])

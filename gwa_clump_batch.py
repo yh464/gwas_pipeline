@@ -25,11 +25,11 @@ def main(args):
     log = open(f'{logdir}/gwa_clump.log','w')                                       # log file
     
     # array submitter
-    timeout = 5 if args.p < 1e-8 else 20
+    timeout = 15 if args.p < 1e-8 else 40
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
         name = f'clump_{args.pheno[0]}_{args.p:.0e}',
-        timeout = timeout,
+        timeout = timeout, mode = 'long',
         debug = False
         )
     

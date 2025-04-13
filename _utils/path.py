@@ -30,6 +30,9 @@ def find_gwas(*pheno,
         False - output = [(<group0>, [<pheno0.0>, <pheno0.1>, ...]), ...]
     '''
     out = []
+    if len(pheno) == 0: return []
+    if type(pheno[0]) in [list, tuple]:
+        pheno = pheno[0]
     if long:
         for p in pheno:
             for x in sorted(os.listdir(f'{dirname}/{p}')):
