@@ -17,36 +17,13 @@ def qc(file):
     except:
         return False
 
-def find_clump(dirname, prefix, pval):
-    import os
-    if os.path.isfile(f'{dirname}/{prefix}_{pval:.0e}.clumped'):
-        return f'{dirname}/{prefix}_{pval:.0e}.clumped', pval
-    from fnmatch import fnmatch
-    # identify clump file with lowest p-value available
-    flist = [] 
-    for y in os.listdir(dirname):
-        if fnmatch(y,f'{prefix}_?e-??.clumped'): flist.append(y)
-    plist = [float(z[-13:-8]) for z in flist]
-    return f'{dirname}/{prefix}_{min(plist):.0e}.clumped', min(plist)
-
-def parse_h2_log(file):
-    from fnmatch import fnmatch
-    try:
-        for line in open(file).read().splitlines():
-            if fnmatch(line, 'Total Observed scale h2*'): break
-        l = line.split()
-        h2 = float(l[-2])
-        se = float(l[-1].replace('(','').replace(')',''))
-    except:
-        import numpy as np
-        h2 = np.nan; se = np.nan
-    return h2, se
-
 def main(args):
     import os
     from fnmatch import fnmatch
     import numpy as np
     import pandas as pd
+    from logparser import parse_h2_log
+    from _utils.path import find_clump
     
     # array submitter
     from _utils import array_submitter
