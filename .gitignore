@@ -1,2 +1,3 @@
 .spyproject/*
-/.Rproj.user
+/.Rproj.user/*
+__pycache__/*
