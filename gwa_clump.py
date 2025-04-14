@@ -67,7 +67,7 @@ def main(args):
     for c in chrs:                                                                 # every chromosome that is sig, sorted 
       idx += 1
       # separates files by chromosome
-      df_tmp = df.loc[df.CHR == c, :].sort_values(by = 'P')
+      df_tmp = df.loc[df.CHR == c, :]
       tmpgwa = f'{tmpdir}/{args.file}_chr{c}.fastGWA'
       tmpsnp = f'{tmpdir}/{args.file}_chr{c}.snplist'
       df_tmp.to_csv(tmpgwa, index = False, sep = '\t')
