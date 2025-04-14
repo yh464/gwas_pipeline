@@ -32,7 +32,7 @@ def find_gwas(*pheno,
     out = []
     if len(pheno) == 0: return []
     if type(pheno[0]) in [list, tuple]:
-        pheno = pheno[0]
+        pheno = [y for x in pheno for y in x]
     if long:
         for p in pheno:
             for x in sorted(os.listdir(f'{dirname}/{p}')):

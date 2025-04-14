@@ -9,8 +9,9 @@ library(argparse)
 library(here)
 parser = ArgumentParser(description = 'This script runs multivariable MR for a single outcome')
 parser$add_argument('-i','--in', dest = 'gwa', help = 'GWAS summary stats', nargs = '*')
-parser$add_argument('--p1', help = 'Exposure', nargs = '*')
-parser$add_argument('--p2', help = 'Outcome') # only one outcome
+parser$add_argument('--p1', help = 'Exposure, format <group>/<pheno>, separated by whitespace', nargs = '*')
+parser$add_argument('--p2', help = 'Outcome, format <group>/<pheno>, only one outcome')
+parser$add_argument('--rg', help = 'Genetic correlation matrix between exposures, long format')
 parser$add_argument('--pval', help = 'P-value threshold', type = 'numeric', default = 5e-8)
 parser$add_argument('-o','--out', help = 'Output prefix')
 parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
@@ -33,11 +34,7 @@ main = function(args){
   for (i in c(1:length(args$gwa))) gwa[[i]] = read.delim(args$gwa[i])
   gwa = bind_rows(gwa)
   
-  # select SNPs based on outcome
-  snps = read.delim(args$clump, sep = '\\s+')$SNP
-  gwa = gwa %>% subset(SNP %in% snps)
-  
-  # harmonise data
+  # format exposure data
   exp = list()
   n_exp = length(args$p1)
   samplesize = list()
@@ -56,17 +53,27 @@ main = function(args){
                'effect_allele.exposure','other_allele.exposure',
                'eaf.exposure','beta.exposure','se.exposure','pval.exposure')]
   
+  # only select loci above significance level for at least one exposure
+  snp_sig = exp %>% group_by(SNP) %>% summarise(P.min = min(pval.exposure)) %>% 
+    subset(P.min < args$pval)
+  snp_sig = snp_sig$SNP
+  exp = exp %>% subset(SNP %in% snp_sig)
+  
+  # format outcome data
   pheno = strsplit(args$p2,'/')
-  out = gwa %>% subset((Phenotype == pheno[1]) & (Group == pheno[0])) %>%
+  out = gwa %>% 
+    subset((Phenotype == pheno[1]) & (Group == pheno[0]) & (SNP %in% snp_sig)) %>%
     mutate(outcome = args$p2, id.outcome = args$p2) %>% rename(
-      effect_allele.outcome = 'A1', other_allele.outcome = 'A2', eaf.outcome = 'AF1',
-      beta.outcome = 'BETA', se.outcome = 'SE', pval.outcome = 'P',
-      samplesize.outcome = 'N'
+      effect_allele.outcome = 'A1', other_allele.outcome = 'A2', 
+      eaf.outcome = 'AF1', beta.outcome = 'BETA', se.outcome = 'SE', 
+      pval.outcome = 'P', samplesize.outcome = 'N'
     )
   samplesize[[n_exp + 1]]=out$samplesize.outcome%>% max(na.rm = T)
   out = out[,c('SNP','outcome','id.outcome','samplesize.outcome',
                'effect_allele.outcome','other_allele.outcome',
                'eaf.outcome','beta.outcome','se.outcome','pval.outcome')]
+  
+  # harmonise data
   dat = mv_harmonise_data(exp, out)
   
   #### MVMR-Horse ####

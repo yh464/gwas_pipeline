@@ -10,9 +10,8 @@ Scans the entire directory for GWAS summary stats of the same data extension.
 
 def main(args):
     import pandas as pd
-    import scipy.stats as sts
     import os
-    from logparser import parse_rg_log
+    from gcorr_plot import crosscorr_parse
     from _utils.path import find_gwas
     
     force = '-f' if args.force else ''
@@ -29,46 +28,39 @@ def main(args):
     exposures = find_gwas(args.p1, args.gwa, args.e1)
     outcomes = find_gwas(args.p2, args.gwa, args.e2)
     
+    # correlation matrix between exposures and outcomes
+    exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg)
+    exp_corr_exp = crosscorr_parse(exposures, logdir = args.rg, h2dir = None)
+    exp_corrmat = f'{args.rg}/../corr_'+'_'.join(args.p1) + '.txt'
+    exp_corr_exp.to_csv(exp_corrmat, sep = '\t', index = False)
+    
     # for each outcome
-    for p2,x2 in outcomes:
+    for g2,p2 in [(x,y) for x,z in outcomes for y in z]:
         # create output directory
-        outdir = f'{args.out}/{p2}/mvmr'
+        outdir = f'{args.out}/{g2}/mvmr'
         if not os.path.isdir(outdir):os.system(f'mkdir -p {outdir}')
-        out_prefix = f'{args.out}/{p2}/mvmr/{x2}_mvmr_' + ('_'.join(args.p1)).replace('_local','')
+        out_prefix = f'{args.out}/{g2}/mvmr/{p2}_mvmr_' + ('_'.join(args.p1)).replace('_local','')
         if os.path.isfile(f'{out_prefix}.txt') and not args.force: continue
         
         # screen for only correlated exposures
-        exposures_corr = []
-        for p1, x1 in exposures:
-            if p1 < p2: fname = f'{args.rg}/{p1}.{p2}/{p1}_{x1}.{p2}_{x2}.rg.log'
-            else: fname = f'{args.rg}/{p2}.{p1}/{p2}_{x2}.{p1}_{x1}.rg.log'
-            
-            if not os.path.isfile(fname): continue
-            rg, se = parse_rg_log(fname)
-            p = 1-sts.chi2.cdf((rg/se)**2, df = 1) # p value
-            exposures_corr.append(pd.DataFrame(group = p1, pheno = x1, pval= [p]))
-        exposures_corr = pd.concat(exposures_corr)
-        exposures_corr['q'] = 1
-        for p1,_ in exposures:
-            exposures_corr.loc[(exposures_corr.group==p1) & (~exposures.corr.pval.isna()),'q'] = \
-                sts.false_discovery_control(exposures_corr.loc[
-                (exposures_corr.group==p1) & (~exposures.corr.pval.isna()),'pval'])
-        exposures_corr = exposures_corr.loc[exposures_corr.q < 0.05,['group','pheno']]
-        exposures_corr['exp'] = exposures_corr['group'] + '/' + exposures_corr['pheno']
+        exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
+            (exp_corr_out.q < 0.05),['group1','pheno1']]
+        exposures_corr['exp'] = exposures_corr['group1'] + '/' + exposures_corr['pheno1']
         exposures_filtered = exposures_corr.exp.to_list()
         
         # find instruments
         instruments = []
         exposures_corr = exposures_corr['group'].unique()
+        # SNPs identified for all exposures - cross-clumping + outcome clumped for exposure
         for i in range(len(exposures_corr)):
             p1i = exposures_corr[i]
             for j in range(i, len(exposures_corr)):
                 p1j = exposures_corr[j]
                 instruments.append(f'{args._in}/{p1j}_clumped_for_{p1i}_{args.pval:.0e}.txt')
-            instruments.append(f'{args._in}_{p2}_clumped_for_{p1i}_{args.pval:.0e}.txt')
+            instruments.append(f'{args._in}_{g2}_clumped_for_{p1i}_{args.pval:.0e}.txt')
         
         cmd = ['Rscript mr_mvmr.r -i'] + instruments + ['--p1'] + exposures_filtered + \
-            [f'--p2 {p2}/{x2} --pval {args.pval} -o {out_prefix}',force]
+            [f'--p2 {g2}/{p2} --rg {exp_corrmat} --pval {args.pval} -o {out_prefix}',force]
         submitter.add(' '.join(cmd))
     submitter.submit()
     return submitter
