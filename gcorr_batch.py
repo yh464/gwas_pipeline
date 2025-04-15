@@ -27,7 +27,7 @@ def main(args):
     pairwise = pair_gwas(gwa1, gwa2)
     
     # array submitter
-    timeout = max([len(x) for _,x in (gwa1+gwa2)])/10
+    timeout = max([len(x) for _,x in (gwa1+gwa2)]+[50])/10
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
         name = f'gcorr_{args.p1[0]}',

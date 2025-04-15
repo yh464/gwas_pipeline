@@ -9,24 +9,30 @@ Scans the entire directory for GWAS summary stats of the same data extension.
 '''
 
 def main(args):
-    import pandas as pd
-    import os
     from gcorr_plot import crosscorr_parse
     from _utils.path import find_gwas
+    import warnings
+    
+    # extract SNPs
+    from mr_extract_snp_batch import api
+    snp_submitter = api(p1 = args.p1, p2 = args.p2, _in = args.gwa,
+                        out = args._in, clump = args.clump)
     
     force = '-f' if args.force else ''
+    
     # array submitter
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
         name = 'mvmr_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 4, 
         timeout = 60,
+        dependency = snp_submitter,
         debug = True
         )
     
     # screen for GWA summary stats
-    exposures = find_gwas(args.p1, args.gwa, args.e1)
-    outcomes = find_gwas(args.p2, args.gwa, args.e2)
+    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1)
+    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2)
     
     # correlation matrix between exposures and outcomes
     exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg)
@@ -47,17 +53,20 @@ def main(args):
             (exp_corr_out.q < 0.05),['group1','pheno1']]
         exposures_corr['exp'] = exposures_corr['group1'] + '/' + exposures_corr['pheno1']
         exposures_filtered = exposures_corr.exp.to_list()
+        if len(exposures_filtered) == 0:
+            warnings.warn(f'No exposures found for {g2}/{p2}')
+            continue
         
         # find instruments
         instruments = []
-        exposures_corr = exposures_corr['group'].unique()
+        exposures_corr = exposures_corr['group1'].unique()
         # SNPs identified for all exposures - cross-clumping + outcome clumped for exposure
         for i in range(len(exposures_corr)):
-            p1i = exposures_corr[i]
+            g1i = exposures_corr[i]
             for j in range(i, len(exposures_corr)):
-                p1j = exposures_corr[j]
-                instruments.append(f'{args._in}/{p1j}_clumped_for_{p1i}_{args.pval:.0e}.txt')
-            instruments.append(f'{args._in}_{g2}_clumped_for_{p1i}_{args.pval:.0e}.txt')
+                g1j = exposures_corr[j]
+                instruments.append(f'{args._in}/{g1j}_clumped_for_{g1i}_{args.pval:.0e}.txt')
+            instruments.append(f'{args._in}/{g2}_clumped_for_{g1i}_{args.pval:.0e}.txt')
         
         cmd = ['Rscript mr_mvmr.r -i'] + instruments + ['--p1'] + exposures_filtered + \
             [f'--p2 {g2}/{p2} --rg {exp_corrmat} --pval {args.pval} -o {out_prefix}',force]
@@ -99,12 +108,8 @@ if __name__ == '__main__':
     args.p1.sort(); args.p2.sort()
     
     import os
-    for arg in ['_in','out','clump', 'h2','rg']:
+    for arg in ['_in','out','clump', 'gwa','rg']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
-    try: args.n1 = int(args.n1)
-    except: args.n1 = os.path.realpath(args.n1)
-    try: args.n2 = int(args.n2)
-    except: args.n2 = os.path.realpath(args.n2)
     
     from _utils import cmdhistory, path, logger
     logger.splash(args)

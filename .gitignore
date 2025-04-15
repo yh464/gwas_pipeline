@@ -1,3 +1,4 @@
 .spyproject/*
 /.Rproj.user/*
 __pycache__/*
+.Rhistory

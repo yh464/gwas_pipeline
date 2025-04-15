@@ -8,6 +8,7 @@ A tool to extract instruments for MR analysis before mr_batch and mr_mvmr_batch
 '''
     
 def main(args):
+    import os
     import pandas as pd
     from _utils.path import find_gwas, find_clump
     
@@ -55,6 +56,20 @@ def main(args):
             submitter.add(cmd)
     submitter.submit()
     
+    return submitter
+
+def api(**kwargs):
+    import os
+    class c(): pass
+    args = c()
+    # defaults
+    for key, value in zip(['_in','clump','out','p1','p2','pval','bid','force'],
+        ['../gwa','../clump','../mr/instruments', [],[],5e-8,False, False]):
+        setattr(args, key, value)
+    for key, value in kwargs.items(): setattr(args, key, value)
+    for arg in ['_in','out','clump']:
+        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    submitter = main(args)
     return submitter
 
 if __name__ == '__main__':

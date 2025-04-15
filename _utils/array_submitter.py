@@ -26,7 +26,7 @@ class array_submitter():
         arraysize (limit of number of files before starting a new array job)
         email: True/False
         mode: 'short' or 'long' jobs
-        env (conda environment)
+        env (mamba environment)
         modules (module load *)
         dependency (can be another submitter or an array job ID)
         account
@@ -71,10 +71,10 @@ class array_submitter():
         # dependencies
         self.env = env
         self.wd = os.path.abspath(wd)
+        if type(dependency) not in [list, tuple]: dependency = [dependency]
         self.dep = []
         for dep in dependency:
-            if type(dep) == int or type(dep) == array_submitter:
-                self.dep.append(dep)
+            if type(dep) in [int, array_submitter]: self.dep.append(dep)
         if type(modules) == type('a'): modules = [modules] # single string
         self.modules = modules
         
@@ -87,6 +87,7 @@ class array_submitter():
         os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
         
         # internal variables
+        self._blank = True
         self._count = 1 # number of commands per file
         self._fileid = 0 # current file id
         self._nfiles = -1
@@ -126,9 +127,9 @@ class array_submitter():
         fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
         _file = open(fname,'w')
         print('#!/bin/bash', file = _file) # shebang line
-        if type(self.env) != type(None): # conda environment
+        if type(self.env) != type(None): # mamba environment
             print('source /home/yh464/.bashrc', file = _file)
-            print(f'conda activate {self.env}', file = _file)
+            print(f'mamba activate {self.env}', file = _file)
         for mod in self.modules: # load modules
             print(f'module load {mod}', file = _file)
         print(f'cd {self.wd}', file = _file) # enforce working directory
@@ -158,6 +159,8 @@ class array_submitter():
         '''
         # can append multiple commands at once if they need to be run successively
         # they are considered a single command and take care of the time limit!
+        
+        self._blank = False
         if self._mode == 'long':
             # first iteration: reset files
             if self._count == 1:
@@ -224,6 +227,7 @@ class array_submitter():
             if type(dep) == int:
                 print(f'#SBATCH -d 0:{dep}', file = wrap)
             elif type(dep) == array_submitter:
+                if dep._blank: continue
                 if not dep.submitted:
                     dep.submit()
                     print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')

@@ -28,9 +28,9 @@ def search_file(file, patterns):
     df['Phenotype'] = os.path.basename(file).replace('.fastGWA','')
     if 'OR' in df.columns: df['BETA'] = np.log(df['OR'])
     if 'N' not in df.columns: df['N'] = df.N_CAS + df.N_CON
-    if 'BETA' not in df.columns: df['BETA'] = np.nan
-    if 'SE' not in df.columns: df['SE'] = np.nan
-    df = df.loc[:,['Phenotype','SNP','BETA','SE','P','N','A1','A2','AF1']]
+    for col in ['BETA', 'SE', 'AF1']:
+        if col not in df.columns: df[col] = np.nan
+    df = df.loc[:,['Phenotype','SNP','BETA','SE','P','N','A1','A2','AF1','CHR','POS']]
     return df
     
 def search_snp(x, tmpdir, args): 
@@ -59,7 +59,7 @@ def search_snp(x, tmpdir, args):
         df = pd.read_table(cache)
         return df
     
-    pool = Pool(max((len(flist)),10))
+    pool = Pool(min((len(flist)),10))
     search = pool.map(partial(search_file, patterns=patterns), flist, 
                       chunksize = int(np.ceil(len(flist)/10)))
     temp = []

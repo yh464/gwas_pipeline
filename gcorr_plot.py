@@ -29,6 +29,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
     import pandas as pd
     import scipy.stats as sts
     from logparser import parse_rg_log, parse_h2_log
+    import warnings
     summary = []
     
     from _utils.path import pair_gwas
@@ -38,9 +39,13 @@ def crosscorr_parse(gwa1, gwa2 = [],
         if g1 > g2: 
             g1, p1s, g2, p2s = g2, p2s, g1, p1s
             flip = True
+        else: flip = False
         for p1 in p1s:
             fname = f'{logdir}/{g1}.{g2}/{g1}_{p1}.{g2}.rg.log'
-            if not os.path.isfile(fname): continue
+            if not os.path.isfile(fname): 
+                warnings.warn(f'No gene correlation found for {g1}/{p1} with {g2}\n'+
+                    f'Try running:\n\n python gcorr_batch.py -p1 {g1} -p2 {g2}\n')
+                continue
             rg = parse_rg_log(fname)
             rg['fixed_int'] = False
             if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
