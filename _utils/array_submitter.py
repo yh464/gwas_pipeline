@@ -223,16 +223,18 @@ class array_submitter():
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
         print(f'#SBATCH --array=0-{self._nfiles}', file = wrap)
+        if len(self.dep) > 0: dep_str = '#SBATCH --dependency afterok'
         for dep in self.dep: 
             if type(dep) == int:
-                print(f'#SBATCH -d 0:{dep}', file = wrap)
+                dep_str += f':{dep}'
             elif type(dep) == array_submitter:
                 if dep._blank: continue
                 if not dep.submitted:
                     dep.submit()
                     print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
                 for idx in dep._slurmid:
-                    print(f'#SBATCH -d 0:{idx}', file = wrap)
+                    dep_str += f':{idx}'
+        if len(self.dep) > 0: print(dep_str, file = wrap)
         
         if self.email: print('#SBATCH --mail-type=ALL', file = wrap)
         if self.account: print(f'#SBATCH -A {self.account}', file = wrap)

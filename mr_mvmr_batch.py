@@ -46,7 +46,9 @@ def main(args):
         outdir = f'{args.out}/{g2}/mvmr'
         if not os.path.isdir(outdir):os.system(f'mkdir -p {outdir}')
         out_prefix = f'{args.out}/{g2}/mvmr/{p2}_mvmr_' + ('_'.join(args.p1)).replace('_local','')
-        if os.path.isfile(f'{out_prefix}.txt') and not args.force: continue
+        all_output = ['_mvmrivw.txt', '_mvmrhorse.txt','_mvmrcmlsusie.txt']
+        if all([os.path.isfile(f'{out_prefix}{z}') for z in all_output]) and \
+            not args.force: continue
         
         # screen for only correlated exposures
         exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
