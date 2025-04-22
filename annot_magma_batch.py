@@ -18,8 +18,8 @@ def main(args):
     from fnmatch import fnmatch
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'annot',
         timeout = 240,
         debug = False
@@ -70,6 +70,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(
       description = 'This file batch runs the MAGMA pipeline for all IDPs')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
@@ -87,6 +88,7 @@ if __name__ == '__main__':
       default = '../params/gset.txt')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     
     # path normalisation

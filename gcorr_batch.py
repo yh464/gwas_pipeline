@@ -17,6 +17,7 @@ Outputs:
 def main(args):
     from logparser import parse_rg_log
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
+    from subprocess import check_output
     
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     
@@ -27,9 +28,9 @@ def main(args):
     pairwise = pair_gwas(gwa1, gwa2)
     
     # array submitter
-    timeout = max([len(x) for _,x in (gwa1+gwa2)]+[50])/10
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    timeout = int(max([len(x) for _,x in (gwa1+gwa2)]+[45])/12) # each phenotype takes ~5 seconds
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'gcorr_{args.p1[0]}',
         timeout = timeout, mode = 'long', wd = args._in,
         # debug = True
@@ -52,8 +53,16 @@ def main(args):
             # QC out_rg file to identify NA correlations
             na_p2s = []
             if os.path.isfile(out_rg):
+                # check that analysis has finished
+                eof = check_output(['tail',out_rg,'-n','2']).decode()
+                line = eof.split('\n')[0]
+                if line.find('Analysis finished') == -1: os.remove(out_rg)
+            if os.path.isfile(out_rg):
+                # check for NA correlations
                 all_rg = parse_rg_log(out_rg)
                 if all_rg.shape[0] == 0: os.remove(out_rg)
+                # check for updates to the sumstats
+                if (len(all_rg.pheno2.unique()) < len(p2s)): os.remove(out_rg)
                 na_p2s = all_rg.loc[all_rg.rg.isna(),'pheno2'].tolist()
                 del all_rg
             
@@ -83,6 +92,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 'This script estimates genetic cross-correlations')
     parser.add_argument('-p1', help = 'First group of phenotypes to correlate', 
                         nargs = '*', default = [])
@@ -97,6 +107,7 @@ if __name__ == '__main__':
         default = '../gcorr/rglog/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
         default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','ldsc']:

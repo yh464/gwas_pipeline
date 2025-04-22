@@ -17,8 +17,8 @@ def main(args):
     from fnmatch import fnmatch
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'gwa_meta_'+'_'.join(args.dsets),
         timeout = 10, mode = 'long',
         debug = False
@@ -50,6 +50,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This programme creates genetic correlation matrices for global phenotypes')
     parser.add_argument('dsets', nargs = '*',
@@ -64,6 +65,7 @@ if __name__ == '__main__':
       help = 'output directory, relative to the --in dir')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','metal']:

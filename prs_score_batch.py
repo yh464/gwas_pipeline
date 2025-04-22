@@ -14,8 +14,8 @@ Upstream workflow:
 def main(args):
     from fnmatch import fnmatch
     
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'prs_score', n_cpu = 1,
         timeout = 20, mode = 'long')
     
@@ -54,6 +54,7 @@ def main(args):
      
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This script concatenates the PRS-cs output to produce individual level PRS scores')
     parser.add_argument('pheno', help = 'Phenotype groups to generate PRS',
@@ -70,6 +71,7 @@ if __name__ == '__main__':
       type = float, default = 0.01)
     parser.add_argument('--force','-f', dest = 'force', action = 'store_true',
                         default = False, help = 'force overwrite')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','plink','bed']:

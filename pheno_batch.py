@@ -17,8 +17,8 @@ def main(args):
     else: fs = ''
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'pheno',
         partition = 'icelake',
         timeout = 5, mode = 'long',
@@ -85,9 +85,9 @@ def main(args):
     
 if __name__ == '__main__':
     # input argument processing
-    import argparse as ap
-    
-    parser = ap.ArgumentParser(description='This programme processes the connectome '+
+    import argparse
+    from _utils.slurm import parser_config   
+    parser = argparse.ArgumentParser(description='This programme processes the connectome '+
                                ' for one single individual for imaging derived phenotypes')
     parser.add_argument('-i','--in',dest = '_in', help =
         'Target file to screen',
@@ -99,6 +99,7 @@ if __name__ == '__main__':
         default = '../pheno/ukb/')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
         default = False,const = True, action = 'store_const')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','subjs']:

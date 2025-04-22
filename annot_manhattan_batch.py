@@ -18,8 +18,8 @@ def main(args):
     force = '-f' if args.force else ''
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'annot_manhattan_{args.pheno[0]}',
         timeout = 60,
         # debug = True
@@ -43,6 +43,7 @@ def main(args):
         
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 'Plots Manhattan plots for gene-level statistics')
     parser.add_argument('pheno', help = 'Phenotype group', nargs = '*')
     parser.add_argument('--gwa', help = 'Directory to GWAS sumstats, for directory scanning',
@@ -57,6 +58,7 @@ if __name__ == '__main__':
       default = '../annot/manhattan/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     # path normalisation
     args.pheno.sort()

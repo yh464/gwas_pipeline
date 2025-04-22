@@ -9,8 +9,8 @@ def main(args):
     # from sklearn.linear_model import LinearRegression
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'prs_corr_{args.pheno[0]}', n_cpu = 1,
         timeout = 30,
         # debug = True
@@ -45,6 +45,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description='Computes correlational plots between IDPs and PGS (batch)')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotype files to process')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
@@ -61,7 +62,8 @@ if __name__ == '__main__':
       default = '../prs/prs_corr/')
     parser.add_argument('-f','--force', dest = 'force', help = 'force overwrite',
                         action = 'store_true', default = False)
-    args=parser.parse_args()
+    parser = parser_config(parser)
+    args = parser.parse_args()
     import os
     for arg in ['_in','out','prsdir','dcov','qcov']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')

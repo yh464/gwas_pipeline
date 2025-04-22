@@ -6,7 +6,7 @@ generates manhattan plots for all fastGWA files in a directory
 def main(args):
     import os
     from fnmatch import fnmatch
-    from _utils import array_submitter
+    from _utils.slurm import array_submitter
     
     if args.force: f = '-f'
     elif args.p: f = '-p'
@@ -16,7 +16,7 @@ def main(args):
         args.pheno = os.listdir(args._in)
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     
-    submitter = array_submitter.array_submitter(
+    submitter = array_submitter(
         name = f'gwa_manhattan_{args.pheno[0]}',
         partition = 'icelake-himem', # must use himem, using icelake will raise out-of-memory error [125]
         timeout = 60,
@@ -47,6 +47,7 @@ def main(args):
         
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This programme compiles Manhattan plots for all fastGWA output files for a single phenotype file')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -60,6 +61,7 @@ if __name__ == '__main__':
       default = False, action = 'store_true')
     parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out']:

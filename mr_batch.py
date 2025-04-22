@@ -26,14 +26,14 @@ def main(args):
     from _utils.path import find_clump
     
     # array submitter
-    from _utils import array_submitter
-    submitter_main = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter_main = array_submitter(
         name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3 if args.apss else 2, 
         timeout = 30,
         # debug = True
         )
-    submitter_cause = array_submitter.array_submitter(
+    submitter_cause = array_submitter(
         name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3, timeout = 30,
         debug = True
@@ -173,6 +173,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This script batch runs MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
@@ -215,6 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('--pval', help = 'Clumping p-value threshold', default = 5e-8, type = float)
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
+    parser = parser_config(parser)
     args = parser.parse_args()
     
     import os

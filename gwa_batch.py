@@ -15,8 +15,8 @@ Requires following inputs:
 
 def main(args):
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'gwa_{args.pheno}',
         timeout = 90, debug = True
         )
@@ -78,6 +78,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     # argument input
     parser = argparse.ArgumentParser(description=
       'This programme runs GWA for any phenotype given as the 1st positional argument')
@@ -113,6 +114,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','gcta','dcov','qcov','grm','bed']:

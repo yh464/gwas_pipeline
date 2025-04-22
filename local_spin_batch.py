@@ -12,8 +12,8 @@ def main(args):
     from fnmatch import fnmatch
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'local_spin', n_cpu = 1,
         timeout = 30, env = 'rwd',
         debug = True
@@ -38,6 +38,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(
         description = 'This programme batch runs spin permutations')
     parser.add_argument('-i','--in', dest = '_in', help = 'input files, can have wildcards, nargs=*',
@@ -52,6 +53,7 @@ if __name__ == '__main__':
         )
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
         default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     
     from _utils import cmdhistory

@@ -8,8 +8,8 @@ def main(args):
     import pandas as pd
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'prs_from_gwa', n_cpu = 2,
         env = 'gentoolspy',
         timeout = 120, lim = 1)
@@ -70,6 +70,7 @@ def main(args):
         
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This script generates PRS by continuous shrinkage from external sumstats')
     parser.add_argument('pheno', help = 'Phenotype groups to generate PRS',
@@ -89,6 +90,7 @@ if __name__ == '__main__':
       type = float, default = 0.01)
     parser.add_argument('--force','-f', dest = 'force', action = 'store_true',
                         default = False, help = 'force overwrite')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','prscs','bed','ref']:

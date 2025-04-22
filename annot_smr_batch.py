@@ -42,8 +42,8 @@ def main(args):
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'annot_smr_{args.pheno[0]}',
         n_cpu = 2,
         timeout = 90,
@@ -152,6 +152,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(
       description = 'This programme batch runs summary data randomisation')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -167,6 +168,7 @@ if __name__ == '__main__':
       default = '../annot/smr')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','qtl','smr','bfile']:

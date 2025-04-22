@@ -108,6 +108,11 @@ class array_submitter():
         else:
             self.lim = min((lim, math.floor(max_time/timeout)))
         del math, max_time
+        
+        # read command line args
+        import __main__
+        if 'args' in dir(__main__):
+            self.config_cmdarg(__main__.args)
     
     # change settings
     def config(self, **kwargs):
@@ -120,6 +125,17 @@ class array_submitter():
             if not key in valid_keys:
                 warnings.warn(f'{key} not a valid option for the array submitter')
                 continue
+            setattr(self, key, value)
+    
+    def config_cmdarg(self, args):
+        valid_keys = [
+            'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
+            'arraysize','email','account','env','wd','dep','modules','logdir',
+            'tmpdir','lim'
+            ]
+        for key, value in vars(args).items():
+            if not key in valid_keys: continue
+            if value == None: continue
             setattr(self, key, value)
             
     # a new file requires a shebang line, so this func resets the file
@@ -223,7 +239,7 @@ class array_submitter():
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
         print(f'#SBATCH --array=0-{self._nfiles}', file = wrap)
-        if len(self.dep) > 0: dep_str = '#SBATCH --dependency afterok'
+        dep_str = ''
         for dep in self.dep: 
             if type(dep) == int:
                 dep_str += f':{dep}'
@@ -234,7 +250,8 @@ class array_submitter():
                     print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
                 for idx in dep._slurmid:
                     dep_str += f':{idx}'
-        if len(self.dep) > 0: print(dep_str, file = wrap)
+        if len(dep_str) > 0: 
+            print('#SBATCH --dependency afterok'+dep_str, file = wrap)
         
         if self.email: print('#SBATCH --mail-type=ALL', file = wrap)
         if self.account: print(f'#SBATCH -A {self.account}', file = wrap)
@@ -282,9 +299,20 @@ class array_submitter():
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {self._wrap_name}', shell = True) 
+                  f' --array=0-{self._nfiles} {self._wrap_name}', shell = True
+                  ).decode().replace('\n','')
         jobid = int(msg.split()[-1])
         print(msg)
         self._slurmid.append(jobid)
         self.submitted = True
         return jobid
+
+def parser_config(parser):
+    slurm = parser.add_argument_group('SLURM configuration')
+    slurm.add_argument('--partition', help = 'partition')
+    slurm.add_argument('--account', help = 'account to charge')
+    slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
+    slurm.add_argument('--n_node', help = 'number of nodes needed')
+    slurm.add_argument('--n_task', help = 'number of tasks per job')
+    slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
+    return parser

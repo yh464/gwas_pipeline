@@ -13,8 +13,8 @@ def main(args):
       pheno = args.pheno
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'gwa_filter',
         timeout = 10)
     scripts_path = os.path.realpath(__file__)
@@ -36,6 +36,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
 
     # argument input
     parser = argparse.ArgumentParser(description=
@@ -47,6 +48,7 @@ if __name__ == '__main__':
       default = '../gwa/')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, const = True, action = 'store_const')
+    parser = parser_config(parser)
     args = parser.parse_args()
     
     import os

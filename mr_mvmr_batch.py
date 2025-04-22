@@ -20,19 +20,20 @@ def main(args):
     
     force = '-f' if args.force else ''
     
-    # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
-        name = 'mvmr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 4, 
-        timeout = 60,
-        dependency = snp_submitter,
-        debug = True
-        )
-    
     # screen for GWA summary stats
     exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1)
     outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2)
+    
+    # array submitter
+    timeout = min(sum([len(x[1]) for x in exposures])*5,720)
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
+        name = 'mvmr_'+'_'.join(args.p2), env = 'gentoolsr',
+        n_cpu = 1, 
+        timeout = timeout,
+        dependency = snp_submitter,
+        # debug = True
+        )
     
     # correlation matrix between exposures and outcomes
     exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg)
@@ -51,12 +52,20 @@ def main(args):
             not args.force: continue
         
         # screen for only correlated exposures
-        exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
-            (exp_corr_out.q < 0.05),['group1','pheno1']]
+        if args.rgp < 0:
+            exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
+                (exp_corr_out.q < 0.05),['group1','pheno1']]
+        else:
+            exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
+                (exp_corr_out.p < args.rgp),['group1','pheno1']]
         exposures_corr['exp'] = exposures_corr['group1'] + '/' + exposures_corr['pheno1']
         exposures_filtered = exposures_corr.exp.to_list()
         if len(exposures_filtered) == 0:
             warnings.warn(f'No exposures found for {g2}/{p2}')
+            continue
+        elif len(exposures_filtered) == 1:
+            warnings.warn(f'Only one exposure found for {g2}/{p2}: '+
+                          f'{exposures_filtered[0]}, consider UVMR')
             continue
         
         # find instruments
@@ -78,6 +87,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This script batch runs MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
@@ -103,9 +113,14 @@ if __name__ == '__main__':
                         default = ['disorders', 'disorders_subtypes'])
     pheno_spec.add_argument('-e2','--ext2', dest = 'ext2', help = 'Extension for phenotype group 2',
                         default = 'fastGWA')
+    pheno_spec.add_argument('--rgp', type = float, default = -1,
+                        help = 'rg p-value threshold to filter exposures, enter -1 for FDR=0.05')
     parser.add_argument('--pval', help = 'Clumping p-value threshold', default = 5e-8, type = float)
+    parser.add_argument('--submodels', dest = 'sub', default = False, action = 'store_true',
+                        help = 'Test all sub-models from MVMR-cML-SuSIE')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
+    parser = parser_config(parser)
     args = parser.parse_args()
     args.p1.sort(); args.p2.sort()
     

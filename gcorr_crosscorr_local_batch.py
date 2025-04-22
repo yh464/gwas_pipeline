@@ -18,8 +18,8 @@ def main(args):
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'gcorr_{args.p1[0]}_{args.p2[0]}',
         timeout = 10, mode = 'long',
         debug = True
@@ -83,6 +83,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This programme estimates genetic cross-correlation for regional phenotypes')
     parser.add_argument('-p1', nargs = '*', help = 'regional phenotypes',
@@ -100,6 +101,7 @@ if __name__ == '__main__':
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','ldsc']:

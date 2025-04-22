@@ -26,8 +26,8 @@ def main(args):
     
     # array submitter
     timeout = 15 if args.p < 1e-8 else 40
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'clump_{args.pheno[0]}_{args.p:.0e}',
         timeout = timeout, mode = 'long',
         debug = False
@@ -62,6 +62,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description='This programme uses PLINK1.9'+
       ' to clump the GWAS output, identifying independent SNPs')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
@@ -78,6 +79,7 @@ if __name__ == '__main__':
       default = 5e-8, type = float) # or 3.1076e-11, or 1e-6
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','bfile']:

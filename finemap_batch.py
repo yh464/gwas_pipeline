@@ -21,8 +21,8 @@ def main(args):
     log = open(f'{logdir}/finemap_batch.log','w')
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'finemap_{args.pheno[0]}', n_cpu = 2,
         env = 'gentoolspy',
         timeout = 60,
@@ -62,6 +62,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(
       description = 'This programme batch runs the fine-map pipeline')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -78,6 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', dest = 'p', help = 'p-value', default = 3.1076e-11, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','clump','bfile']:

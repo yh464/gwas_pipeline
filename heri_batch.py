@@ -20,8 +20,8 @@ def main(args):
     force = '-f' if args.force else ''
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'heri_{args.pheno[0]}',
         timeout = 10, mode = 'long',
         debug = False
@@ -44,6 +44,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
 
     parser = argparse.ArgumentParser(description = 
       'This script batch runs the LDSC heritability pipeline for local phenotypes')
@@ -56,6 +57,7 @@ if __name__ == '__main__':
       default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','ldsc']:

@@ -17,8 +17,8 @@ def main(args):
     import pandas as pd
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = 'mr_lhc_'+'_'.join(args.p2), env = 'gentoolsr',
         timeout = 240, n_cpu = 2,
         debug = False
@@ -96,6 +96,7 @@ def main(args):
     
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
     parser = argparse.ArgumentParser(description = 
       'This script batch runs MR for groups of phenotypes')
     
@@ -136,6 +137,7 @@ if __name__ == '__main__':
                         default = '../mr')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
+    parser = parser_config(parser)
     args = parser.parse_args()
     
     import os
