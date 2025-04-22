@@ -15,8 +15,8 @@ def main(args):
     if len(flist) != 1: raise ValueError('Please give only ONE phenotype file')
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         name = f'greml_{args.pheno}', n_cpu = 15,
         timeout = 720, lim = 1)
     
@@ -74,6 +74,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
+    from _utils.slurm import parser_config
 
     parser = argparse.ArgumentParser(description=
       'This programme runs GREML for any phenotype given as the 1st positional argument')
@@ -97,6 +98,7 @@ if __name__ == '__main__':
       default = '../params/bed_files_ukb.txt')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, const = True, action = 'store_const')
+    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','gcta','cov','qcov','grm','mb']:
