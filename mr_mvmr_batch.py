@@ -37,7 +37,7 @@ def main(args):
     # correlation matrix between exposures and outcomes
     exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg)
     exp_corr_exp = crosscorr_parse(exposures, logdir = args.rg, h2dir = None)
-    exp_corrmat = f'{args.rg}/../corr_'+'_'.join(args.p1) + '.txt'
+    exp_corrmat = os.path.realpath(f'{args.rg}/../corr_'+'_'.join(args.p1) + '.txt')
     exp_corr_exp.to_csv(exp_corrmat, sep = '\t', index = False)
     
     # for each outcome

@@ -4,3 +4,4 @@ __pycache__/*
 .Rhistory
 backup/*
 /.vscode
+.Rproj.user

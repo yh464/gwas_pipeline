@@ -129,9 +129,26 @@ mvmrhorse = function(dat, subset = NULL, pval = 5e-8, niter = 10000){
   return(out_mrhorse)
 }
 
+#### Prepare genetic correlation matrix ####
+mvmrcml_rgprep = function(dat, rg){
+  n_exp = ncol(dat$exposure_beta)
+  rhomat = diag(nrow = n_exp + 1)
+  names = c(dat$expname$id.exposure, dat$outname$id.outcome)
+  colnames(rhomat) = names; rownames(rhomat) = names
+  for (i in 1:nrow(rg)) {
+    p1 = paste0(rg$group1[i],'/',rg$pheno1[i])
+    p2 = paste0(rg$group2[i],'/',rg$pheno2[i])
+    if (p1 %in% names & p2 %in% names & p1 != p2){
+      rhomat[p1,p2] = rg$rg[i]; rhomat[p2,p1] = rg$rg[i]
+    }
+  }
+  return(rhomat)
+}
+
 #### MVMR-cML-DP sub-function ####
 mvmrcmldp = function(dat, rhomat, samplesize, subset = NULL, pval = 5e-8){
-  if (is.null(subset)) subset = 1:ncol(dat$exposure_beta)
+  n_exp = ncol(dat$exposure_beta)
+  if (is.null(subset)) subset = 1:n_exp
   rhomat.subset = rhomat[c(subset,n_exp+1), c(subset,n_exp+1)]
   
   # filter summary stats from harmonised data
@@ -162,25 +179,11 @@ mvmrcmldp = function(dat, rhomat, samplesize, subset = NULL, pval = 5e-8){
 }
 
 #### MVMR-cML-SuSIE function ####
-mvmrsusie = function(dat, rg, samplesize, pval = 5e-8){
+mvmrsusie = function(dat, rhomat, samplesize, pval = 5e-8){
   # Takes TwoSampleMR-harmonised data and long-format genetic correlation matrix
-  library(MVMRcMLSuSiE)
-  library(MVMRcML)
-  library(MRcML)
-  susie_results = list()
-  
-  #### Prepare genetic correlation matrix ####
   n_exp = ncol(dat$exposure_beta)
-  rhomat = diag(nrow = n_exp + 1)
-  names = c(dat$expname$id.exposure, dat$outname$id.outcome)
-  colnames(rhomat) = names; rownames(rhomat) = names
-  for (i in 1:nrow(rg)) {
-    p1 = paste0(rg$group1[i],'/',rg$pheno1[i])
-    p2 = paste0(rg$group2[i],'/',rg$pheno2[i])
-    if (p1 %in% names & p2 %in% names & p1 != p2){
-      rhomat[p1,p2] = rg$rg[i]; rhomat[p2,p1] = rg$rg[i]
-    }
-  }
+  susie_results = list()
+  susie_results$models = data.frame(exp1 = numeric(0), pip = numeric(0))
   
   #### MVMR-cML-SuSIE step 1 ####
   cat('Conducting step 1 of MVMR-cML-SuSIE, Time =', proc.time()[3],'\n')
@@ -252,13 +255,17 @@ mvmrsusie = function(dat, rg, samplesize, pval = 5e-8){
   #### compile all combinations from signal clusters ####
   susie.pipmdl = list()
   susie.pip = list()
+  susie.readable = list()
   for (i in 1:susie.n_clusters) {
     susie.pipmdl[[paste0('exp',i)]] = susie.step1.subset[which(susie.step3$alpha[i,]>1/susie.nsig)]
+    susie.readable[[paste0('exp',i)]] = dat$expname$exposure[susie.pipmdl[[paste0('exp',i)]]]
     susie.pip[[paste0('exp',i)]] = susie.step3$alpha[i,which(susie.step3$alpha[i,]>1/susie.nsig)]
   }
   susie.pip = susie.pip %>% expand.grid() %>% as.matrix() %>% matrixStats::rowProds()
   susie.pipmdl = susie.pipmdl %>% expand.grid() %>% add_column(pip = susie.pip)
+  susie.readable = susie.readable %>% expand.grid() %>% add_column(pip = susie.pip)
   susie_results$models = susie.pipmdl
+  susie_results$readable = susie.readable
   if (susie.n_clusters == 1){
     cat('Only one significant signal cluster identified by MVMR-cML-SuSIE, consider UVMR\n')
     susie.pipmdl$exp1 = dat$expname$exposure[susie.pipmdl$exp1]
@@ -284,11 +291,13 @@ mvmrsusie = function(dat, rg, samplesize, pval = 5e-8){
 #### main execution block ####
 main = function(args){
   if (! dir.exists(dirname(args$out))) dir.create(dirname(args$out))
-  
   library(tidyverse)
   library(TwoSampleMR)
   library(matrixStats)
   library(httr)
+  library(MVMRcMLSuSiE)
+  library(MVMRcML)
+  library(MRcML)
   
   #### pre-process sumstats ####
   # read input extracted SNPs and rg matrix
@@ -357,17 +366,28 @@ main = function(args){
   dat$outname = dat$outname %>% separate_wider_delim(outcome, delim='/', 
     names = c('group','phenotype'), cols_remove = F)
   
+  #### MVMR-cML-DP full model ####
+  rhomat = mvmrcml_rgprep(dat, rg)
+  # results = paste0(args$out,'_mvmrcmldp.txt')
+  # if (! file.exists(results) | args$force) {
+  #   cat('Performing MVMR-cML-DP full model. Time =', proc.time()[3],'\n')
+  #   out_mrcml = mvmrcmldp(dat, rhomat, samplesize, pval = args$pval)
+  #   print(out_mrcml)
+  #   write_tsv(out_mrcml, results)
+  # }
+  
   #### MVMR-cML-SuSIE ####
   results = paste0(args$out, '_mvmrcmlsusie.txt')
-  models = paste0(args$out, '_mvmrcmlsusie_mdl.txt')
-  if (!file.exists(results) | args$force){
-    out_mrcml = mvmrsusie(dat, rg, samplesize, pval=args$pval)
-    if (! is.null(out_mrcml$res)) write_tsv(
-      out_mrcml$res, results)
-    if (! is.null(out_mrcml$models)) write_tsv(
-      out_mrcml$models, models)
-  }
+  models = paste0(args$out, '_mvmrcmlsusie_mdl_id.txt')
+  readable = paste0(args$out,'_mvmrcmlsusie_mdl.txt')
   if (file.exists(models)) susie.pipmdl = read_tsv(models) else susie.pipmdl = tibble()
+  if ((!file.exists(results) & ncol(susie.pipmdl) >= 3) | 
+      ncol(susie.pipmdl) < 2 | args$force){
+    out_mrcml = mvmrsusie(dat, rhomat, samplesize, pval=args$pval)
+    if (! is.null(out_mrcml$res)) write_tsv(out_mrcml$res, results)
+    if (! is.null(out_mrcml$models)) write_tsv(out_mrcml$models, models)
+    if (! is.null(out_mrcml$readable)) write_tsv(out_mrcml$readable, readable)
+  }
   
   #### MVMR-IVW ####
   results = paste0(args$out,'_mvmrivw.txt')
