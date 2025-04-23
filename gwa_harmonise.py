@@ -71,7 +71,7 @@ def main(args):
         for file in os.listdir(f'{args._in}/{p}'):
             if fnmatch(f'{args._in}/{p}/{file}', '*.fastGWA') or fnmatch(file,'*.txt'):
                 l = open(f'{args._in}/{p}/{file}').readline()
-                if not 'BETA' in l and not 'OR' in l: continue
+                if not 'SNP' in l or (not 'BETA' in l and not 'OR' in l): continue
                 # check progress
                 if all([x in l for x in fields]) and not args.force: continue
                 flist.append(f'{args._in}/{p}/{file}')
