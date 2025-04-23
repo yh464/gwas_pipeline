@@ -46,9 +46,8 @@ def main(args):
     # submitter.debug()
         
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This programme compiles Manhattan plots for all fastGWA output files for a single phenotype file')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
@@ -61,7 +60,6 @@ if __name__ == '__main__':
       default = False, action = 'store_true')
     parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out']:

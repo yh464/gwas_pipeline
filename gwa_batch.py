@@ -114,7 +114,7 @@ if __name__ == '__main__':
     
     parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
+    
     args = parser.parse_args()
     import os
     for arg in ['_in','out','gcta','dcov','qcov','grm','bed']:

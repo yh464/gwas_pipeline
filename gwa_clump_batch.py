@@ -52,9 +52,8 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description='This programme uses PLINK1.9'+
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description='This programme uses PLINK1.9'+
       ' to clump the GWAS output, identifying independent SNPs')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
       default=['deg_local','degi_local','degc_local','clu_local','eff_local','mpl_local'])
@@ -70,7 +69,6 @@ if __name__ == '__main__':
       default = 5e-8, type = float) # or 3.1076e-11, or 1e-6
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','bfile']:

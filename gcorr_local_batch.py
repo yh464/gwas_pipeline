@@ -71,11 +71,8 @@ def main(args):
     submitter.submit()
 
 if __name__ == '__main__':
-    
-    import argparse
-    from _utils.slurm import parser_config
-    
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This programme creates genetic correlation matrices for local phenotypes')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
       default=['deg_local','degi_local','degc_local','clu_local','eff_local','mpl_local'])
@@ -89,7 +86,6 @@ if __name__ == '__main__':
       default = '../local_corr/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     
     import os

@@ -57,7 +57,7 @@ if __name__ == '__main__':
       default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
+    
     args = parser.parse_args()
     import os
     for arg in ['_in','out','ldsc']:

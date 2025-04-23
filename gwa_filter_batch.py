@@ -48,7 +48,7 @@ if __name__ == '__main__':
       default = '../gwa/')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, const = True, action = 'store_const')
-    parser = parser_config(parser)
+    
     args = parser.parse_args()
     
     import os

@@ -103,9 +103,8 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(
       description = 'This programme batch runs the fine-map pipeline')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing all summary stats',
@@ -121,7 +120,6 @@ if __name__ == '__main__':
     parser.add_argument('-p', dest = 'p', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','clump', 'rg']:

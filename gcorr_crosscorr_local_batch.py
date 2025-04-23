@@ -82,9 +82,8 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This programme estimates genetic cross-correlation for regional phenotypes')
     parser.add_argument('-p1', nargs = '*', help = 'regional phenotypes',
       default=['deg_local','degi_local','degc_local','clu_local','eff_local','mpl_local'])
@@ -101,7 +100,6 @@ if __name__ == '__main__':
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','ldsc']:
