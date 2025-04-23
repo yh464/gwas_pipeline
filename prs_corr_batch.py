@@ -44,9 +44,8 @@ def main(args):
     submitter.submit()
 
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description='Computes correlational plots between IDPs and PGS (batch)')
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description='Computes correlational plots between IDPs and PGS (batch)')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotype files to process')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
       default = '../pheno/ukb/')
@@ -62,7 +61,6 @@ if __name__ == '__main__':
       default = '../prs/prs_corr/')
     parser.add_argument('-f','--force', dest = 'force', help = 'force overwrite',
                         action = 'store_true', default = False)
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','prsdir','dcov','qcov']:

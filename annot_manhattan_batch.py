@@ -42,9 +42,8 @@ def main(args):
     submitter.submit()
         
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 'Plots Manhattan plots for gene-level statistics')
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 'Plots Manhattan plots for gene-level statistics')
     parser.add_argument('pheno', help = 'Phenotype group', nargs = '*')
     parser.add_argument('--gwa', help = 'Directory to GWAS sumstats, for directory scanning',
       default = '../gwa')
@@ -58,7 +57,6 @@ if __name__ == '__main__':
       default = '../annot/manhattan/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     # path normalisation
     args.pheno.sort()

@@ -172,9 +172,8 @@ def main(args):
     submitter_cause.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This script batch runs MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
     path_spec.add_argument('-i','--in', dest = '_in', 
@@ -216,7 +215,6 @@ if __name__ == '__main__':
     parser.add_argument('--pval', help = 'Clumping p-value threshold', default = 5e-8, type = float)
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
-    parser = parser_config(parser)
     args = parser.parse_args()
     
     import os

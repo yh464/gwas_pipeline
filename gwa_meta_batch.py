@@ -49,9 +49,8 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This programme creates genetic correlation matrices for global phenotypes')
     parser.add_argument('dsets', nargs = '*',
         help = 'Datasets to meta-analyse, scans directories for summary stats (fastGWA format)')
@@ -65,7 +64,6 @@ if __name__ == '__main__':
       help = 'output directory, relative to the --in dir')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','metal']:

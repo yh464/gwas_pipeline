@@ -91,9 +91,8 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 'This script estimates genetic cross-correlations')
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 'This script estimates genetic cross-correlations')
     parser.add_argument('-p1', help = 'First group of phenotypes to correlate', 
                         nargs = '*', default = [])
     parser.add_argument('-p2', nargs = '*', default = [], 
@@ -107,7 +106,6 @@ if __name__ == '__main__':
         default = '../gcorr/rglog/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
         default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     import os
     for arg in ['_in','out','ldsc']:

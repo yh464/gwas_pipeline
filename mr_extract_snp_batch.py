@@ -72,9 +72,8 @@ def api(**kwargs):
     return submitter
 
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This script batch extracts instruments for MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
     path_spec.add_argument('-i','--in', dest = '_in', 
@@ -94,7 +93,6 @@ if __name__ == '__main__':
                         dest = 'bid', help = 'Also extract for reverse direction')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
-    parser = parser_config(parser)
     args = parser.parse_args()
     if len(args.p2) == 0: args.p2 = args.p1; args.bid = False
     args.p1.sort(); args.p2.sort()

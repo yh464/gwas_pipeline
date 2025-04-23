@@ -69,9 +69,8 @@ def main(args):
     submitter.submit()
 
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(
       description = 'This file batch runs the MAGMA pipeline for all IDPs')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing all phenotypes',
@@ -88,7 +87,6 @@ if __name__ == '__main__':
       default = '../params/gset.txt')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
-    parser = parser_config(parser)
     args = parser.parse_args()
     
     # path normalisation

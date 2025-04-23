@@ -95,9 +95,8 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This script batch runs MR for groups of phenotypes')
     
     # input GWA
@@ -137,7 +136,6 @@ if __name__ == '__main__':
                         default = '../mr')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
-    parser = parser_config(parser)
     args = parser.parse_args()
     
     import os
