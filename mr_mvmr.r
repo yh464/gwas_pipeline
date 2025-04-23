@@ -89,6 +89,7 @@ mvmr_horse_parallel = function(D, no_ini = 3, variable.names = "theta",
 
 #### MVMR-Horse main function ####
 mvmrhorse = function(dat, subset = NULL, pval = 5e-8, niter = 10000){
+  library(R2jags)
   cat('Conducting MVMR-Horse. Time =', proc.time()[3],'\n')
   # takes TwoSampleMR-harmonised data
   # format data for MVMR_Horse

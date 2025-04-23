@@ -19,10 +19,7 @@ def main(args):
     
     # temp and log
     tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
-    logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/'
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
-    if not os.path.isdir(logdir): os.mkdir(logdir)
-    log = open(f'{logdir}/gwa_clump.log','w')                                       # log file
     
     # array submitter
     timeout = 15 if args.p < 1e-8 else 40
@@ -41,23 +38,17 @@ def main(args):
       
       # filter out required GWA files
       flist = []
-      for y in os.listdir():
+      for y in os.listdir(f'{args._in}/{x}'):
           if fnmatch(y, '*_X.fastGWA'): continue
-        # if fnmatch(y, '*_all_chrs.fastGWA') or fnmatch(y, '*gwama.fastGWA'):
-          if fnmatch(y, '*.fastGWA') or fnmatch(y, '*.txt'): flist.append(y)
-      print(flist, file = log)
+          if fnmatch(y, '*.fastGWA') or fnmatch(y, '*.txt'): flist.append(y); print(y)
       
-      os.chdir(args.out)
-      os.chdir(x)
       for y in flist:
-        out_fname = y.replace('fastGWA','clumped')
+        prefix = '.'.join(y.split('.')[:-1])
+        out_fname = f'{args.out}/{x}/{prefix}_{args.p:.0e}.clumped'
         if os.path.isfile(out_fname) and (not args.force): continue
-        scripts_path = os.path.realpath(__file__)
-        scripts_path = os.path.dirname(scripts_path)
         submitter.add(
-          # f'bash {scripts_path}/pymaster.sh '+
-          f'python gwa_clump.py --in {args._in}/{x}/ --file {y} -b {args.bfile} --plink {args.plink} '+
-          f'-p {args.p} -o {args.out}/{x}/ {force}')
+          f'python gwa_clump.py --in {args._in}/{x}/{y} -b {args.bfile} --plink {args.plink} '+
+          f'-p {args.p} -o {args.out}/{x} {force}')
     submitter.submit()
     
 if __name__ == '__main__':

@@ -21,18 +21,17 @@ def main(args):
     force = '-f' if args.force else ''
     
     # screen for GWA summary stats
-    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1)
-    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2)
+    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True)
+    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True)
     
     # array submitter
     timeout = min(sum([len(x[1]) for x in exposures])*5,720)
     from _utils.slurm import array_submitter
     submitter = array_submitter(
-        name = 'mvmr_'+'_'.join(args.p2), env = 'gentoolsr',
+        name = f'mvmr_{args.p1[0]}.'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 1, 
         timeout = timeout,
         dependency = snp_submitter,
-        # debug = True
         )
     
     # correlation matrix between exposures and outcomes
@@ -86,9 +85,8 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
-    parser = argparse.ArgumentParser(description = 
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 
       'This script batch runs MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
     path_spec.add_argument('-g','--gwa', dest = 'gwa', 
@@ -120,7 +118,6 @@ if __name__ == '__main__':
                         help = 'Test all sub-models from MVMR-cML-SuSIE')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
                         default = False, help = 'Force overwrite')
-    parser = parser_config(parser)
     args = parser.parse_args()
     args.p1.sort(); args.p2.sort()
     

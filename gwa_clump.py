@@ -12,8 +12,7 @@ Requires following inputs:
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-i','--in', dest = '_in', help = 'Input directory')
-parser.add_argument('--file', dest = 'file', help = 'Input file (fastGWA)')
+parser.add_argument('-i','--in', dest = '_in', help = 'Input file')
 parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
   default = '../params/bed_files_ukb.txt')
 parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
@@ -41,17 +40,20 @@ def main(args):
     tic = time.perf_counter()
     idx = 0
     blist = np.loadtxt(args.bfile,dtype = 'U')
-    prefix = '.'.join(args.file.split('.')[:-1])
+    prefix = '.'.join(os.path.basename(args._in).split('.')[:-1])
     out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
     
     tmpdir = f'/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     os.chdir(args.out)                                                             # we do not need the input dir
     
-    df = pd.read_table(f'{args._in}/{args.file}', sep = '\t')
+    df = pd.read_table(args._in, sep = '\t')
     sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
     if sf.sum() == 0:
-      print(f'File {args.file} contains no significant SNP, skipping')
+      print(f'File {prefix} contains no significant SNP, skipping')
+      out_df = pd.DataFrame(columns = ['CHR', 'F', 'SNP', 'BP', 'P', 
+          'TOTAL', 'NSIG','S05','S01', 'S001','S0001','SP2'], index = [])
+      out_df.to_csv(out, sep = '\t', index = False)
       toc = time.perf_counter() - tic
       print(f'Total time = {toc:.3f}.')
       return
@@ -68,12 +70,12 @@ def main(args):
       idx += 1
       # separates files by chromosome
       df_tmp = df.loc[df.CHR == c, :]
-      tmpgwa = f'{tmpdir}/{args.file}_chr{c}.fastGWA'
-      tmpsnp = f'{tmpdir}/{args.file}_chr{c}.snplist'
+      tmpgwa = f'{tmpdir}/{prefix}_chr{c}.fastGWA'
+      tmpsnp = f'{tmpdir}/{prefix}_chr{c}.snplist'
       df_tmp.to_csv(tmpgwa, index = False, sep = '\t')
       df_tmp['SNP'].to_csv(tmpsnp, index = False, header = False)
       bf = blist[c-1]                                                              # c ranges 1-23
-      tmpout = f'{tmpdir}/{args.file}_chr{c}'
+      tmpout = f'{tmpdir}/{prefix}_chr{c}'
       tmp_flist.append(tmpgwa)
       tmp_flist.append(tmpsnp)
       tmp_flist.append(f'{tmpout}.hh')

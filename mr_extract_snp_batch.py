@@ -36,11 +36,10 @@ def main(args):
     
     print('Trying to find genetic instruments for all exposure phenotypes')
     for expg, expp in exposures:
-        print(f'    {expg}')
+        print(f'    {expg}: {len(expp)} phenotypes')
         all_snps = []
         # read trait-wise clump files
         for x in expp:
-            print(' '*8+x)
             clump,_ = find_clump(f'{args.clump}/{expg}', x, args.pval)
             all_snps.append(pd.read_table(clump, sep = '\\s+', usecols = ['SNP']))
         all_snps = pd.concat(all_snps)['SNP'].unique()
