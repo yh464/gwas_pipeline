@@ -10,6 +10,7 @@ CHECK LOG
 '''
 
 import os
+import argparse
 import warnings
 
 class array_submitter():
@@ -316,3 +317,12 @@ def parser_config(parser):
     slurm.add_argument('--n_task', help = 'number of tasks per job')
     slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
     return parser
+
+class slurm_parser(argparse.ArgumentParser):
+    '''
+    An argparse.ArgumentParser with default SLURM config options
+    '''
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self = parser_config(self)
+        
