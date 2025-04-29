@@ -1,0 +1,306 @@
+#!/usr/bin/env Rscript
+#### Information ####
+# A flexible framework to run genomic SEM
+# Author: Yuankai He (yh464@cam.ac.uk)
+# Date:   2025-04-26
+
+#### Command line input ####
+library(argparse)
+library(here)
+parser = ArgumentParser(description = 'This script runs genomic SEM')
+# path specs
+parser$add_argument('-i','--in', dest = 'input', help = 'input MUNGED summary stats directory',
+  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats')
+parser$add_argument('--full', dest = 'full', 
+  help = 'input FULL summary stats directory, needed for common factor GWAS/GWAS by subtraction',
+  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
+parser$add_argument('--p1', nargs = '+', 
+  help = 'Exposure, format <group>/<pheno>, separated by whitespace')
+parser$add_argument('--p2', nargs = '*',
+  help = 'Outcome, format <group>/<pheno>, leave blank for common factor analysis')
+parser$add_argument('--meta', nargs = '*', help = 'Metadata files')
+parser$add_argument('--ld', help = 'LD reference',
+  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
+parser$add_argument('--ref', help = 'Reference file for SNP variance calculation', default = 
+  '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
+parser$add_argument('-o','--out', help = 'Output prefix')
+
+# analyses
+parser$add_argument('--common', default = F, action = 'store_true', help = 'Common factor model')
+parser$add_argument('--efa', default = F, action = 'store_true', help = 'Exploratory factor analysis')
+parser$add_argument('--efa_thr', default = 0.3, help = 'loading threshold to keep an item')
+parser$add_argument('--mdl', default = F, action = 'store_true', 
+  help = 'Causal model and subtraction model; enter --mdl --gwas for GWAS by subtraction')
+parser$add_argument('--manual', help = 'Enter text file containing manually specified model')
+parser$add_argument('--gwas', default = F, action = 'store_true', help = 'Output factor GWAS')
+parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
+  default = F, action = 'store_true')
+args = parser$parse_args(commandArgs(TRUE))
+
+#### Sanity checks to command line arguments ####
+args$input = normalizePath(args$input); args$out = normalizePath(args$out)
+if (length(args$meta) < length(args$p1) + length(args$p2)) warning(
+  'Missing metadata, assuming traits to be continuous')
+print('Input options')
+print(args)
+if (length(args$p2) > 1) stop('Only one or zero outcome phenotypes accepted')
+if (!args$mdl & is.null(args$manual) & length(args$p2) == 1) warning(
+  'Unneeded p2 parameter supplied')
+if (!args$common & !args$efa & !args$mdl & is.null(args$manual)) stop(
+  'Please tell me to do something')
+
+#### paLDSC function to extract number of factors, modified for automation ####
+paLDSC_mod = function(S, V) {
+  library(MASS)
+  library(matrixStats)
+  library(gdata)
+  library(psych)
+  library(Matrix)
+  # default parameters
+  r = 500; p = 0.95; fm = 'minres'; nfactors = 1;
+  
+  #### Get Dimensions of Matrices ####
+  k=dim(S)[1] #k phenotypes
+  kstar=k*(k+1)/2 #kstar unique variances/covariances
+  Svec=lowerTriangle(S,diag=T) #vectorize S
+  SNULL=(0*S)
+  diag(SNULL)=1  
+  SNULLvec=lowerTriangle(SNULL,diag=T) #vectorize S null
+  Observed_PCA_values=eigen(S)$values
+  obs = data.frame(Observed_PCA_values)
+  obs$type = c('Observed Data')
+  obs$num = c(row.names(obs))
+  obs$num = as.numeric(obs$num)
+  colnames(obs) = c('eigenvalue', 'type', 'num')
+  
+  #### Factor parallel analysis ####
+  Ssmooth<-as.matrix((nearPD(S, corr = T))$mat) #Smooth S matrix
+  Observed_FA_values=fa(Ssmooth, fm = fm, nfactors = nfactors,SMC = FALSE, 
+                        warnings = FALSE, rotate = "none")$values
+  obsFA = data.frame(Observed_FA_values)
+  obsFA$type = c('Observed Data')
+  obsFA$num = c(row.names(obsFA))
+  obsFA$num = as.numeric(obsFA$num)
+  colnames(obsFA) = c('eigenvalue', 'type', 'num')
+  EIGfa=as.data.frame(matrix(NA,nrow=k,ncol=r))
+  for (i in 1:r) {
+    Sample_null=mvrnorm(n=1,mu=SNULLvec,Sigma=V)
+    Sample_null_M=matrix(0,ncol=k,nrow=k)
+    lowerTriangle(Sample_null_M,diag=T)=Sample_null
+    upperTriangle(Sample_null_M,diag=F)=upperTriangle(t(Sample_null_M))
+    Ssmooth<-as.matrix((nearPD(Sample_null_M, corr = T))$mat)
+    EIGfa[,i]=fa(Ssmooth, fm = fm, nfactors = nfactors,SMC = FALSE, 
+                 warnings = FALSE, rotate = "none")$values 
+  } 
+  
+  Parallel_fa_values=rowQuantiles(as.matrix(EIGfa),probs=p)
+  simPAfa = data.frame(Parallel_fa_values)
+  simPAfa$type = paste("Simulated data (",(p*100),"th %ile)",sep = "")
+  simPAfa$num = c(row.names(obs))
+  simPAfa$num = as.numeric(simPAfa$num)
+  colnames(simPAfa) = c('eigenvalue', 'type', 'num')
+  eigendatPAfa = rbind(obsFA,simPAfa)
+  nfactPAfa <- min(which((eigendatPAfa[1:k,1] < eigendatPAfa[(k+1):(k*2),1]) == TRUE))-1
+  if(nfactPAfa==Inf){
+    nfactPAfa <- 1
+  }
+  obsPAfa <- data.frame(obsFA[1]-simPAfa[1])
+  obsPAfa$type = paste("Observed minus simulated data (",(p*100),"th %ile)",sep = "")
+  obsPAfa$num = c(row.names(obsFA))
+  obsPAfa$num = as.numeric(obsPAfa$num)
+  colnames(obsPAfa) = c('eigenvalue', 'type', 'num')
+  nfactobsPAfa <- which(obsPAfa < 0)[1]-1
+  return(nfactPAfa)
+}
+
+#### Parse metadata file ####
+parse_metadata = function(file){
+  library(tidyverse)
+  dat = read_tsv(file)
+  colnames(dat) = colnames(dat) %>% tolower()
+  if (is.null(dat$group)) dat$group = basename(dirname(file))
+  if (is.null(dat$pheno)) dat$pheno = '*' # all phenotypes in the group
+  if (is.null(dat$sample_prev)) dat$sample_prev = NA
+  if (is.null(dat$pop_prev)) dat$pop_prev = NA
+  if (is.null(dat$selogit)) dat$selogit = F else dat$selogit = replace_na(dat$selogit,F)
+  if (is.null(dat$ols)) dat$ols = T else dat$ols = replace_na(dat$ols, T)
+  if (is.null(dat$linprob)) dat$linprob = F else dat$linprob = replace_na(dat$linprob,F)
+  if (is.null(dat$n)) dat$n = NA
+  dat = dat %>% select(group, pheno, n, sample_prev, pop_prev, selogit, ols, linprob)
+  return(dat)
+}
+#### main execution block ####
+main = function(args){
+  library(httr)
+  library(GenomicSEM)
+  library(tidyverse)
+  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsem'
+  if (!dir.exists(tmpdir)) dir.create(tmpdir)
+  
+  #### Read metadata ####
+  all_metadata = lapply(args$meta, parse_metadata) %>% bind_rows()
+  metadata = str_split_fixed(c(args$p1, args$p2), '/', 2) %>% as_tibble() %>%
+    setNames(c('group','pheno')) %>% 
+    add_column(n=NA, sample_prev=NA, pop_prev=NA, selogit=NA, ols=NA, linprob=NA)
+  for (i in 1:nrow(metadata)){
+    group = metadata$group[i]; pheno = metadata$pheno[i]
+    match = (all_metadata$group==group) & (all_metadata$pheno %in% c(pheno,'*'))
+    if (length(which(match)) > 1) stop('Conflicting metadata found!')
+    if (any(match)) metadata[i,3:8] = all_metadata[match,3:8]
+  }
+  # default metadata options
+  metadata$selogit = replace_na(metadata$selogit,F)
+  metadata$ols = replace_na(metadata$ols, T)
+  metadata$linprob = replace_na(metadata$linprob,F)
+  
+  #### Prepare modal parameters ####
+  trait.names = gsub('/','_',c(args$p1, args$p2)) # correct trait names for lavaan syntax
+  p1 = gsub('/','_',args$p1); p2 = gsub('/','_',args$p2)
+  ldscoutput = ldsc(
+    traits = paste0(args$input, '/', c(args$p1, args$p2),'.sumstats'),
+    sample.prev = metadata$sample_prev, population.prev = metadata$pop_prev,
+    ld = args$ld, wld = args$ld, trait.names = trait.names,
+    ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
+  )
+  if (args$gwas) ss = sumstats(
+    files = paste0(args$full, '/', c(args$p1,args$p2), '.fastGWA'), ref = args$ref,
+    trait.names = trait.names, OLS = metadata$ols, N = metadata$n,
+    se.logit = metadata$selogit, linprob = metadata$linprob,
+    )
+  
+  #### common factor model ####
+  results = paste0(args$out,'_common_mdl.txt')
+  gwa = paste0(args$out,'_common.fastGWA')
+  if (args$common & (!file.exists(results) | args$force)){
+    print('Compiling common factor model ...')
+    if (len(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor'))
+    dwls = commonfactor(ldscoutput, 'DWLS')
+    out = dwls$results %>% rename(beta_unstd = 'Unstandardized_Estimate',
+      se_unstd = 'Unstandardized_SE', beta = 'Standardized_Est', se = 'Standardized_SE',
+      p = 'p_value') %>% mutate(q = p.adjust(p)) %>% add_column(model_chi2 = dwls$modelfit$chisq,
+      model_p = dwls$modelfig$p_chisq)
+    write_tsv(out, file = results, quote = 'needed')
+    
+    #### common factor GWAS ####
+    if (args$gwas & (!file.exists(gwa) | args$force)){
+      if (len(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
+      cgwas = commonfactorGWAS(ldscoutput, ss) %>% 
+        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
+        select(-lhs, -op, -rhs)
+      write_tsv(c_gwas, gwa)
+    }
+  }
+  
+  #### EFA and CFA ####
+  results = paste0(args$out,'_efa.txt')
+  if (args$efa & (!file.exists(results) | args$force)){
+    print('Performing exploratory factor analysis ...')
+    n_factors = paLDSC_mod(ldscoutput$S, ldscoutput$V) # determine the number of factors
+    s_smooth = (Matrix::nearPD(ldscoutput$S))$mat %>% as.matrix()
+    if (n_factors == 0) n_factors = 1
+    efa = factanal(covmat=s_smooth, factors = n_factors, rotation = 'promax',
+      control = list(nstart = 100))
+    
+    # compile factor model formula
+    print('Performing confirmatory factor analysis ...')
+    mdl = paste0(trait.names,' ~~ var_',trait.names,'*',trait.names,
+                     ' \n var_',trait.names,' > 0.00001')
+    gwa = character(0)
+    mdl_snp = character(0)
+    for (i in 1:ncol(efa$loadings)) {
+      eqn = character(0); used = character(0)
+      for (j in 1:nrow(efa$loadings)) {
+        if (abs(efa$loadings[j, i]) > args$efa_thr) eqn = c(eqn, trait.names[j])
+      }
+      if (length(eqn) == 0) eqn = trait.names[which.max(abs(efa$loadings[,i]))]
+      eqn = paste0('F',i, ' =~ NA*', paste(eqn, collapse=' + ')); mdl = c(mdl,eqn)
+      mdl_snp = c(mdl_snp, paste0('F', i,' ~ SNP'))
+      gwa = c(gwa, paste0(args$out, '_efa.f',i,'.fastGWA'))
+    }
+    dwls = usermodel(ldscoutput, 'DWLS', paste0(mdl, collapse = ' \n '), 
+                     CFIcalc = T, std.lv = T, imp_cov = T)
+    out = dwls$results %>% rename(beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', 
+      beta = 'STD_Genotype', se = 'STD_Genotype_SE', beta_std_full = 'STD_All',
+      p = 'p_value') %>% mutate(p = as.numeric(p) %>% replace_na(0)) %>% 
+      mutate(q = p.adjust(p)) %>% add_column(model_chi2 = dwls$modelfit$chisq,
+      model_p = dwls$modelfit$p_chisq)
+    write_tsv(out, file = results, quote = 'needed')
+    
+    #### factor GWAS ####
+    if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
+      mgwas = userGWAS(ldscoutput, ss, 'ML', smooth_check = T, sub = mdl_snp,
+        model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T) %>% 
+        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
+    }
+  }
+  
+  #### exposure-outcome model ####
+  results = paste0(args$out,'_causal_mdl.txt')
+  results_sub = paste0(args$out, '_subtraction_mdl.txt')
+  gwa = paste0(args$out,'_subtraction.fastGWA')
+  if (args$mdl & (!file.exists(results) | args$force)) {
+    # direct causal model
+    mdl = paste0(p2[1], ' ~ NA*', paste(p1, collapse = ' + '))
+    dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
+    out = dwls$results %>% rename(beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', 
+      beta = 'STD_Genotype', se = 'STD_Genotype_SE', beta_std_full = 'STD_All',
+      p = 'p_value') %>% mutate(p = as.numeric(p) %>% replace_na(0)) %>% 
+      mutate(q = p.adjust(p)) %>% add_column(model_chi2 = dwls$modelfit$chisq,
+      model_p = dwls$modelfit$p_chisq)
+    write_tsv(out, file = results, quote = 'needed')
+    
+    # subtraction model
+    mdl = character(0)
+    mdl[1] = paste0('shared =~ NA*',paste(c(p2,p1), collapse = ' + start(0.4)*'))
+    mdl[2] = paste0('indep =~ NA*',p2)
+    mdl[3] = 'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep'
+    zero_cov = paste0(combn(trait.names,2)[1,],' ~~ 0*', combn(trait.names,2)[2,])
+    heywood = paste0(trait.names,' ~~ var_',trait.names,'*',trait.names,
+                     ' \n var_',trait.names,' > 0.00001')
+    mdl = c(mdl, heywood)
+    dwls = usermodel(ldscoutput, model = paste0(mdl, collapse = ' \n '), 
+                     imp_cov = T, CFIcalc = T)
+    out = dwls$results %>% rename(
+      beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
+      se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
+      mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
+      add_column(model_chi2 = dwls$modelfit$chisq, model_p = dwls$modelfit$p_chisq)
+    write_tsv(out, file = results_sub, quote = 'needed')
+    
+    if (args$gwas & (!file.exists(gwa) | args$force)){
+      mdl = character(0)
+      mdl[1] = paste0('shared =~ NA*',p2,' + start(0.2)*',
+                      paste(c(p2,p1), collapse = ' + start(0.4)*'))
+      mdl[2] = paste0('indep =~ NA*',p2,' + start(0.2)*',p2)
+      mdl[3] = 'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep'
+      mdl[4] = 'shared ~ SNP \n indep ~ SNP \n SNP ~~ SNP'
+      mdl = c(mdl, zero_cov, heywood)
+      sgwas = userGWAS(ldscoutput, ss, model = mdl, sub = 'indep ~ SNP') %>% 
+        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
+      write_tsv(sgwas, gwa)
+    }
+  }
+  
+  #### manually input model ####
+  results = paste0(args$out, '_manual_mdl.txt')
+  gwa = paste0(args$out, '_manual.fastGWA')
+  # NB models for genome-wide model and GWAS are incompatible!
+  if (!is.null(args$manual) & !args$gwas & (!file.exists(results) | args$force)) {
+    mdl = read_file(args$manual)
+    dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
+    out = dwls$results %>% rename(
+      beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
+      se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
+      mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
+      add_column(model_chi2 = dwls$modelfit$chisq, model_p = dwls$modelfit$p_chisq)
+    write_tsv(out, file = results_sub, quote = 'needed')
+  }
+  if (!is.null(args$manual) & args$gwas & (!file.exists(gwa) | args$force)) {
+    mdl = read_file(args$manual)
+    mgwas = userGWAS(ldscoutput, ss, model = mdl) %>% 
+      rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
+    write_tsv(mgwas, gwa)
+  }
+}
+
+main(args)
