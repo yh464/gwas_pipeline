@@ -18,6 +18,8 @@ parser$add_argument('--p1', nargs = '+',
   help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('--p2', nargs = '*',
   help = 'Outcome, format <group>/<pheno>, leave blank for common factor analysis')
+parser$add_argument('--med', nargs = '*', 
+  help = 'Mediators, format <group>/<pheno>')
 parser$add_argument('--meta', nargs = '*', help = 'Metadata files')
 parser$add_argument('--ld', help = 'LD reference',
   default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
@@ -46,6 +48,8 @@ print(args)
 if (length(args$p2) > 1) stop('Only one or zero outcome phenotypes accepted')
 if (!args$mdl & is.null(args$manual) & length(args$p2) == 1) warning(
   'Unneeded p2 parameter supplied')
+if (!args$mdl & is.null(args$manual) & length(args$med) > 0) warning(
+  'Unneeded med parameter supplied')
 if (!args$common & !args$efa & !args$mdl & is.null(args$manual)) stop(
   'Please tell me to do something')
 
@@ -139,7 +143,7 @@ main = function(args){
   
   #### Read metadata ####
   all_metadata = lapply(args$meta, parse_metadata) %>% bind_rows()
-  metadata = str_split_fixed(c(args$p1, args$p2), '/', 2) %>% as_tibble() %>%
+  metadata = str_split_fixed(c(args$p1, args$p2, args$med), '/', 2) %>% as_tibble() %>%
     setNames(c('group','pheno')) %>% 
     add_column(n=NA, sample_prev=NA, pop_prev=NA, selogit=NA, ols=NA, linprob=NA)
   for (i in 1:nrow(metadata)){
@@ -154,16 +158,19 @@ main = function(args){
   metadata$linprob = replace_na(metadata$linprob,F)
   
   #### Prepare modal parameters ####
-  trait.names = gsub('/','_',c(args$p1, args$p2)) # correct trait names for lavaan syntax
-  p1 = gsub('/','_',args$p1); p2 = gsub('/','_',args$p2)
+  # correct trait names for lavaan syntax
+  trait.names = gsub('/','_',c(args$p1, args$p2))
+  trait.names_med = gsub('/','_',c(args$p1, args$p2, args$med))
+  p1 = gsub('/','_',args$p1); p2 = gsub('/','_',args$p2); med = gsub('/','_',args$med)
+  n = length(p1) + length(p2)
   ldscoutput = ldsc(
-    traits = paste0(args$input, '/', c(args$p1, args$p2),'.sumstats'),
-    sample.prev = metadata$sample_prev, population.prev = metadata$pop_prev,
+    traits = paste0(args$input, '/', c(args$p1,args$p2),'.sumstats'),
+    sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
     ld = args$ld, wld = args$ld, trait.names = trait.names,
     ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
   )
   if (args$gwas) ss = sumstats(
-    files = paste0(args$full, '/', c(args$p1,args$p2), '.fastGWA'), ref = args$ref,
+    files = paste0(args$full, '/', c(args$p1, args$p2), '.fastGWA'), ref = args$ref,
     trait.names = trait.names, OLS = metadata$ols, N = metadata$n,
     se.logit = metadata$selogit, linprob = metadata$linprob,
     )
@@ -236,37 +243,62 @@ main = function(args){
   
   #### exposure-outcome model ####
   results = paste0(args$out,'_causal_mdl.txt')
+  results_med = paste0(args$out, '_mediation_mdl.txt')
   results_sub = paste0(args$out, '_subtraction_mdl.txt')
   gwa = paste0(args$out,'_subtraction.fastGWA')
-  if (args$mdl & (!file.exists(results) | args$force)) {
-    # direct causal model
-    mdl = paste0(p2[1], ' ~ NA*', paste(p1, collapse = ' + '))
-    dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
-    out = dwls$results %>% rename(beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', 
-      beta = 'STD_Genotype', se = 'STD_Genotype_SE', beta_std_full = 'STD_All',
-      p = 'p_value') %>% mutate(p = as.numeric(p) %>% replace_na(0)) %>% 
-      mutate(q = p.adjust(p)) %>% add_column(model_chi2 = dwls$modelfit$chisq,
-      model_p = dwls$modelfit$p_chisq)
-    write_tsv(out, file = results, quote = 'needed')
+  if (args$mdl) {
+    #### direct causal model ####
+    if (!file.exists(results) | args$force){
+      mdl = paste0(p2[1], ' ~ NA*', paste(p1, collapse = ' + '))
+      dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
+      out = dwls$results %>% rename(beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', 
+        beta = 'STD_Genotype', se = 'STD_Genotype_SE', beta_std_full = 'STD_All',
+        p = 'p_value') %>% mutate(p = as.numeric(p) %>% replace_na(0)) %>% 
+        mutate(q = p.adjust(p)) %>% add_column(model_chi2 = dwls$modelfit$chisq,
+        model_p = dwls$modelfit$p_chisq)
+      write_tsv(out, file = results, quote = 'needed')
+    }
     
-    # subtraction model
-    mdl = character(0)
-    mdl[1] = paste0('shared =~ NA*',paste(c(p2,p1), collapse = ' + start(0.4)*'))
-    mdl[2] = paste0('indep =~ NA*',p2)
-    mdl[3] = 'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep'
-    zero_cov = paste0(combn(trait.names,2)[1,],' ~~ 0*', combn(trait.names,2)[2,])
-    heywood = paste0(trait.names,' ~~ var_',trait.names,'*',trait.names,
-                     ' \n var_',trait.names,' > 0.00001')
-    mdl = c(mdl, heywood)
-    dwls = usermodel(ldscoutput, model = paste0(mdl, collapse = ' \n '), 
-                     imp_cov = T, CFIcalc = T)
-    out = dwls$results %>% rename(
-      beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-      se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-      mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-      add_column(model_chi2 = dwls$modelfit$chisq, model_p = dwls$modelfit$p_chisq)
-    write_tsv(out, file = results_sub, quote = 'needed')
+    #### mediation model ####
+    if (!file.exists(results_med) | args$force){
+      ldscoutput_med = ldsc(
+        traits = paste0(args$input, '/', c(args$p1,args$p2, args$med),'.sumstats'),
+        sample.prev = metadata$sample_prev, population.prev = metadata$pop_prev,
+        ld = args$ld, wld = args$ld, trait.names = trait.names_med,
+        ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
+      )
+      mdl = c(paste0(p2[1],'~NA*', paste(c(p1,med),collapse = '+')),
+        paste0(med,'~NA*',paste(p1, collapse = '+'))) %>% paste0(collapse = '\n')
+      dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
+      out = dwls$results %>% rename(
+        beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
+        se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
+        mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
+        add_column(model_chi2 = dwls$modelfit$chisq, model_p = dwls$modelfit$p_chisq)
+      write_tsv(out, file = results_med, quote = 'needed')
+    }
     
+    #### subtraction model ####
+    if (!file.exists(results_sub) | args$force){
+      mdl = character(0)
+      mdl[1] = paste0('shared =~ NA*',paste(c(p2,p1), collapse = ' + start(0.4)*'))
+      mdl[2] = paste0('indep =~ NA*',p2)
+      mdl[3] = 'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep'
+      zero_cov = paste0(combn(trait.names,2)[1,],' ~~ 0*', combn(trait.names,2)[2,])
+      heywood = paste0(trait.names,' ~~ var_',trait.names,'*',trait.names,
+                       ' \n var_',trait.names,' > 0.00001')
+      mdl = c(mdl, heywood)
+      dwls = usermodel(ldscoutput, model = paste0(mdl, collapse = ' \n '), 
+                       imp_cov = T, CFIcalc = T)
+      out = dwls$results %>% rename(
+        beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
+        se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
+        mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
+        add_column(model_chi2 = dwls$modelfit$chisq, model_p = dwls$modelfit$p_chisq)
+      write_tsv(out, file = results_sub, quote = 'needed')
+    }
+    
+    #### subtraction GWAS ####
     if (args$gwas & (!file.exists(gwa) | args$force)){
       mdl = character(0)
       mdl[1] = paste0('shared =~ NA*',p2,' + start(0.2)*',

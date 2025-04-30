@@ -55,7 +55,7 @@ def find_gwas(*pheno,
               se = False):
     '''
     Data structure: {dirname}/{pheno[0]}/*.{ext}
-    pheno: phenotype groups
+    pheno: phenotype groups or <group>/<pheno>
     dirname: directory of all GWAS sumstats
     ext: extension, usually fastGWA
     long: specifies two handy output formats
@@ -70,16 +70,18 @@ def find_gwas(*pheno,
         pheno = [y for x in pheno for y in x]
     for p in pheno:
         xlist = []
-        for x in sorted(os.listdir(f'{dirname}/{p}')):
-            if not fnmatch(x.replace('.gz',''), f'*.{ext}') or fnmatch(x,f'*_X.{ext}'): continue
+        pdir = p.split('/')[0]
+        ppat = '*' if p.find('/') < 0 else '*' + p.split('/')[1] + '*'
+        for x in sorted(os.listdir(f'{dirname}/{pdir}')):
+            if not fnmatch(x.replace('.gz',''), f'{ppat}.{ext}') or fnmatch(x,f'{ppat}_X.{ext}'): continue
             if se:
-                f = open(f'{dirname}/{p}/{x}') if x.find('.gz') < 0 else \
-                    gzip.open(f'{dirname}/{p}/{x}')
+                f = open(f'{dirname}/{pdir}/{x}') if x.find('.gz') < 0 else \
+                    gzip.open(f'{dirname}/{pdir}/{x}')
                 hdr = f.readline().replace('\n','').split()
                 hdr = [x.upper() for x in hdr]
                 if not 'SE' in hdr: continue
             xlist.append(x.replace(f'.{ext}','').replace('.gz',''))
-        out.append((p, xlist))
+        out.append((pdir, xlist))
     if long: out = [(x,z) for x,y in out for z in y]
     return out
 

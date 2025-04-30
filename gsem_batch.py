@@ -11,7 +11,6 @@ Requires following inputs:
     FULL GWAS summary statistics (optional, only for SNP-level models)
 
 TODO:
-    - information to be passed to GenomicSEM including prevalence, effective sample size (only needed for GWAS models)
     - manual model (interactive interface)
 '''
 
@@ -22,6 +21,7 @@ def main(args):
     exposures_short = find_gwas(args.p1, dirname=args._in, ext='sumstats', long = False)
     outcomes = find_gwas(args.p2, dirname=args._in, ext='sumstats', long = True)
     outcomes_short = find_gwas(args.p2, dirname=args._in, ext='sumstats', long = False)
+    mediators = find_gwas(args.med, dirname=args._in, ext='sumstats', long = True)
     covariates = find_gwas(args.cov, dirname=args._in, ext='sumstats', long = True)
 
     from _utils.slurm import array_submitter
@@ -51,6 +51,7 @@ def main(args):
     if len(outcomes) > 0: exp_corr_out = crosscorr_parse(exposures_short, outcomes_short, logdir=args.rg)
     for g2, p2 in outcomes:
         if not os.path.isdir(f'{args.out}/{g2}'): os.system(f'mkdir -p {args.out}/{g2}')
+        med = (['--med'] + [ f'{g}/{p}' for g, p in mediators]) if len(mediators) > 0 else []
 
         # screen for only correlated exposures
         if args.rgp < 0:
@@ -68,7 +69,7 @@ def main(args):
             
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                    '--p1'] + [f'{g}/{p}' for g, p in exposures + covariates]
-            cmd += ['--p2', f'{g2}/{p2}'] + tasks
+            cmd += ['--p2', f'{g2}/{p2}'] + med + tasks
             submitter.add(' '.join(cmd))
         
         # individual correlated exposures in each model
@@ -79,7 +80,7 @@ def main(args):
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1', f'{g1}/{p1}']
                 cmd += [f'{g}/{p}' for g, p in covariates]
-                cmd += ['--p2', f'{g2}/{p2}'] + tasks
+                cmd += ['--p2', f'{g2}/{p2}'] + med + tasks
                 submitter.add(' '.join(cmd))
             
     if len(outcomes) == 0:
@@ -121,7 +122,8 @@ if __name__ == '__main__':
     pheno = parser.add_argument_group('Phenotype specifications')
     pheno.add_argument('-p1', help = 'Exposure, scans directory', nargs = '+', default = [])
     pheno.add_argument('-p2', help = 'Outcome, scans directory', nargs = '*', default = [])
-    pheno.add_argument('--cov', help = 'Covariates, scans directory', nargs = '*', default = ['demographics'])
+    pheno.add_argument('-m','--med', help = 'Mediators, scans directory', nargs = '*', default = [])
+    pheno.add_argument('-c','--cov', help = 'Covariates, scans directory', nargs = '*', default = ['demographics'])
     pheno.add_argument('--all_exp', help = 'Run common/causal/subtraction model for all exposures', 
         action = 'store_true', default = False)
     pheno.add_argument('--rgp', type = float, default = -1,
