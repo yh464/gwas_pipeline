@@ -9,10 +9,86 @@ A flexible framework to estimate genomic SEM models
 Requires following inputs: 
     MUNGED GWAS summary statistics
     FULL GWAS summary statistics (optional, only for SNP-level models)
-
-TODO:
-    - manual model (interactive interface)
 '''
+
+class manual_model():
+    import os
+    def __init__(self, phenotypes = [], out = os.devnull, file = None, *args):
+        import os
+        self.phenotypes = phenotypes if type(phenotypes[0]) == str else [f'{g}/{p}' for g, p in phenotypes]
+        self.phenotypes = [x.replace('/','_') for x in self.phenotypes]
+        self.out = out
+        self.model = []; self.constraints = []
+        if not os.path.isfile(out): self._input()
+        else: self.load(file, *args)
+        self.save()
+    
+    def print_phenotypes(self):
+        print('Available phenotypes:')
+        for i, p in enumerate(self.phenotypes):
+            print(f'{i+2}: {p}')
+        print()
+    
+    def print_model(self):
+        print('Current model:')
+        for x in self.model + self.constraints: print(x)
+        print()
+
+    def save(self):
+        with open(self.out, 'w') as f:
+            for x in self.model + self.constraints: print(x, file = f)
+
+    def load(self, file, *phenos):
+        self.model = open(file).read()
+        for i, x in enumerate(phenos): self.model = self.model.replace(f'%{i+1}', x.replace('/','_'))
+        if self.model.count('%') > 0: raise ValueError('Not all phenotypes are specified in the model')
+
+    def _check_name(self,name):
+        from fnmatch import fnmatch
+        import re
+        name = name.replace(' ','')
+        while len(name) == 0: name = input('Please enter a valid parameter name or phenotype code:\n')
+        if name in self.phenotypes + ['NA'] or fnmatch(name, 'start[(]*[)]' or name in ['0','1']): return name
+        elif name in [str(x+2) for x in range(len(self.phenotypes))]: return self.phenotypes[int(name)-2]
+        elif re.match('^[0-9]+$', name.replace('\\','')) != None: return name.replace('\\','')
+        elif re.match('^[0-9]', name) != None or re.search('[$/*+\-?\^()\\\|]',name) != None:
+            return self._check_name(input('Please enter a valid parameter name or phenotype code:\n'))
+        print(f'Specifying a new parameter: {name}, please specify constraints; blank line for no constraints')
+        self.phenotypes.append(name)
+        while not fnmatch(constraint := input(f'{name} '),'[><=]*') and len(constraint) > 0: 
+            print('Please enter a valid constraint (>, <, =):\n')
+        if len(constraint) > 0: self.constraints.append(f'{name} {constraint}')
+        return name
+    
+    @staticmethod
+    def _check_operator(op):
+        op = op.replace(' ','')
+        if op in ['~','~~','=~','+','*','-']: return op
+        while not op in ['~','~~','=~','+','*','-']:
+            op = input('Please enter a valid operator: ~, ~~, =~, +, *, -\n')
+        return op
+
+    def _input(self):
+        import os
+        formula = []
+        while True:
+            _ = os.system('clear')
+            self.print_model()
+            if len(formula) % 2 == 0:
+                self.print_phenotypes()
+                name = input('Please enter a term, use above numbers to select phenotypes\n'+
+                    'Enter a new name to define a parameter\nEnter backslash + number for numbers\n'+
+                    '0, 1, NA and start(<some number>) can be entered directly\n'+
+                    'Enter a blank line to finish\n' +' '.join(formula) + ' ')
+                if len(name) == 0 and len(formula) == 0: break
+                formula.append(self._check_name(name))
+            else: 
+                op = input('Please enter an operator: ~, ~~, =~, +, *, -\n'+
+                           'Enter blank line to proceed to next formula\n' + ' '.join(formula) + ' ')
+                if len(op) == 0 and len(formula) > 2: 
+                    self.model.append(' '.join(formula)); formula = []; continue
+                formula.append(self._check_operator(op))
+        self.print_model()
 
 def main(args):
     # find GWAS summary stats
@@ -65,22 +141,31 @@ def main(args):
         # all correlated exposures in the same model
         if args.all_exp:
             out_prefix = f'{args.out}/{g2}/{p2}.all_'+'_'.join(args.p1)
-            if os.path.isfile(f'{out_prefix}_subtraction.fastGWA') and not args.force: continue
-            
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                    '--p1'] + [f'{g}/{p}' for g, p in exposures + covariates]
             cmd += ['--p2', f'{g2}/{p2}'] + med + tasks
+            if os.path.isfile(args.manual): 
+                manual_model([], f'{out_prefix}.mdl', args.manual, f'{g2}/{p2}'); 
+                cmd += ['--manual', f'{out_prefix}.mdl']
+            elif len(args.manual) > 0:
+                manual_model(out = f'{out_prefix}.mdl', phenotypes = exposures + covariates + mediators + [f'{g2}/{p2}'])
+                cmd += ['--manual', f'{out_prefix}.mdl']
             submitter.add(' '.join(cmd))
         
         # individual correlated exposures in each model
         else:
             for g1, p1 in exposures_filtered:
                 out_prefix = f'{args.out}/{g2}/{p2}.{g1}_{p1}'
-                if os.path.isfile(f'{out_prefix}_subtraction.fastGWA') and not args.force: continue
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1', f'{g1}/{p1}']
                 cmd += [f'{g}/{p}' for g, p in covariates]
                 cmd += ['--p2', f'{g2}/{p2}'] + med + tasks
+                if os.path.isfile(args.manual): 
+                    manual_model([], f'{out_prefix}.mdl', args.manual, f'{g1}/{p1}',f'{g2}/{p2}'); 
+                    cmd += ['--manual', f'{out_prefix}.mdl']
+                elif len(args.manual) > 0:
+                    manual_model(out = f'{out_prefix}.mdl', phenotypes = covariates + mediators + [f'{g2}/{p2}', f'{g1}/{p1}'])
+                    cmd += ['--manual', f'{out_prefix}.mdl']
                 submitter.add(' '.join(cmd))
             
     if len(outcomes) == 0:
@@ -88,18 +173,31 @@ def main(args):
             outdir = f'{args.out}/'+'_'.join(args.p1)
             if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
             out_prefix = f'{outdir}/{"_".join(args.p1)}_all'
-            if not os.path.isfile(f'{out_prefix}.F1.fastGWA') or args.force:
-                cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
-                    '--p1'] + [f'{g}/{p}' for g, p in exposures] + tasks + ['--meta'] + meta
-                submitter.add(' '.join(cmd))
+            cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
+                '--p1'] + [f'{g}/{p}' for g, p in exposures] + tasks
+            if os.path.isfile(args.manual): 
+                manual_model([], f'{out_prefix}.mdl', args.manual, *[f'{g}/{p}' for g, p in exposures]); 
+                cmd += ['--manual', f'{out_prefix}.mdl']
+            elif len(args.manual) > 0:
+                manual_model(out = f'{out_prefix}.mdl', phenotypes = covariates + mediators + exposures)
+                cmd += ['--manual', f'{out_prefix}.mdl']
+            
+            submitter.add(' '.join(cmd))
         else:
             for g1, p1s in exposures_short:
                 outdir = f'{args.out}/{g1}'; 
                 if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
-                cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', f'{outdir}/all', '--full', args.full, '--ref', args.ref, '--ld', args.ld,
+                out_prefix = f'{outdir}/all'
+                cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1'] + [f'{g1}/{p}' for p in p1s] + tasks
+                if os.path.isfile(args.manual): 
+                    manual_model([], f'{out_prefix}.mdl', args.manual, *[f'{g1}/{p1}' for p1 in p1s]); 
+                    cmd += ['--manual', f'{out_prefix}.mdl']
+                elif len(args.manual) > 0:
+                    manual_model(out = f'{out_prefix}.mdl', phenotypes = covariates + mediators + [f'{g1}/{p1}' for p1 in p1s])
+                    cmd += ['--manual', f'{out_prefix}.mdl']
                 submitter.add(' '.join(cmd))
-    
+
     submitter.submit()
     return submitter
 
@@ -134,7 +232,8 @@ if __name__ == '__main__':
     tasks.add_argument('--efa', help = 'Exploratory factor analysis', action = 'store_true', default = False)
     tasks.add_argument('--efa_thr', help = 'loading threshold to keep in a factor', default = 0.3, type = float)
     tasks.add_argument('--mdl', help = 'Causal and subtraction model', action = 'store_true', default = False)
-    tasks.add_argument('--manual', help = 'Manual model', action = 'store_true', default = False)
+    tasks.add_argument('--manual', default = '',
+        help = 'Manual model, enter model file if already specified; random character to manually specify')
     tasks.add_argument('--gwas', help = 'Output GWAS summary statistics', action = 'store_true', default = False)
 
     parser.add_argument('-f','--force', help = 'Force overwrite', action = 'store_true', default = False)
