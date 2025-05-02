@@ -53,10 +53,12 @@ class array_submitter():
                  account = None,
                  wd = '.',
                  debug = False,
+                 intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
         
         self.name = name + '_0'
         self.debug = debug
+        self.inter = intr
         
         # SLURM config
         self.partition = partition
@@ -120,7 +122,7 @@ class array_submitter():
         valid_keys = [
             'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim'
+            'tmpdir','lim','intr'
             ]
         for key, value in kwargs.items():
             if not key in valid_keys:
@@ -132,7 +134,7 @@ class array_submitter():
         valid_keys = [
             'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim'
+            'tmpdir','lim','intr'
             ]
         for key, value in vars(args).items():
             if not key in valid_keys: continue
@@ -287,9 +289,8 @@ class array_submitter():
         '''
         # if debug mode is on, debug instead
         if self._nfiles < 0: return
-        if self.debug:
-            self._print()
-            return
+        if self.debug: self._print(); return
+        if self.intr: import os; os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
         
         self._write_wrap()
         time = int(self.timeout * self._count)
@@ -315,7 +316,9 @@ def parser_config(parser):
     slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
     slurm.add_argument('--n_node', help = 'number of nodes needed')
     slurm.add_argument('--n_task', help = 'number of tasks per job')
+    slurm.add_argument('--timeout', help = 'timeout in minutes')
     slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
+    slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
     return parser
 
 class slurm_parser(argparse.ArgumentParser):
