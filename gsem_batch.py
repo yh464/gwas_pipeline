@@ -128,7 +128,7 @@ def main(args):
     for g2, p2 in outcomes:
         if not os.path.isdir(f'{args.out}/{g2}'): os.system(f'mkdir -p {args.out}/{g2}')
         med = (['--med'] + [ f'{g}/{p}' for g, p in mediators]) if len(mediators) > 0 else []
-
+        cov = (['--cov'] + [ f'{g}/{p}' for g, p in covariates]) if len(covariates) > 0 else []
         # screen for only correlated exposures
         if args.rgp < 0:
             exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
@@ -142,8 +142,8 @@ def main(args):
         if args.all_exp:
             out_prefix = f'{args.out}/{g2}/{p2}.all_'+'_'.join(args.p1)
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
-                   '--p1'] + [f'{g}/{p}' for g, p in exposures + covariates]
-            cmd += ['--p2', f'{g2}/{p2}'] + med + tasks
+                   '--p1'] + [f'{g}/{p}' for g, p in exposures]
+            cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
             if os.path.isfile(args.manual): 
                 manual_model([], f'{out_prefix}.mdl', args.manual, f'{g2}/{p2}'); 
                 cmd += ['--manual', f'{out_prefix}.mdl']
@@ -158,8 +158,7 @@ def main(args):
                 out_prefix = f'{args.out}/{g2}/{p2}.{g1}_{p1}'
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1', f'{g1}/{p1}']
-                cmd += [f'{g}/{p}' for g, p in covariates]
-                cmd += ['--p2', f'{g2}/{p2}'] + med + tasks
+                cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
                 if os.path.isfile(args.manual): 
                     manual_model([], f'{out_prefix}.mdl', args.manual, f'{g1}/{p1}',f'{g2}/{p2}'); 
                     cmd += ['--manual', f'{out_prefix}.mdl']
