@@ -135,6 +135,20 @@ parse_metadata = function(file){
   dat = dat %>% select(group, pheno, n, sample_prev, pop_prev, selogit, ols, linprob)
   return(dat)
 }
+
+#### Function to write genomic SEM output ####
+write_model = function(dwls, file){
+  if (is.null(dwls$results)) return(F)
+  out = dwls$results %>% rename(
+    beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
+    se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
+    mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
+    add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
+               SRMR = dwls$modelfit$SRMR)
+  write_tsv(out, file = file, quote = 'needed')
+  return(T)
+}
+
 #### main execution block ####
 main = function(args){
   library(httr)
@@ -243,13 +257,7 @@ main = function(args){
     }
     dwls = usermodel(ldscoutput_odd, 'DWLS', paste0(mdl, collapse = ' \n '), 
                      CFIcalc = T, std.lv = T, imp_cov = T)
-    out = dwls$results %>% rename(
-      beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-      se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-      mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-      add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-                 SRMR = dwls$modelfit$SRMR)
-    write_tsv(out, file = results, quote = 'needed')
+    write_model(dwls, results)
     
     #### factor GWAS ####
     if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
@@ -269,17 +277,11 @@ main = function(args){
     if (!file.exists(results) | args$force){
       mdl = paste0(p2[1], ' ~ NA*', paste(c(p1,cov), collapse = ' + '))
       dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
-      out = dwls$results %>% rename(
-        beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-        se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-        mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-        add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-                   SRMR = dwls$modelfit$SRMR)
-      write_tsv(out, file = results, quote = 'needed')
+      write_model(dwls, results)
     }
     
     #### mediation model ####
-    if (!file.exists(results_med) | args$force){
+    if (length(args$med) > 0 & (!file.exists(results_med) | args$force)){
       ldscoutput_med = ldsc(
         traits = paste0(args$input, '/', c(args$p1,args$cov,args$p2, args$med),'.sumstats'),
         sample.prev = metadata$sample_prev, population.prev = metadata$pop_prev,
@@ -287,60 +289,50 @@ main = function(args){
         ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
       )
       # only account for direct effect on outcome by covars, not from covars to mediators
-      mdl = c(paste0(p2[1],'~NA*', paste(c(p1,cov,med),collapse = '+')),
+      mdl = c(paste0(p2,'~NA*', paste(c(p1,cov,med),collapse = '+')),
         paste0(med,'~NA*',paste(p1, collapse = '+'))) %>% paste0(collapse = '\n')
+      
       dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
-      out = dwls$results %>% rename(
-        beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-        se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-        mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-        add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-                   SRMR = dwls$modelfit$SRMR)
-      write_tsv(out, file = results_med, quote = 'needed')
-      if (len(cov) > 0) {
-        mdl = c(paste0(p2[1],'~NA*', paste(c(p1,cov,med),collapse = '+')),
+      write_model(dwls, results_med)
+      if (length(cov) > 0) {
+        # model with all covariates
+        mdl = c(paste0(p2,'~NA*', paste(c(p1,cov,med),collapse = '+')),
           paste0(med,'~NA*',paste(c(p1,cov), collapse = '+'))) %>% paste0(collapse = '\n')
         dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
-        out = dwls$results %>% rename(
-          beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-          se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-          mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-          add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-                     SRMR = dwls$modelfit$SRMR)
-        write_tsv(out, file = paste0(args$out,'_mediation_fullcov.txt'), quote = 'needed')
+        write_model(dwls, paste0(args$out,'_mediation_fullcov.txt'))
+        # model latent factor outcome - covars
+        mdl = c(paste0('shared =~ NA*',paste(c(p2, cov), collapse = '+')), 
+          paste0('indep =~ NA*',p2),
+          'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
+          paste0('indep~NA*', paste(c(p1, med),collapse = '+')),
+          paste0(med, '~NA*', paste(p1, collapse = '+'))) %>% paste(collapse = '\n')
+        dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
+        write_model(dwls, paste0(args$out,'_mediation_subtract_cov.txt'))
       }
     }
     
     #### subtraction model ####
     if (!file.exists(results_sub) | args$force){
-      mdl = character(0)
-      mdl[1] = paste0('shared =~ NA*',paste(c(p2,p1), collapse = ' + start(0.4)*'))
-      mdl[2] = paste0('indep =~ NA*',p2)
-      mdl[3] = 'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep'
-      zero_cov = paste0(combn(trait.names,2)[1,],' ~~ 0*', combn(trait.names,2)[2,])
-      heywood = paste0(trait.names,' ~~ var_',trait.names,'*',trait.names,
-                       ' \n var_',trait.names,' > 0.00001')
-      mdl = c(mdl, heywood)
-      dwls = usermodel(ldscoutput, model = paste0(mdl, collapse = ' \n '), 
-                       imp_cov = T, CFIcalc = T)
-      out = dwls$results %>% rename(
-        beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-        se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-        mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-        add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-                   SRMR = dwls$modelfit$SRMR)
-      write_tsv(out, file = results_sub, quote = 'needed')
+      mdl = c(paste0('shared =~ NA*',paste(c(p2,cov,p1), collapse = ' + start(0.4)*')),
+        paste0('indep =~ NA*',p2), 
+        'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep')
+      zero_cov = paste0(combn(c(p1,cov,p2),2)[1,],' ~~ 0*', combn(c(p1,cov,p2),2)[2,])
+      zero_cov = c(zero_cov, paste0(c(p1,cov,p2),' ~~ 0*',c(p1,cov,p2)))
+      mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
+      dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
+      if (is.null(dwls$results)) dwls = usermodel(ldscoutput, 'ML',
+        model = mdl, imp_cov = T, CFIcalc = T)
+      write_model(dwls, results_sub)
     }
     
     #### subtraction GWAS ####
     if (args$gwas & (!file.exists(gwa) | args$force)){
-      mdl = character(0)
-      mdl[1] = paste0('shared =~ NA*',p2,' + start(0.2)*',
-                      paste(c(p2,p1), collapse = ' + start(0.4)*'))
-      mdl[2] = paste0('indep =~ NA*',p2,' + start(0.2)*',p2)
-      mdl[3] = 'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep'
-      mdl[4] = 'shared ~ SNP \n indep ~ SNP \n SNP ~~ SNP'
-      mdl = c(mdl, zero_cov, heywood)
+      mdl = c(paste0('shared =~ NA*',p2,' + start(0.2)*',
+                     paste(c(p2,p1), collapse = ' + start(0.4)*')),
+        paste0('indep =~ NA*',p2,' + start(0.2)*',p2),
+        'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
+        'shared ~ SNP \n indep ~ SNP \n SNP ~~ SNP')
+      mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, sub = 'indep ~ SNP') %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
       write_tsv(sgwas, gwa)
@@ -354,13 +346,7 @@ main = function(args){
   if (!is.null(args$manual) & !args$gwas & (!file.exists(results) | args$force)) {
     mdl = read_file(args$manual)
     dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
-    oout = dwls$results %>% rename(
-        beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
-        se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-        mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-        add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-                   SRMR = dwls$modelfit$SRMR)
-    write_tsv(out, file = results_sub, quote = 'needed')
+    write_model(dwls, results)
   }
   if (!is.null(args$manual) & args$gwas & (!file.exists(gwa) | args$force)) {
     mdl = read_file(args$manual)

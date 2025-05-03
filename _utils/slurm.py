@@ -56,7 +56,7 @@ class array_submitter():
                  intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
         
-        self.name = name + '_0'
+        self.name = name.replace('/','_') + '_0'
         self.debug = debug
         self.inter = intr
         

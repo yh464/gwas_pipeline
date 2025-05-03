@@ -103,7 +103,8 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'gsem_'+args.p1[0]+'_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 4, timeout = 60 if args.gwas else 15)
+        partition = 'icelake-himem' if args.gwas else 'icelake',
+        n_cpu = 4 if args.gwas else 1, timeout = 60 if args.gwas else 15)
     
     # tasks string
     tasks = []
