@@ -51,6 +51,7 @@ def find_clump(dirname, prefix, pval):
 def find_gwas(*pheno, 
               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
               ext = 'fastGWA',
+              exclude = [],
               long = False,
               se = False):
     '''
@@ -58,6 +59,7 @@ def find_gwas(*pheno,
     pheno: phenotype groups or <group>/<pheno>
     dirname: directory of all GWAS sumstats
     ext: extension, usually fastGWA
+    exclude: list of phenotypes to exclude from the search, matches pattern
     long: specifies two handy output formats
         True - output = [(<group0>, <pheno0.0>), (<group0>, <pheno0.1>), ...]
         False - output = [(<group0>, [<pheno0.0>, <pheno0.1>, ...]), ...]
@@ -74,6 +76,11 @@ def find_gwas(*pheno,
         ppat = '*' if p.find('/') < 0 else '*' + p.split('/')[1] + '*'
         for x in sorted(os.listdir(f'{dirname}/{pdir}')):
             if not fnmatch(x.replace('.gz',''), f'{ppat}.{ext}') or fnmatch(x,f'{ppat}_X.{ext}'): continue
+            exc = False
+            for y in exclude:
+                if fnmatch(pdir,'*'+y.split('/')[0]+'*') and fnmatch(x, '*'+y.split('/')[1]+'*'):
+                    exc = True; break
+            if exc: continue
             if se:
                 f = open(f'{dirname}/{pdir}/{x}') if x.find('.gz') < 0 else \
                     gzip.open(f'{dirname}/{pdir}/{x}')

@@ -93,12 +93,12 @@ class manual_model():
 def main(args):
     # find GWAS summary stats
     from _utils.path import find_gwas
-    exposures = find_gwas(args.p1, dirname=args._in, ext='sumstats', long = True) # no SE for munged summary stats
-    exposures_short = find_gwas(args.p1, dirname=args._in, ext='sumstats', long = False)
-    outcomes = find_gwas(args.p2, dirname=args._in, ext='sumstats', long = True)
-    outcomes_short = find_gwas(args.p2, dirname=args._in, ext='sumstats', long = False)
-    mediators = find_gwas(args.med, dirname=args._in, ext='sumstats', long = True)
-    covariates = find_gwas(args.cov, dirname=args._in, ext='sumstats', long = True)
+    exposures = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+    exposures_short = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude)
+    outcomes = find_gwas(args.p2, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+    outcomes_short = find_gwas(args.p2, dirname=args._in, ext='sumstats',exclude = args.exclude)
+    mediators = find_gwas(args.med, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+    covariates = find_gwas(args.cov, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
 
     from _utils.slurm import array_submitter
     submitter = array_submitter(
@@ -127,6 +127,7 @@ def main(args):
     from gcorr_plot import crosscorr_parse
     if len(outcomes) > 0: exp_corr_out = crosscorr_parse(exposures_short, outcomes_short, logdir=args.rg)
     for g2, p2 in outcomes:
+        print(f'Outcome: {g2}/{p2}')
         if not os.path.isdir(f'{args.out}/{g2}'): os.system(f'mkdir -p {args.out}/{g2}')
         med = (['--med'] + [ f'{g}/{p}' for g, p in mediators]) if len(mediators) > 0 else []
         cov = (['--cov'] + [ f'{g}/{p}' for g, p in covariates]) if len(covariates) > 0 else []
@@ -141,9 +142,10 @@ def main(args):
 
         # all correlated exposures in the same model
         if args.all_exp:
+            print('Using all exposures from',' '.join(args.p1))
             out_prefix = f'{args.out}/{g2}/{p2}.all_'+'_'.join(args.p1)
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
-                   '--p1'] + [f'{g}/{p}' for g, p in exposures]
+                   '--p1'] + [f'{g}/{p}' for g, p in exposures_filtered]
             cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
             if os.path.isfile(args.manual): 
                 manual_model([], f'{out_prefix}.mdl', args.manual, f'{g2}/{p2}'); 
@@ -156,7 +158,9 @@ def main(args):
         # individual correlated exposures in each model
         else:
             for g1, p1 in exposures_filtered:
-                out_prefix = f'{args.out}/{g2}/{p2}.{g1}_{p1}'
+                print(f'    Exposure: {g1}/{p1}')
+                if not os.path.isdir(f'{args.out}/{g2}/{g1}'): os.system(f'mkdir -p {args.out}/{g2}/{g1}')
+                out_prefix = f'{args.out}/{g2}/{g1}/{p2}.{g1}_{p1}'
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1', f'{g1}/{p1}']
                 cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
@@ -222,6 +226,7 @@ if __name__ == '__main__':
     pheno.add_argument('-p2', help = 'Outcome, scans directory', nargs = '*', default = [])
     pheno.add_argument('-m','--med', help = 'Mediators, scans directory', nargs = '*', default = [])
     pheno.add_argument('-c','--cov', help = 'Covariates, scans directory', nargs = '*', default = ['demographics'])
+    pheno.add_argument('--exclude', help = 'Exclude phenotypes', nargs = '*', default = [])
     pheno.add_argument('--all_exp', help = 'Run common/causal/subtraction model for all exposures', 
         action = 'store_true', default = False)
     pheno.add_argument('--rgp', type = float, default = -1,
