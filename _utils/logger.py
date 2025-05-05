@@ -14,9 +14,18 @@ def splash(args, silent = False):
     msg.append('=' * 100)
     msg.append('Calling script:')
     msg.append(f'    {sys.argv[0]}')
+    slurm_args = ['name','debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
+            'arraysize','email','account','env','wd','dep','modules','logdir',
+            'tmpdir','lim','intr']
     msg.append('Input options:')
     v = vars(args)
     for var in v:
+        if var in slurm_args: continue
+        val = v[var]
+        msg.append(f'    {var}' + ' ' * (15-len(var)) + str(val))
+    msg.append('Slurm management options:')
+    for var in v:
+        if var not in slurm_args: continue
         val = v[var]
         msg.append(f'    {var}' + ' ' * (15-len(var)) + str(val))
     msg.append('=' * 100)

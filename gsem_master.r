@@ -275,7 +275,7 @@ main = function(args){
   if (args$mdl) {
     #### direct causal model ####
     if (!file.exists(results) | args$force){
-      mdl = paste0(p2[1], ' ~ NA*', paste(c(p1,cov), collapse = ' + '))
+      mdl = paste0(p2[1], ' ~ NA*', paste(c(p1,cov, med), collapse = ' + '))
       dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
       write_model(dwls, results)
     }

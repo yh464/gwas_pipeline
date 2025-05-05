@@ -34,6 +34,7 @@ class array_submitter():
         wd (working directory)
         debug: True/False
     '''
+    # NB update default resource settings by checking sacctmgr list QOS
     def __init__(self,
                  name, # name of project
                  timeout, # time limit per command, minutes; will raise an error if not given
@@ -44,7 +45,7 @@ class array_submitter():
                  log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  lim = -1, # number of commands per file, default -1
-                 arraysize = 500, # array size limit, default 2000 for CSD3 cluster, QOS max CPU per user limit 500
+                 arraysize = 100, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 50
                  email = True,
                  mode = None,
                  env = 'wd', # default working environment
