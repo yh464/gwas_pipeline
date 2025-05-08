@@ -163,7 +163,7 @@ main = function(args) {
     g2$A2[mismatch] = g1$A1[mismatch]
     g2$Z[mismatch] = -g2$Z[mismatch]
     
-    save('gwa1','gwa2','l2','args', file = cache_file)
+    save('g1','g2','n1','n2','l2','args', file = cache_file)
   } else load(cache_file)
   n1 = gwa1$N; g1 = gwa1$gwa; n2 = gwa2$N; g2 = gwa2$gwa
   

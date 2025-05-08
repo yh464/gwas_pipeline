@@ -36,7 +36,7 @@ def harmonise(file, ref):
         toc = perf_counter() - tic; print(f'Pre-processed {file}, time = {toc:.2f} seconds')
 
         # pre-process reference snp info
-        ref = ref[['CHR','POS','A1','A2','AF1']] if not 'AF1' in ref.columns else ref[['CHR','POS','A1','A2']]
+        ref = ref[['CHR','POS','A1','A2','AF1']] if not 'AF1' in df.columns else ref[['CHR','POS','A1','A2']]
         
         df = pd.concat([ref, df], axis = 1, join = 'inner')
         matched = (df.A1 == df.A1_in) & (df.A2 == df.A2_in)
@@ -51,7 +51,7 @@ def harmonise(file, ref):
         toc = perf_counter() - tic
         print(f'Harmonised {file}, time = {toc:.2f} seconds')
 
-        df.to_csv(file, sep = '\t', index = False)
+        df.to_csv(file, sep = '\t', index = True)
         toc = perf_counter() - tic
         print(f'Saved {file}, time = {toc:.2f} seconds')
     except:
