@@ -26,29 +26,20 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'clump_{args.pheno[0]}_{args.p:.0e}',
-        timeout = timeout, mode = 'long',
-        debug = False
-        )
+        timeout = timeout, mode = 'long')
     
+    from _utils.path import find_gwas
+    pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
+
     # directory management
-    for x in args.pheno:
-      if not os.path.isdir(f'{args.out}/{x}'): os.system(f'mkdir -p {args.out}/{x}') # creates output folder
-      os.chdir(args._in)
-      os.chdir(x)
-      
-      # filter out required GWA files
-      flist = []
-      for y in os.listdir(f'{args._in}/{x}'):
-          if fnmatch(y, '*_X.fastGWA'): continue
-          if fnmatch(y, '*.fastGWA') or fnmatch(y, '*.txt'): flist.append(y); print(y)
-      
-      for y in flist:
-        prefix = '.'.join(y.split('.')[:-1])
-        out_fname = f'{args.out}/{x}/{prefix}_{args.p:.0e}.clumped'
-        if os.path.isfile(out_fname) and (not args.force): continue
-        submitter.add(
-          f'python gwa_clump.py --in {args._in}/{x}/{y} -b {args.bfile} --plink {args.plink} '+
-          f'-p {args.p} -o {args.out}/{x} {force}')
+    for g,p in pheno:
+      if not os.path.isdir(f'{args.out}/{g}'): os.system(f'mkdir -p {args.out}/{g}') # creates output folder
+      print(f'{g}/{p}')
+      out_fname = f'{args.out}/{g}/{p}_{args.p:.0e}.clumped'
+      if os.path.isfile(out_fname) and (not args.force): continue
+      submitter.add(
+        f'python gwa_clump.py --in {args._in}/{g}/{p}.fastGWA -b {args.bfile} --plink {args.plink} '+
+        f'-p {args.p} -o {args.out}/{g} {force}')
     submitter.submit()
     
 if __name__ == '__main__':

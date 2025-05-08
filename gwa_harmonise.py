@@ -65,20 +65,20 @@ def main(args):
     from fnmatch import fnmatch
     from multiprocessing import Pool
     from functools import partial
+    from _utils.path import find_gwas
     
     # reference SNP info: CHR, SNP, POS, A1, A2, AF1
     fields = ['CHR','SNP','POS','A1','A2','AF1']
     ref = pd.read_table(args.ref, index_col='SNP')
     print('Read reference')
+    gwa = find_gwas(args.pheno, dirname=args._in, ext = 'fastGWA', long = True)
     flist = []
-    for p in args.pheno:
-        for file in os.listdir(f'{args._in}/{p}'):
-            if fnmatch(f'{args._in}/{p}/{file}', '*.fastGWA') or fnmatch(file,'*.txt'):
-                l = open(f'{args._in}/{p}/{file}').readline()
-                if not 'SNP' in l or (not 'BETA' in l and not 'OR' in l): continue
-                # check progress
-                if all([x in l for x in fields]) and not args.force: continue
-                flist.append(f'{args._in}/{p}/{file}')
+    for g,p in gwa:
+        l = open(f'{args._in}/{g}/{p}.fastGWA').readline()
+        if not 'SNP' in l or (not 'BETA' in l and not 'OR' in l): continue
+        # check progress
+        if all([x in l for x in fields]) and not args.force: continue
+        flist.append(f'{args._in}/{g}/{p}.fastGWA')
     if len(flist) == 0: return
     pool = Pool(min((len(flist)),4))
     pool.map(partial(harmonise, ref=ref), flist, chunksize = int(np.ceil(len(flist)/4)))

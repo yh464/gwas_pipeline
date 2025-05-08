@@ -27,9 +27,11 @@ def main(args):
     from gcorr_plot import crosscorr_parse
     
     # array submitter
+    from mr_extract_snp_batch import api
+    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3 if args.apss else 2, timeout = 30)
+        n_cpu = 3 if args.apss else 2, timeout = 30, dependency = snp_submitter)
     submitter_cause = array_submitter(name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3, timeout = 30)
     
@@ -40,7 +42,6 @@ def main(args):
     exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True)
     outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True)
     exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg, full = True)
-    print(exp_corr_out)
 
     # general command args for mr_master
     force = '-f' if args.force else ''
@@ -60,8 +61,6 @@ def main(args):
             instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{args.pval:.0e}.txt')
             instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{args.pval:.0e}.txt')
         instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{args.pval:.0e}.txt')
-    for i in instruments:
-        if not os.path.isfile(i): raise FileNotFoundError(f'Instrument file {i} not found')
 
     for g2, p2s in outcomes:
       # make output directory wrt g2

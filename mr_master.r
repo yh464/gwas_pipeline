@@ -288,12 +288,12 @@ main = function(args){
       other_allele_col = 'A2', eaf_col = 'AF1', pval_col = 'P', 
       min_pval = 1e-200, chr_col = 'CHR', pos_col = 'POS')
     
-    exp2 = TwoSampleMR::format_data(gwa2_fwd, type = 'exposure',
+    exp2 = TwoSampleMR::format_data(gwa2_rev, type = 'exposure',
       snp_col = 'SNP', beta_col = 'BETA', se_col = 'SE',
       effect_allele_col = 'A1', # NB check and double check
       other_allele_col = 'A2', eaf_col = 'AF1', pval_col = 'P',
       min_pval = 1e-200, chr_col = 'CHR', pos_col = 'POS')
-    out2 = TwoSampleMR::format_data(gwa2_rev, type = 'outcome',
+    out2 = TwoSampleMR::format_data(gwa2_fwd, type = 'outcome',
       snp_col = 'SNP', beta_col = 'BETA', se_col = 'SE',
       effect_allele_col = 'A1', # NB check and double check
       other_allele_col = 'A2', eaf_col = 'AF1', pval_col = 'P',
@@ -318,7 +318,7 @@ main = function(args){
         lor = harm$beta.exposure, af = harm$eaf.exposure, ncase = meta$nca[1],
         ncontrol = meta$nco[1], prevalence = meta$nca[1]/(meta$nca[1]+meta$nco[1]),
         model = 'logit', correction = T
-      ) else harm$r.outcome = get_r_from_pn(harm$pval.outcome, harm$samplesize.outcome)
+      ) else harm$r.exposure = get_r_from_pn(harm$pval.outcome, harm$samplesize.outcome)
       if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
         lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
         ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),

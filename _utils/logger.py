@@ -23,11 +23,14 @@ def splash(args, silent = False):
         if var in slurm_args: continue
         val = v[var]
         msg.append(f'    {var}' + ' ' * (15-len(var)) + str(val))
-    msg.append('Slurm management options:')
+    
+    slurm = []
+    slurm.append('Slurm management options:')
     for var in v:
         if var not in slurm_args: continue
         val = v[var]
-        msg.append(f'    {var}' + ' ' * (15-len(var)) + str(val))
+        slurm.append(f'    {var}' + ' ' * (15-len(var)) + str(val))
+    if len(slurm) > 1: msg += slurm
     msg.append('=' * 100)
     if not silent: print('\n'.join(msg))
     return '\n'.join(msg)
