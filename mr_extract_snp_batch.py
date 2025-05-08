@@ -15,7 +15,7 @@ def main(args):
     # array submitter
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = f'mr_instruments_'+'.'.join((args.p1+args.p2)[:2]),
-        n_cpu = 1, timeout = 60,)
+        n_cpu = 1, timeout = 60)
     
     # output directory
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
