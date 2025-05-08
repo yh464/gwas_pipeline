@@ -31,9 +31,9 @@ def main(args):
     snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3 if args.apss else 2, timeout = 30, dependency = snp_submitter)
-    submitter_cause = array_submitter(name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3, timeout = 30)
+        n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter)
+    submitter_lcv = array_submitter(name = 'mr_lcv_'+'_'.join(args.p2), env = 'gentoolsr', n_cpu = 2, timeout = 30)
+    submitter_cause = array_submitter(name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',n_cpu = 3, timeout = 30)
     
     # output directory
     if not os.path.isdir(args.out): os.mkdir(args.out)
@@ -128,7 +128,7 @@ def main(args):
                 submitter_main.add(' '.join(cmd))
             
             if not os.path.isfile(f'{out_prefix}_mr_lcv_results.txt') or args.force: # bidirectional
-                submitter_main.add(
+                submitter_lcv.add(
                     f'Rscript mr_lcv.r --g1 {gwa1} --g2 {gwa2} '+
                     f'-o {args.out}/{g2}/{p2} --ldsc {args.ldsc} {force}')
             
@@ -139,6 +139,7 @@ def main(args):
                     f'--g2 {gwa2} --c2 {clump002} -o {args.out}/{g2}/{p2} {force}')
     
     submitter_main.submit()
+    submitter_lcv.submit()
     submitter_cause.submit()
     
 if __name__ == '__main__':

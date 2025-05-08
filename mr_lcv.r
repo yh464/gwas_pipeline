@@ -137,8 +137,7 @@ main = function(args) {
   
   if (! file.exists(cache_file) | args$force) {
     # read input
-    gwa1 = read.zscore(args$gwa1); n1 = gwa1$N; g1 = gwa1$gwa
-    gwa2 = read.zscore(args$gwa2); n2 = gwa2$N; g2 = gwa2$gwa
+    gwa1 = read.zscore(args$gwa1); gwa2 = read.zscore(args$gwa2)
     l2 = read.table(args$ldsc, sep = ',', header = T)
     if ('rs' %in% colnames(l2)) l2$SNP = l2$rs
     if ('LDSC' %in% colnames(l2)) l2$L2 = l2$LDSC
@@ -164,9 +163,10 @@ main = function(args) {
     g2$A2[mismatch] = g1$A1[mismatch]
     g2$Z[mismatch] = -g2$Z[mismatch]
     
-    save('g1','g2','l2','args', file = cache_file)
+    save('gwa1','gwa2','l2','args', file = cache_file)
   } else load(cache_file)
-    
+  n1 = gwa1$N; g1 = gwa1$gwa; n2 = gwa2$N; g2 = gwa2$gwa
+  
   toc = proc.time() 
   print(paste0('Finished input processing, time = ', toc[3]))
   
