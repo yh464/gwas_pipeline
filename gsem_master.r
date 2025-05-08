@@ -40,7 +40,8 @@ parser$add_argument('--gwas', default = F, action = 'store_true', help = 'Output
 parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
   default = F, action = 'store_true')
 args = parser$parse_args(commandArgs(TRUE))
-
+args$p1 = sort(args$p1); args$p2 = sort(args$p2)
+args$cov = sort(args$cov); args$med = sort(args$med)
 #### Sanity checks to command line arguments ####
 args$input = normalizePath(args$input); args$out = normalizePath(args$out)
 if (length(args$meta) < length(c(args$p1,args$cov, args$p2, args$med))) warning(
@@ -181,9 +182,9 @@ main = function(args){
   cov = gsub('/','_', args$cov); med = gsub('/','_',args$med)
   n = length(c(p1,cov,p2))
   ldscoutput = ldsc(
-    traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2),'.sumstats'),
+    traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2,args$med),'.sumstats'),
     sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
-    ld = args$ld, wld = args$ld, trait.names = trait.names,
+    ld = args$ld, wld = args$ld, trait.names = trait.names_med,
     ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
   )
   if (args$gwas) ss = sumstats(
@@ -264,41 +265,37 @@ main = function(args){
       mgwas = userGWAS(ldscoutput, ss, 'ML', smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
-    }
-  }
+  }}
   
   #### exposure-outcome model ####
-  results = paste0(args$out,'_causal_mdl.txt')
-  results_med = paste0(args$out, '_mediation_mdl.txt')
+  results = paste0(args$out,'_causal_',length(c(med,cov)),'cov_',
+    c(med,cov)[1],'.txt')
+  results_med = paste0(args$out, '_',length(args$med),'med_',med[1],'.txt')
   results_sub = paste0(args$out, '_subtraction_mdl.txt')
   gwa = paste0(args$out,'_subtraction.fastGWA')
   if (args$mdl) {
     #### direct causal model ####
     if (!file.exists(results) | args$force){
-      mdl = paste0(p2[1], ' ~ NA*', paste(c(p1,cov, med), collapse = ' + '))
+      mdl = paste0(p2[1], ' ~ NA*', paste(c(p1,cov,med), collapse = ' + '))
       dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
       write_model(dwls, results)
     }
     
     #### mediation model ####
     if (length(args$med) > 0 & (!file.exists(results_med) | args$force)){
-      ldscoutput_med = ldsc(
-        traits = paste0(args$input, '/', c(args$p1,args$cov,args$p2, args$med),'.sumstats'),
-        sample.prev = metadata$sample_prev, population.prev = metadata$pop_prev,
-        ld = args$ld, wld = args$ld, trait.names = trait.names_med,
-        ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
-      )
       # only account for direct effect on outcome by covars, not from covars to mediators
       mdl = c(paste0(p2,'~NA*', paste(c(p1,cov,med),collapse = '+')),
         paste0(med,'~NA*',paste(p1, collapse = '+'))) %>% paste0(collapse = '\n')
-      
-      dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
+      dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
       write_model(dwls, results_med)
       if (length(cov) > 0) {
         # model with all covariates
         mdl = c(paste0(p2,'~NA*', paste(c(p1,cov,med),collapse = '+')),
-          paste0(med,'~NA*',paste(c(p1,cov), collapse = '+'))) %>% paste0(collapse = '\n')
-        dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
+          paste0(med,'~NA*',paste(c(p1,cov), collapse = '+')),
+          paste0(c(p1,cov,med),' ~~ var_',c(p1,cov,med),'*',c(p1,cov,med),
+                 ' \n var_',c(p1,cov,med),' > 0.00001')
+          ) %>% paste0(collapse = '\n')
+        dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
         write_model(dwls, paste0(args$out,'_mediation_fullcov.txt'))
         # model latent factor outcome - covars
         mdl = c(paste0('shared =~ NA*',paste(c(p2, cov), collapse = '+')), 
@@ -306,10 +303,9 @@ main = function(args){
           'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
           paste0('indep~NA*', paste(c(p1, med),collapse = '+')),
           paste0(med, '~NA*', paste(p1, collapse = '+'))) %>% paste(collapse = '\n')
-        dwls = usermodel(ldscoutput_med, model = mdl, imp_cov = T, CFIcalc = T)
+        dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
         write_model(dwls, paste0(args$out,'_mediation_subtract_cov.txt'))
-      }
-    }
+    }}
     
     #### subtraction model ####
     if (!file.exists(results_sub) | args$force){

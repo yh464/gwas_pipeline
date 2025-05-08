@@ -81,9 +81,7 @@ library(here) # for portability
 optlist = list(
   # input options
   make_option('--g1', dest = 'gwa1', help = 'raw IDP summary stats, one file only'),
-  make_option('--n1',dest = 'n1', help = 'Sample size of IDP summary stats'), # default 54030 for functional
   make_option('--g2', dest = 'gwa2', help = 'raw disorder summary stats, one file only'),
-  make_option('--n2', dest = 'n2', help = 'Sample size of disorder phenotype summary stats'), # defaults to NULL in case N is given as a column
   
   # LDSC scores, needs for Genomic SEM
   make_option('--ldsc', help = 'LD score file (L2), better independent from study cohorts',
@@ -104,10 +102,12 @@ print(args)
 #### infer z-score from GWAS sum stats ####
 read.zscore = function(gwa){
   df = read.table(gwa, header = T)
-  if ('Z' %in% colnames(df)) return(na.omit(df[,c('SNP','CHR','POS','A1','A2','Z')]))
+  out = list()
+  out$n = max(df$N)
   if ('OR' %in% colnames(df)) df$BETA = log(df$OR)
-  df$Z = df$BETA/df$SE # manually calculate z-score if not explicitly stated
-  return(na.omit(df[,c('SNP', 'CHR','POS','A1','A2','Z')]))
+  if (!'Z' %in% colnames(df)) df$Z = df$BETA/df$SE # manually calculate z-score if not explicit
+  out$gwa =na.omit(df[,c('SNP', 'CHR','POS','A1','A2','Z')])
+  return(out)
 }
 
 #### Main LCV function ####
@@ -137,8 +137,8 @@ main = function(args) {
   
   if (! file.exists(cache_file) | args$force) {
     # read input
-    g1 = read.zscore(args$gwa1)
-    g2 = read.zscore(args$gwa2)
+    gwa1 = read.zscore(args$gwa1); n1 = gwa1$N; g1 = gwa1$gwa
+    gwa2 = read.zscore(args$gwa2); n2 = gwa2$N; g2 = gwa2$gwa
     l2 = read.table(args$ldsc, sep = ',', header = T)
     if ('rs' %in% colnames(l2)) l2$SNP = l2$rs
     if ('LDSC' %in% colnames(l2)) l2$L2 = l2$LDSC
@@ -173,7 +173,7 @@ main = function(args) {
   if (! file.exists(out_prefix) | args$force) {
     #### run LCV ####
     res = run_lcv(ell= as.numeric(l2$L2), as.numeric(g1$Z), as.numeric(g2$Z), 
-                  n.1 = as.numeric(args$n1), n.2 = as.numeric(args$n2),
+                  n.1 = as.numeric(n1), n.2 = as.numeric(n2),
                   ldsc.intercept = 0) # otherwise h2 will be underestimated and be negative
     toc = proc.time() 
     print(paste0('Finished MR-LCV, time = ', toc[3]))

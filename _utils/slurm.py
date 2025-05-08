@@ -123,7 +123,7 @@ class array_submitter():
         valid_keys = [
             'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim','intr'
+            'tmpdir','lim','intr', 'dependency'
             ]
         for key, value in kwargs.items():
             if not key in valid_keys:
@@ -319,6 +319,7 @@ def parser_config(parser):
     slurm.add_argument('--n_task', help = 'number of tasks per job')
     slurm.add_argument('--timeout', help = 'timeout in minutes')
     slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
+    slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
     slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
     return parser
 

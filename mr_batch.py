@@ -23,117 +23,87 @@ def main(args):
     import numpy as np
     import pandas as pd
     from logparser import parse_h2_log
-    from _utils.path import find_clump
+    from _utils.path import find_clump, find_gwas
+    from gcorr_plot import crosscorr_parse
     
     # array submitter
     from _utils.slurm import array_submitter
-    submitter_main = array_submitter(
-        name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3 if args.apss else 2, 
-        timeout = 30,
-        # debug = True
-        )
-    submitter_cause = array_submitter(
-        name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3, timeout = 30,
-        debug = True
-        )
+    submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
+        n_cpu = 3 if args.apss else 2, timeout = 30)
+    submitter_cause = array_submitter(name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',
+        n_cpu = 3, timeout = 30)
     
     # output directory
     if not os.path.isdir(args.out): os.mkdir(args.out)
-    
+
+    # genetic correlations
+    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True)
+    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True)
+    exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg, full = True)
+    print(exp_corr_out)
+
+    # general command args for mr_master
     force = '-f' if args.force else ''
-    apss = '--apss' if args.apss else ''
-    
-    for p2 in args.p2:
-      # make output directory wrt p2
-      if not os.path.isdir(f'{args.out}/{p2}'): os.mkdir(f'{args.out}/{p2}')
-        
-      # input processing by scanning directories
-      prefix2 = []
-      for f in os.listdir(f'{args._in}/{p2}'):
-          if fnmatch(f, '*_X*') or fnmatch(f,'*_all_chrs*'): continue # exclude x-chr sum stats
-          if fnmatch(f,f'*.{args.ext2}'): prefix2.append(f.replace(f'.{args.ext2}',''))
+    cmdargs = []
+    if args.apss: cmdargs.append('--apss')
+    meta = []
+    for g, _ in exposures + outcomes:
+        if os.path.isfile(f'{args.gwa}/{g}/metadata') and not f'{args.gwa}/{g}/metadata' in meta: 
+            meta.append(f'{args.gwa}/{g}/metadata')
+    if len(meta) > 0: cmdargs.append(f'--meta {":".join(meta)}')
+
+    # find instruments
+    instruments = []
+    for i in args.p1:
+        for j in args.p2:
+            instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{args.pval:.0e}.txt')
+            instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{args.pval:.0e}.txt')
+            instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{args.pval:.0e}.txt')
+        instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{args.pval:.0e}.txt')
+    for i in instruments:
+        if not os.path.isfile(i): raise FileNotFoundError(f'Instrument file {i} not found')
+
+    for g2, p2s in outcomes:
+      # make output directory wrt g2
+      if not os.path.isdir(f'{args.out}/{g2}'): os.mkdir(f'{args.out}/{g2}')
       
-      # parse n2 table
-      if os.path.isfile(args.n2):
-          n2_tbl = pd.read_table(args.n2)
-          if n2_tbl.shape[1] == 2:
-              n2_tbl.columns = ['pheno','n']
-              n2_tbl['nca'] = np.nan
-              n2_tbl['nco'] = np.nan
-          elif n2_tbl.shape[1] == 4:
-              n2_tbl.columns = ['pheno','n','nca','nco']
-          else: raise ValueError('N2 should specify either both NCa and NCo or neither')
-      else:
-          if type(args.nca) != type(None):
-              nca = args.nca; nco = args.n2 - args.nca
-          else: nca = np.nan; nco = np.nan
-          n2_tbl = pd.DataFrame(dict(pheno = prefix2, n = args.n2, nca = nca, nco = nco))
-      n2_tbl.index = n2_tbl.pheno
-      
-      for p1 in args.p1:
-        # input processing by scanning directories
-        prefix1 = []
-        for f in os.listdir(f'{args._in}/{p1}'):
-            if fnmatch(f, '*_X*') or fnmatch(f,'*_all_chrs*'): continue # exclude x-chr sum stats
-            if fnmatch(f, f'*.{args.ext1}'): prefix1.append(f.replace(f'.{args.ext1}',''))
-        
-        # parse n1 table
-        if os.path.isfile(args.n1):
-            n1_tbl = pd.read_table(args.n1)
-            n1_tbl.columns = ['pheno','n']
-        else:
-            n1_tbl = pd.DataFrame(dict(pheno = prefix1, n = args.n1))
-        n1_tbl.index = n1_tbl.pheno
-        
-        for f1 in prefix1:
+      for g1, p1s in exposures:
+        for p1 in p1s:
           # find h2 log for trait 1
-          h2log = f'{args.h2}/{p1}/{f1}.h2.log'
+          h2log = f'{args.h2}/{g1}/{p1}.h2.log'
           h21, h2se1 = parse_h2_log(h2log)
           
-          # sample size for trait 1
-          n1 = n1_tbl.loc[f1, 'n']
-          
-          for f2 in prefix2:
-            if not os.path.isdir(f'{args.out}/{p2}/{f2}'): 
-                os.mkdir(f'{args.out}/{p2}/{f2}')  
+          for p2 in p2s:
+            if not os.path.isdir(f'{args.out}/{g2}/{p2}'): 
+                os.mkdir(f'{args.out}/{g2}/{p2}')  
+            
+            # filter for rg
+            rginfo = exp_corr_out.loc[(exp_corr_out.group1==g1) & (exp_corr_out.pheno1==p1) & \
+                (exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2),:]
+            if rginfo.shape[0] == 0 or (args.rgp > 0 and rginfo.p.values[0] > args.rgp) or \
+                (args.rgp < 0 and rginfo.q.values[0] > 0.05):
+                print(f'No rg for {g1}/{p1} and {g2}/{p2}')
+                continue
             
             # find h2 log for trait 1
-            h2log = f'{args.h2}/{p2}/{f2}.h2.log'
+            h2log = f'{args.h2}/{g2}/{p2}.h2.log'
             h22, h2se2 = parse_h2_log(h2log)
-            
-            # sample size for trait 2
-            n2 = n2_tbl.loc[f2,'n']
-            nca = n2_tbl.loc[f2,'nca']
-            nca = '' if np.isnan(nca) else f'--nca {nca}'
-            nco = n2_tbl.loc[f2,'nco']
-            nco = '' if np.isnan(nco) else f'--nco {nco}'
             
             # input file name specification
             try:
-                gwa1 = f'{args._in}/{p1}/{f1}.{args.ext1}'
-                clump1, pval1 = find_clump(f'{args.clump}/{p1}',f1, args.pval)
-                clump001, _ = find_clump(f'{args.clump}/{p1}',f1, 0.001)
-            except: print(f'{f1} missing clumped GWAS sumstats'); continue
+                gwa1 = f'{args.gwa}/{g1}/{p1}.{args.ext1}'
+                clump1, pval1 = find_clump(f'{args.clump}/{g1}',p1, args.pval)
+                clump001, _ = find_clump(f'{args.clump}/{g1}',p1, 0.001)
+            except: print(f'{g1} missing clumped GWAS sumstats'); continue
             try: 
-                gwa2 = f'{args._in}/{p2}/{f2}.{args.ext2}'
-                clump2, pval2 = find_clump(f'{args.clump}/{p2}',f2, args.pval)
-                clump002, _ = find_clump(f'{args.clump}/{p2}',f2, 0.001)
-            except: print(f'{f2} missing clumped GWAS sumstats'); continue
+                gwa2 = f'{args.gwa}/{g2}/{p2}.{args.ext2}'
+                clump2, pval2 = find_clump(f'{args.clump}/{g2}',p2, args.pval)
+                clump002, _ = find_clump(f'{args.clump}/{g2}',p2, 0.001)
+            except: print(f'{g2} missing clumped GWAS sumstats'); continue
             pval_thr = max([pval1, pval2])
             
-            # check rg and h2 information
-            if p1 < p2 or (p1 == p2 and f1 < f2):
-                rglog = f'{args.rg}/{p1}.{p2}/{p1}_{f1}.{p2}_{f2}.rg.log'
-            else:
-                rglog = f'{args.rg}/{p2}.{p1}/{p2}_{f2}.{p1}_{f1}.rg.log'
-            if not os.path.isfile(rglog):
-                print(f'Missing rg information, {p1}_{f1} & {p2}_{f2}')
-                rglog = f'{args.rg}/{p2}_{f2}.{p1}_{f1}.rg.log'
-            
             # check progress and QC output
-            out_prefix = f'{args.out}/{p2}/{f2}/{p1}_{f1}_{f2}'
+            out_prefix = f'{args.out}/{g2}/{p2}/{g1}_{p1}_{p2}'
             fwd = f'{out_prefix}_mr_forward_results.txt'
             rev = f'{out_prefix}_mr_reverse_results.txt'
             fwd_presso = f'{out_prefix}_mr_forward_presso_results.txt'
@@ -150,23 +120,24 @@ def main(args):
                 not os.path.isfile(rev) or \
                 not os.path.isfile(fwd_presso) or \
                 not os.path.isfile(rev_presso) or args.force:
-                submitter_main.add(
-                    f'Rscript mr_master.r --g1 {gwa1} --c1 {clump1} --n1 {n1} '+
-                    f'--g2 {gwa2} --c2 {clump2} --n2 {n2} {nca} {nco} '+
-                    f'--pval {pval_thr:.0e} --h21 {h21:.4f} --h2se1 {h2se1:.4f} '+
-                    f'--h22 {h22:.4f} --h2se2 {h2se2:.4f} --rglog {rglog} '+
-                    f'-o {args.out}/{p2}/{f2} {force} {apss}')
+                cmd = ['Rscript mr_master.r','--p1', f'{g1}/{p1}', '--p2', f'{g2}/{p2}',
+                    '-i', ':'.join(instruments), '--c1', clump1, '--c2', clump2,
+                    '--g1', gwa1, '--g2', gwa2, '--pval', str(pval_thr), '--h21', str(h21),
+                    '--h2se1', str(h2se1), '--h22', str(h22), '--h2se2', str(h2se2),
+                    '--gcovint', str(rginfo.gcov_int.values[0]), '--gcintse', str(rginfo.gcov_int_se.values[0]),
+                    force, '--ldsc', args.ldsc,'-o', f'{args.out}/{g2}/{p2}'] + cmdargs
+                submitter_main.add(' '.join(cmd))
             
             if not os.path.isfile(f'{out_prefix}_mr_lcv_results.txt') or args.force: # bidirectional
                 submitter_main.add(
-                    f'Rscript mr_lcv.r --g1 {gwa1} --g2 {gwa2} --n1 {n1} --n2 {n2} '+
-                    f'-o {args.out}/{p2}/{f2} --ldsc {args.ldsc} {force}')
+                    f'Rscript mr_lcv.r --g1 {gwa1} --g2 {gwa2} '+
+                    f'-o {args.out}/{g2}/{p2} --ldsc {args.ldsc} {force}')
             
             if not os.path.isfile(f'{out_prefix}_mr_forward_cause_results.txt') or \
                 not os.path.isfile(f'{out_prefix}_mr_reverse_cause_results.txt') or args.force:
                 submitter_cause.add(
                     f'Rscript mr_cause.r --g1 {gwa1} --c1 {clump001} '+
-                    f'--g2 {gwa2} --c2 {clump002} -o {args.out}/{p2}/{f2} {force}')
+                    f'--g2 {gwa2} --c2 {clump002} -o {args.out}/{g2}/{p2} {force}')
     
     submitter_main.submit()
     submitter_cause.submit()
@@ -176,38 +147,32 @@ if __name__ == '__main__':
     parser = slurm_parser(description = 
       'This script batch runs MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
-    path_spec.add_argument('-i','--in', dest = '_in', 
-                        help = 'input GWA directory, assumes both groups of pheno to be in the same dir',
-                        default = '../gwa')
+    path_spec.add_argument('-g','--gwa', dest = 'gwa', default = '../gwa',
+        help = 'input GWA directory, assumes both groups of pheno to be in the same dir')
+    path_spec.add_argument('-i','--inst', dest = 'inst', help = 'Instruments from mr_extract_snp',
+        default = '../mr/instruments')
     path_spec.add_argument('-c','--clump', dest = 'clump', help = 'Directory of clumping files',
-                        default = '../clump')
+        default = '../clump')
     path_spec.add_argument('-h2', dest = 'h2', help = 'Directory to h2 log files',
-                        default = '../gcorr/ldsc_sumstats')
+        default = '../gcorr/ldsc_sumstats')
     path_spec.add_argument('-rg', dest = 'rg', help = 'Directory to rg log files',
-                        default = '../gcorr/rglog')
+        default = '../gcorr/rglog')
     path_spec.add_argument('-o','--out', dest = 'out', help = 'Output directory',
-                        default = '../mr')
+        default = '../mr')
     path_spec.add_argument('--ldsc', help = 'LD scores, for LCV regression', # intentionally absolute
-                        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/uk10k.l2.ldscore')
+        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/uk10k.l2.ldscore')
     
     pheno_spec = parser.add_argument_group('Phenotype specifications')
     pheno_spec.add_argument('-p1','--pheno1', dest = 'p1', 
-                        help = 'Phenotypes group 1 (reserved for IDPs)', nargs = '*',
-                        default=['deg_local','degi_local','degc_local',
-                                 'clu_local','eff_local','mpl_local'])
+        help = 'Phenotypes group 1', nargs = '*', default=[])
     pheno_spec.add_argument('-e1','--ext1', dest = 'ext1', help = 'Extension for phenotype group 1',
-                        default = 'fastGWA')
-    pheno_spec.add_argument('-n1', help = 'Sample size for phenotype group 1, number or tabular (two columns, prefix and n, with header)',
-                        default = 54030)
+        default = 'fastGWA')
     pheno_spec.add_argument('-p2','--pheno2', dest = 'p2', 
-                        help = 'Phenotypes group 2 (reserved for correlates)', nargs = '*', 
-                        default = ['disorders_for_mr']) # require manual fiddling, so create new dir
+        help = 'Phenotypes group 2', nargs = '*', default = [])
     pheno_spec.add_argument('-e2','--ext2', dest = 'ext2', help = 'Extension for phenotype group 2',
-                        default = 'fastGWA')
-    pheno_spec.add_argument('-n2', help = 'Sample size for phenotype group 2, number or tabular',
-                        default = '../params/disorder_sample_size.txt')
-    pheno_spec.add_argument('-nca', help = 'Sample size for cases in phenotype group 2, number',
-                        default = None)
+        default = 'fastGWA')
+    pheno_spec.add_argument('--rgp', type = float, default = -1,
+        help = 'rg p-value threshold to filter exposures, enter -1 for FDR=0.05')
     
     corr = parser.add_argument_group('Corrections and adjustments')
     corr.add_argument('--apss', help = 'conduct MR-APSS correction', action = 'store_true', default = False)
@@ -218,19 +183,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     import os
-    for arg in ['_in','out','clump', 'h2','rg']:
+    for arg in ['gwa','out','inst','clump', 'h2','rg']:
         exec(f'args.{arg} = os.path.realpath(args.{arg})')
-    try: args.n1 = int(args.n1)
-    except: args.n1 = os.path.realpath(args.n1)
-    try: args.n2 = int(args.n2)
-    except: args.n2 = os.path.realpath(args.n2)
     
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(f'{args._in}/{args.p1}/*.{args.ext1}', __file__)
-    proj.add_input(f'{args._in}/{args.p2}/*.{args.ext2}', __file__)
+    proj.add_input(f'{args.gwa}/{args.p1}/*.{args.ext1}', __file__)
+    proj.add_input(f'{args.gwa}/{args.p2}/*.{args.ext2}', __file__)
     proj.add_input(f'{args.clump}/{args.p1}/*.clumped',__file__)
     proj.add_input(f'{args.clump}/{args.p2}/*.clumped',__file__)
     proj.add_output(f'{args.out}/{args.p2}/*',__file__)

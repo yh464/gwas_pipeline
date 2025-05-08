@@ -102,7 +102,7 @@ def main(args):
 
     from _utils.slurm import array_submitter
     submitter = array_submitter(
-        name = 'gsem_'+args.p1[0]+'_'+'_'.join(args.p2), env = 'gentoolsr',
+        name = 'gsem_'+args.p1[0]+'_'+'_'.join(args.p2)+'_cov_'+'_'.join(args.med + args.cov), env = 'gentoolsr',
         partition = 'icelake-himem' if args.gwas else 'icelake',
         n_cpu = 4 if args.gwas else 1, timeout = 60 if args.gwas else 15)
     
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     pheno.add_argument('-p1', help = 'Exposure, scans directory', nargs = '+', default = [])
     pheno.add_argument('-p2', help = 'Outcome, scans directory', nargs = '*', default = [])
     pheno.add_argument('-m','--med', help = 'Mediators, scans directory', nargs = '*', default = [])
-    pheno.add_argument('-c','--cov', help = 'Covariates, scans directory', nargs = '*', default = ['demographics'])
+    pheno.add_argument('-c','--cov', help = 'Covariates, scans directory', nargs = '*', default = [])
     pheno.add_argument('--exclude', help = 'Exclude phenotypes', nargs = '*', default = [])
     pheno.add_argument('--all_exp', help = 'Run common/causal/subtraction model for all exposures', 
         action = 'store_true', default = False)

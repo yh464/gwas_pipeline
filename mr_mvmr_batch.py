@@ -87,7 +87,7 @@ def main(args):
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 
-      'This script batch runs MR for groups of phenotypes')
+      'This script batch runs Multivariable MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
     path_spec.add_argument('-g','--gwa', dest = 'gwa', 
                         help = 'GWA directory, assumes both groups of pheno to be in the same dir',

@@ -19,7 +19,7 @@ Changelog:
 def crosscorr_parse(gwa1, gwa2 = [], 
         logdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog',
         h2dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
-        exclude = []):
+        exclude = [], full = False):
     '''
     gwa1 and gwa2 are lists of (group, pheno_list) tuples from logparser.find_gwas(long=False)
     leave gwa2 blank to estimate auto-correlations of gwa1
@@ -47,14 +47,14 @@ def crosscorr_parse(gwa1, gwa2 = [],
                     f'Try running:\n\n python gcorr_batch.py -p1 {g1} -p2 {g2}\n')
                 continue
             elif not os.path.isfile(fname) and g1 == g2: continue
-            rg = parse_rg_log(fname)
+            rg = parse_rg_log(fname, full = full)
             rg['fixed_int'] = False
             if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
             summary.append(rg)
             
             fname_noint = fname.replace('.rg.log','.noint.rg.log')
             if os.path.isfile(fname_noint):
-                rg = parse_rg_log(fname_noint)
+                rg = parse_rg_log(fname_noint, full = full)
                 rg['fixed_int'] = True
                 if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
                 summary.append(rg)
@@ -75,8 +75,12 @@ def crosscorr_parse(gwa1, gwa2 = [],
             summary.loc[(summary.pheno1==p1) & (summary.group1==g1) & ~np.isnan(summary.p),'q'] \
                 = sts.false_discovery_control(
             summary.loc[(summary.pheno1==p1)&(summary.group1==g1) & ~np.isnan(summary.p),'p'])
-    
-    return summary
+    if len(exclude) > 0:
+        exclude_g = [x.split('/')[0] for x in exclude]
+        exclude_p = [x.split('/')[1] for x in exclude]
+        summary = summary.loc[~((summary.group1.isin(exclude_g) & summary.pheno1.isin(exclude_p)) |
+            (summary.group2.isin(exclude_g) & summary.pheno2.isin(exclude_p))),:]
+    return summary.drop_duplicates().reset_index(drop = True)
 
 def main(args):
     import os
