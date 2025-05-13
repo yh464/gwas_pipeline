@@ -89,80 +89,86 @@ def stratified_fdr(df,label, pvalues):
     return out
 
 def main(args):
-    import os
+    import warnings
     from fnmatch import fnmatch
     import pandas as pd
-    from _utils import path
+    from _utils.path import normaliser, find_gwas, pair_gwas
     
-    norm = path.normaliser()
-    
-    for p2 in args.p2:
-      # input processing by scanning directories
-      prefix2 = []
-      for f in os.listdir(f'{args.gwa}/{p2}'):
-          if fnmatch(f, '*_X*') or fnmatch(f,'*_all_chrs*'): continue # exclude x-chr sum stats
-          if fnmatch(f,f'*.{args.ext2}'): prefix2.append(f.replace(f'.{args.ext2}',''))
-          
-      for p1 in args.p1:
+    norm = normaliser()
+    exposures = find_gwas(args.p1, ext = args.ext1, se = True)
+    outcomes = find_gwas(args.p2, ext = args.ext2, se = True)
+    missing = []
+
+    for g2, p2s in outcomes:
+      for g1, p1s in exposures:
         all_fwd = []
         all_rev = []
+        all_compare = []
         
-        for f2 in prefix2:
-          # initialise output parsed tables
-          results_fwd = []
-          results_rev = []
-          pleio_fwd = []
-          pleio_rev = []    
-        
-          # input processing by scanning directories
-          prefix1 = []
-          for f in os.listdir(f'{args.gwa}/{p1}'):
-              if fnmatch(f, '*_X*') or fnmatch(f,'*_all_chrs*'): continue # exclude x-chr sum stats
-              if fnmatch(f, f'*.{args.ext1}'): prefix1.append(f.replace(f'.{args.ext1}',''))
-          
-          for f1 in prefix1:
-            mr_prefix = f'{args._in}/{p2}/{f2}/{p1}_{f1}_{f2}'
-            try: 
-                c, p = parse_mr_results(f'{mr_prefix}_mr_forward')
-                results_fwd.append(c); pleio_fwd.append(p)
-            except: print(f'{mr_prefix} no MR forward result')
-            try: 
-                c, p = parse_mr_results(f'{mr_prefix}_mr_reverse')
-                results_rev.append(c); pleio_rev.append(p)
-            except: print(f'{mr_prefix} no MR reverse result')
-          
-          # concatenate and write tabular output
-          try:
-              results_fwd = pd.concat(results_fwd)
-              results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
-              results_fwd_corrected.sort_values(by = 'q', inplace = True)
-              all_fwd.append(results_fwd_corrected)
-              results_fwd_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_forward.txt', sep = '\t', index = False)
-              pleio_fwd = pd.concat(pleio_fwd)
-              pleio_fwd_corrected = stratified_fdr(pleio_fwd,'outcome',['egger_p','presso_p'])
-              pleio_fwd_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_forward_pleiotropy.txt',
-                                         sep = '\t', index = False)
-          except:
-              print(f'{f2} no MR forward results - check summary stats')
-          
-          try:
-              results_rev = pd.concat(results_rev)
-              results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
-              results_rev_corrected.sort_values(by = 'q', inplace = True)
-              all_rev.append(results_rev_corrected)
-              results_rev_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_reverse.txt', sep = '\t', index = False)
-              pleio_rev = pd.concat(pleio_rev)
-              pleio_rev_corrected = stratified_fdr(pleio_rev,'exposure',['egger_p','presso_p'])
-              pleio_rev_corrected.to_csv(f'{args._in}/{p2}/{p1}_{f2}_mr_reverse_pleiotropy.txt', 
-                                         sep = '\t', index = False)
-          except:
-              print(f'{f2} no MR reverse results - check summary stats')
+        for p2 in p2s:
+            # initialise output parsed tables
+            results_fwd = []
+            results_rev = []
+            results_compare = []
+            pleio_fwd = []
+            pleio_rev = []    
+            
+            for p1 in p1s:
+                mr_prefix = f'{args._in}/{g2}/{p2}/{g1}_{p1}_{p2}'
+                try: 
+                    cfwd, p = parse_mr_results(f'{mr_prefix}_mr_forward')
+                    results_fwd.append(cfwd); pleio_fwd.append(p)
+                    crev, p = parse_mr_results(f'{mr_prefix}_mr_reverse')
+                    results_rev.append(crev); pleio_rev.append(p)
+                    compare = pd.DataFrame(index = [0], 
+                        columns = ['outcome','exposure','b_fwd','se_fwd','p_fwd','b_rev','se_rev','p_rev'])
+                    compare.iloc[0,:5] = cfwd.loc[cfwd.method == 'MRlap corrected IVW',['outcome','exposure','b','se','p']].iloc[0,:]
+                    compare.iloc[0,5:] = crev.loc[crev.method == 'MRlap corrected IVW',['b','se','p']].iloc[0,:]
+                    results_compare.append(compare)
+                except: missing.append(mr_prefix)
+            
+            # concatenate and write tabular output
+            try:
+                results_fwd = pd.concat(results_fwd)
+                results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
+                results_fwd_corrected.sort_values(by = 'q', inplace = True)
+                all_fwd.append(results_fwd_corrected)
+                results_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward.txt', sep = '\t', index = False)
+                pleio_fwd = pd.concat(pleio_fwd)
+                pleio_fwd_corrected = stratified_fdr(pleio_fwd,'outcome',['egger_p','presso_p'])
+                pleio_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward_pleiotropy.txt',
+                                            sep = '\t', index = False)
+            except:
+                warnings.warn(f'{p2} no MR forward results - check summary stats')
+            
+            try:
+                results_rev = pd.concat(results_rev)
+                results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
+                results_rev_corrected.sort_values(by = 'q', inplace = True)
+                all_rev.append(results_rev_corrected)
+                results_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
+                pleio_rev = pd.concat(pleio_rev)
+                pleio_rev_corrected = stratified_fdr(pleio_rev,'exposure',['egger_p','presso_p'])
+                pleio_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse_pleiotropy.txt', 
+                                            sep = '\t', index = False)
+            except:
+                warnings.warn(f'{p2} no MR reverse results - check summary stats')
+            
+            try:
+                results_compare = pd.concat(results_compare)
+                results_compare.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_compare.txt', sep = '\t', index = False)
+                all_compare.append(results_compare)
+            except: pass
         
         norm.normalise(pd.concat(all_fwd).sort_values(by = 'q')).to_csv(
-            f'{args._in}/{p2}/all_{p1}_{p2}_mr_forward.txt', sep = '\t', index = False)
+            f'{args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt', sep = '\t', index = False)
         norm.normalise(pd.concat(all_rev).sort_values(by = 'q')).to_csv(
-            f'{args._in}/{p2}/all_{p1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
-        
+            f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
+        norm.normalise(pd.concat(all_compare)).to_csv(
+            f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
+    print('Missing MR results:')
+    for m in missing: print(m)
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 

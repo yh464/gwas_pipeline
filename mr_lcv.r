@@ -112,11 +112,7 @@ read.zscore = function(gwa){
 
 #### Main LCV function ####
 main = function(args) {
-  # does not require any specific packages
-  if (! require(tidyverse)){
-    install.packages('tidyverse', repos = "https://cloud.r-project.org")
-    library(tidyverse)
-  }
+  library(tidyverse)
   
   #### input processing ####
   # file name operations
@@ -138,6 +134,7 @@ main = function(args) {
   if (! file.exists(cache_file) | args$force) {
     # read input
     gwa1 = read.zscore(args$gwa1); gwa2 = read.zscore(args$gwa2)
+    n1 = gwa1$n; g1 = gwa1$gwa; n2 = gwa2$n; g2 = gwa2$gwa
     l2 = read.table(args$ldsc, sep = ',', header = T)
     if ('rs' %in% colnames(l2)) l2$SNP = l2$rs
     if ('LDSC' %in% colnames(l2)) l2$L2 = l2$LDSC
@@ -165,7 +162,6 @@ main = function(args) {
     
     save('g1','g2','n1','n2','l2','args', file = cache_file)
   } else load(cache_file)
-  n1 = gwa1$N; g1 = gwa1$gwa; n2 = gwa2$N; g2 = gwa2$gwa
   
   toc = proc.time() 
   print(paste0('Finished input processing, time = ', toc[3]))

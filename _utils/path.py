@@ -95,7 +95,7 @@ def find_gwas(*pheno,
 def pair_gwas(gwa1, gwa2 = []):
     '''
     Input: gwa1 and gwa2 are both [(group, [pheno1, pheno2,...]),...] lists
-    in the same format as find_gwas(long = False) output
+    in the same format as find_gwas output, compatible with long = True and False
     '''
     pairwise = []
     if len(gwa2) > 0:

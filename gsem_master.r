@@ -42,6 +42,8 @@ parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
 args = parser$parse_args(commandArgs(TRUE))
 args$p1 = sort(args$p1); args$p2 = sort(args$p2)
 args$cov = sort(args$cov); args$med = sort(args$med)
+args$out = normalizePath(args$out)
+if (!is.null(args$manual)) args$manual = normalizePath(args$manual)
 #### Sanity checks to command line arguments ####
 args$input = normalizePath(args$input); args$out = normalizePath(args$out)
 if (length(args$meta) < length(c(args$p1,args$cov, args$p2, args$med))) warning(
@@ -143,9 +145,9 @@ write_model = function(dwls, file){
   out = dwls$results %>% rename(
     beta_unstd = 'Unstand_Est', se_unstd = 'Unstand_SE', beta = 'STD_Genotype', 
     se = 'STD_Genotype_SE',  beta_std_full = 'STD_All', p = 'p_value') %>% 
-    mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p)) %>% 
-    add_column(chi2_p = dwls$modelfit$p_chisq, CFI = dwls$modelfit$CFI,
-               SRMR = dwls$modelfit$SRMR)
+    mutate(p = as.numeric(p) %>% replace_na(0)) %>% mutate(q = p.adjust(p,'BH')) %>% 
+    add_column(chi2 = dwls$modelfit$chisq, chi2_p = dwls$modelfit$p_chisq, 
+      df = dwls$modelfit$df, CFI = dwls$modelfit$CFI, SRMR = dwls$modelfit$SRMR)
   write_tsv(out, file = file, quote = 'needed')
   return(T)
 }
@@ -181,18 +183,23 @@ main = function(args){
   p1 = gsub('/','_',args$p1); p2 = gsub('/','_',args$p2); 
   cov = gsub('/','_', args$cov); med = gsub('/','_',args$med)
   n = length(c(p1,cov,p2))
-  ldscoutput = ldsc(
-    traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2,args$med),'.sumstats'),
-    sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
-    ld = args$ld, wld = args$ld, trait.names = trait.names_med,
-    ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
-  )
-  if (args$gwas) ss = sumstats(
+  ldsc_cache = paste0(tmpdir,'/',paste(trait.names_med,collapse='.'),'.ldsc.rdata')
+  if (file.exists(ldsc_cache)) load(ldsc_cache) else {
+    ldscoutput = ldsc(
+      traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2,args$med),'.sumstats'),
+      sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
+      ld = args$ld, wld = args$ld, trait.names = trait.names_med,
+      ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = '')))
+    save(ldscoutput, file = ldsc_cache)
+  }
+  sumstats_cache = paste0(tmpdir,'/',paste(c(p1,p2),collapse='.'),'.sumstats.rdata')
+  if (args$gwas & file.exists(sumstats_cache)) load(sumstats_cache)
+  if (args$gwas & ! file.exists(sumstats_cache)) {ss = sumstats(
     files = paste0(args$full, '/', c(args$p1, args$p2), '.fastGWA'), ref = args$ref,
     trait.names = trait.names, OLS = metadata$ols, N = metadata$n,
-    se.logit = metadata$selogit, linprob = metadata$linprob,
-    )
-  
+    se.logit = metadata$selogit, linprob = metadata$linprob)
+    save(ss, file = sumstats_cache)
+  }
   #### common factor model ####
   results = paste0(args$out,'_common_mdl.txt')
   gwa = paste0(args$out,'_common.fastGWA')
@@ -346,7 +353,8 @@ main = function(args){
   }
   if (!is.null(args$manual) & args$gwas & (!file.exists(gwa) | args$force)) {
     mdl = read_file(args$manual)
-    mgwas = userGWAS(ldscoutput, ss, model = mdl) %>% 
+    sub = str_split(mdl,'\n')[[1]]; sub = sub[which(!is.na(str_match(sub,'SNP')))]
+    mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub) %>% 
       rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
     write_tsv(mgwas, gwa)
   }
