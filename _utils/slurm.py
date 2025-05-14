@@ -312,6 +312,7 @@ class array_submitter():
                   ).decode().replace('\n','')
         jobid = int(msg.split()[-1])
         print(msg)
+        print(f'Job name is {self.name}')
         self._slurmid.append(jobid)
         self.submitted = True
         return jobid

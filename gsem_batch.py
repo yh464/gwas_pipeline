@@ -128,7 +128,7 @@ def main(args):
 
     from _utils.slurm import array_submitter
     name = '_'.join(['gsem', args.p1[0]]+ args.p2 + ['cov'] + args.med + args.cov
-        ) if len(args.manual) == 0 else 'gsem_'+os.path.basename(args.manual)
+        ) if len(args.manual) == 0 else 'gsem_'+os.path.basename(args.manual).replace('.mdl','')
     submitter = array_submitter(
         name = name, env = 'gentoolsr',
         partition = 'icelake-himem' if args.gwas else 'icelake',
@@ -207,7 +207,7 @@ def main(args):
     if len(outcomes) == 0:
         if not args.all_exp: 
             RuntimeWarning('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
-        outdir = f'{args.out}/'+('_'.join(args.p1)).replace('/','_')
+        outdir = f'{args.out}/'+('_'.join([x for x,_ in exposures_short])).replace('/','_')
         if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
         out_prefix = f'{outdir}/{"_".join(args.p1)}_all'
         pheno = covariates + mediators + exposures
