@@ -15,9 +15,9 @@ class manual_model():
     import os
     def __init__(self, phenotypes = [], out = os.devnull, file = None, *args, **kwargs):
         import os
-        self.phenotypes = phenotypes if len(phenotypes) == 0 or type(phenotypes[0]) == str \
+        phenotypes = phenotypes if len(phenotypes) == 0 or type(phenotypes[0]) == str \
             else [f'{g}/{p}' for g, p in phenotypes]
-        self.phenotypes = [x.replace('/','_') for x in self.phenotypes]
+        self.phenotypes = [x.replace('/','_') for x in phenotypes]
         self.out = out
         self.model = []; self.constraints = []
         if file == None or not os.path.isfile(file): self._input()
@@ -55,11 +55,12 @@ class manual_model():
         import re
         name = name.strip()
         while len(name) == 0: name = input('Please enter a valid parameter name or phenotype code:\n')
-        if name in self.phenotypes + ['NA'] or fnmatch(name, 'start[(]*[)]' or name in ['0','1']): return name
+        if name in self.phenotypes + ['NA','SNP'] or fnmatch(name, 'start[(]*[)]' or name in ['0','1']): return name
+        elif re.match('^[(]-[0-9.]+[)]$', name) != None: return name
         elif name in [str(x+2) for x in range(len(self.phenotypes))]: return self.phenotypes[int(name)-2]
         elif all([y in [str(x+2) for x in range(len(self.phenotypes))] for y in name.split(' ')]):
             return ' + '.join([self.phenotypes[int(x)-2] for x in name.split(' ')])
-        elif re.match('^[0-9]+$', name.replace('\\','')) != None: return name.replace('\\','')
+        elif re.match('^[0-9.]+$', name.replace('\\','')) != None: return name.replace('\\','')
         elif re.match('^[0-9]', name) != None or re.search('[$/*+\-?\^()\\\|]',name) != None:
             return self._check_name(input('Please enter a valid parameter name or phenotype code:\n'))
         print(f'Specifying a new parameter: {name}, please specify constraints; blank line for no constraints')
@@ -86,8 +87,8 @@ class manual_model():
             if len(formula) % 2 == 0:
                 self.print_phenotypes()
                 name = input('Please enter a term, use above numbers to select phenotypes\n'+
-                    'Enter a new name to define a parameter\nEnter backslash + number for numbers\n'+
-                    '0, 1, NA and start(<some number>) can be entered directly\n'+
+                    'Enter a new name to define a parameter\nEnter backslash + number for numbers, use brackets for negative numbers\n'+
+                    '0, 1, NA, SNP and start(<some number>) can be entered directly\n'+
                     'Multiple codes separated by space are interpreted as additive\n'+
                     'Enter a blank line to finish\n' +' '.join(formula) + ' ')
                 if len(name) == 0 and len(formula) == 0: break
@@ -110,7 +111,9 @@ class manual_model():
         print('Adding constraints for Heywood cases')
         pheno = [x.replace('/','_') for x in self.check_pheno(pheno)]
         for x in pheno:
-            self.model.append(f'{x} ~~ var_{x}*{x}'); self.constraints.append(f'var_{x} > 0')
+            c1 = f'{x} ~~ var_{x}*{x}'; c2 = f'var_{x} > 0'
+            if not c1 in self.model: self.model.append(c1)
+            if not c2 in self.constraints + self.model: self.constraints.append(c2)
         self.print_model()
 
 def main(args):
@@ -124,8 +127,10 @@ def main(args):
     covariates = find_gwas(args.cov, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
 
     from _utils.slurm import array_submitter
+    name = '_'.join(['gsem', args.p1[0]]+ args.p2 + ['cov'] + args.med + args.cov
+        ) if len(args.manual) == 0 else 'gsem_'+os.path.basename(args.manual)
     submitter = array_submitter(
-        name = 'gsem_'+args.p1[0]+'_'+'_'.join(args.p2)+'_cov_'+'_'.join(args.med + args.cov), env = 'gentoolsr',
+        name = name, env = 'gentoolsr',
         partition = 'icelake-himem' if args.gwas else 'icelake',
         n_cpu = 8 if args.gwas else 1, timeout = 60 if args.gwas else 15)
     
@@ -172,11 +177,12 @@ def main(args):
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                    '--p1'] + [f'{g}/{p}' for g, p in exposures_filtered]
             cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
+            pheno = exposures + covariates + mediators + [f'{g2}/{p2}']
             if os.path.isfile(args.manual): 
-                manual_model([], out_prefix, args.manual, f'{g2}/{p2}', **manual_kwd); 
+                manual_model(pheno, out_prefix, args.manual, f'{g2}/{p2}', **manual_kwd); 
                 cmd += ['--manual', f'{out_prefix}.mdl']
             elif len(args.manual) > 0:
-                manual_model(out = out_prefix, phenotypes = exposures + covariates + mediators + [f'{g2}/{p2}'], **manual_kwd)
+                manual_model(pheno, out_prefix, **manual_kwd)
                 cmd += ['--manual', f'{out_prefix}.mdl']
             submitter.add(' '.join(cmd))
         
@@ -189,41 +195,32 @@ def main(args):
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1', f'{g1}/{p1}']
                 cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
+                pheno = covariates + mediators + [f'{g2}/{p2}', f'{g1}/{p1}']
                 if os.path.isfile(args.manual): 
-                    manual_model([], out_prefix, args.manual, f'{g1}/{p1}',f'{g2}/{p2}', **manual_kwd); 
+                    manual_model(pheno, out_prefix, args.manual, f'{g1}/{p1}',f'{g2}/{p2}', **manual_kwd); 
                     cmd += ['--manual', f'{out_prefix}.mdl']
                 elif len(args.manual) > 0:
-                    manual_model(out = out_prefix, phenotypes = covariates + mediators + [f'{g2}/{p2}', f'{g1}/{p1}'], **manual_kwd)
+                    manual_model(pheno, out_prefix, **manual_kwd)
                     cmd += ['--manual', f'{out_prefix}.mdl']
                 submitter.add(' '.join(cmd))
             
     if len(outcomes) == 0:
-        if args.all_exp:
-            outdir = f'{args.out}/'+('_'.join(args.p1)).replace('/','_')
-            if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
-            out_prefix = f'{outdir}/{"_".join(args.p1)}_all'
-            if os.path.isfile(args.manual): 
-                md = manual_model([], out_prefix, args.manual, *[f'{g}/{p}' for g, p in exposures], **manual_kwd); 
-            elif len(args.manual) > 0:
-                md = manual_model(out = out_prefix, phenotypes = covariates + mediators + exposures, **manual_kwd)
-            out_prefix = md.out
-            cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
-                '--p1'] + md.check_pheno([f'{g}/{p}' for g, p in exposures]) + tasks + ['--manual', f'{out_prefix}.mdl']
-            submitter.add(' '.join(cmd))
-        else:
-            for g1, p1s in exposures_short:
-                outdir = f'{args.out}/{g1.replace("/","_")}'; 
-                if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
-                out_prefix = f'{outdir}/all'
-                if os.path.isfile(args.manual): 
-                    md = manual_model([], out_prefix, args.manual, *[f'{g1}/{p1}' for p1 in p1s], **manual_kwd); 
-                elif len(args.manual) > 0:
-                    md = manual_model(out = out_prefix, phenotypes = covariates + mediators + [f'{g1}/{p1}' for p1 in p1s], **manual_kwd)
-                out_prefix = md.out
-                cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
-                    '--p1'] + md.check_pheno([f'{g1}/{p}' for p in p1s]) + tasks + ['--manual', f'{out_prefix}.mdl']
-                submitter.add(' '.join(cmd))
-
+        if not args.all_exp: 
+            RuntimeWarning('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
+        outdir = f'{args.out}/'+('_'.join(args.p1)).replace('/','_')
+        if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
+        out_prefix = f'{outdir}/{"_".join(args.p1)}_all'
+        pheno = covariates + mediators + exposures
+        p1 = [f'{g}/{p}' for g, p in exposures]
+        if os.path.isfile(args.manual): 
+            md = manual_model(pheno, out_prefix, args.manual, *[f'{g}/{p}' for g, p in exposures], **manual_kwd)
+        elif len(args.manual) > 0:
+            md = manual_model(pheno, out_prefix, **manual_kwd)
+        if len(args.manual) > 0: out_prefix = md.out; p1 = md.check_pheno(p1)
+        cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
+            '--p1'] + p1 + tasks 
+        if len(args.manual) > 0: cmd += ['--manual', f'{out_prefix}.mdl']
+        submitter.add(' '.join(cmd))
     submitter.submit()
     return submitter
 

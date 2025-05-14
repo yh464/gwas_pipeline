@@ -57,6 +57,12 @@ class array_submitter():
                  intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
         
+        import warnings
+        if len(name) > 30:
+            import secrets
+            name = secrets.token_urlsafe(6).replace('-','_') # generate a random name
+            warnings.warn(f'Job name too long, using random name {name}')
+        else: print(f'Job name is {name}')
         self.name = name.replace('/','_') + '_0'
         self.debug = debug
         self.inter = intr

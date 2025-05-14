@@ -156,6 +156,7 @@ write_model = function(dwls, file){
 main = function(args){
   library(httr)
   library(GenomicSEM)
+  library(openssl)
   library(tidyverse)
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsem'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
@@ -183,16 +184,16 @@ main = function(args){
   p1 = gsub('/','_',args$p1); p2 = gsub('/','_',args$p2); 
   cov = gsub('/','_', args$cov); med = gsub('/','_',args$med)
   n = length(c(p1,cov,p2))
-  ldsc_cache = paste0(tmpdir,'/',paste(trait.names_med,collapse='.'),'.ldsc.rdata')
+  ldsc_cache = paste0(tmpdir,'/',sha256(paste(trait.names_med,collapse='.')),'.ldsc.rdata')
   if (file.exists(ldsc_cache)) load(ldsc_cache) else {
     ldscoutput = ldsc(
       traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2,args$med),'.sumstats'),
       sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
       ld = args$ld, wld = args$ld, trait.names = trait.names_med,
-      ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = '')))
+      ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
     save(ldscoutput, file = ldsc_cache)
   }
-  sumstats_cache = paste0(tmpdir,'/',paste(c(p1,p2),collapse='.'),'.sumstats.rdata')
+  sumstats_cache = paste0(tmpdir,'/',sha256(paste(c(p1,p2),collapse='.')),'.sumstats.rdata')
   if (args$gwas & file.exists(sumstats_cache)) load(sumstats_cache)
   if (args$gwas & ! file.exists(sumstats_cache)) {ss = sumstats(
     files = paste0(args$full, '/', c(args$p1, args$p2), '.fastGWA'), ref = args$ref,
@@ -228,20 +229,22 @@ main = function(args){
   results = paste0(args$out,'_efa.txt')
   if (args$efa & (!file.exists(results) | args$force)){
     print('Performing exploratory factor analysis ...')
-    ldscoutput_even = ldsc(
+    ldsccache_even = paste0(tmpdir,'/',sha256(paste(p1,collapse='.')),'.ldsc.even.rdata')
+    ldsccache_odd = paste0(tmpdir,'/',sha256(paste(p1,collapse='.')),'.ldsc.odd.rdata')
+    if (! file.exists(ldsccache_even)) {ldscoutput_even = ldsc(
       traits = paste0(args$input,'/',args$p1,'.sumstats'),
       sample.prev = metadata$sample_prev[1:length(p1)],
       population.prev = metadata$pop_prev[1:length(p1)],
-      ld = args$ld, wld = args$ld, trait.names = p1, select = 'even',
-      ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
-    )
-    ldscoutput_odd = ldsc(
+      ld = args$ld, wld = args$ld, trait.names = p1, select = 'EVEN',
+      ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
+      save(ldscoutput_even, file = ldsccache_even)} else load(ldsccache_even)
+    if (! file.exists(ldsccache_odd)) {ldscoutput_odd = ldsc(
       traits = paste0(args$input,'/',args$p1,'.sumstats'),
       sample.prev = metadata$sample_prev[1:length(p1)],
       population.prev = metadata$pop_prev[1:length(p1)],
-      ld = args$ld, wld = args$ld, trait.names = p1, select = 'odd',
-      ldsc.log = paste0(tmpdir,'/',paste(openssl::rand_bytes(4), collapse = ''))
-    )
+      ld = args$ld, wld = args$ld, trait.names = p1, select = 'ODD',
+      ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
+      save(ldscoutput_odd, file = ldsccache_odd)} else load(ldsccache_odd)
     n_factors = paLDSC_mod(ldscoutput_even$S, ldscoutput_even$V) # determine the number of factors
     s_smooth = (Matrix::nearPD(ldscoutput_even$S))$mat %>% as.matrix()
     if (n_factors == 0) n_factors = 1
@@ -270,8 +273,10 @@ main = function(args){
     #### factor GWAS ####
     if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
       mgwas = userGWAS(ldscoutput, ss, 'ML', smooth_check = T, sub = mdl_snp,
-        model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T) %>% 
-        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
+        model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T)
+      for (i in 1:length(gwa)) write_tsv(mgwas[[i]] %>% 
+        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
+                                         gwa[i])
   }}
   
   #### exposure-outcome model ####
@@ -338,25 +343,29 @@ main = function(args){
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, sub = 'indep ~ SNP') %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
-      write_tsv(sgwas, gwa)
+      write_tsv(sgwas[[1]], gwa)
     }
   }
   
   #### manually input model ####
   results = paste0(args$out, '_manual_mdl.txt')
-  gwa = paste0(args$out, '_manual.fastGWA')
   # NB models for genome-wide model and GWAS are incompatible!
   if (!is.null(args$manual) & !args$gwas & (!file.exists(results) | args$force)) {
-    mdl = read_file(args$manual)
+    mdl = read_file(args$manual); cat(mdl)
     dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
     write_model(dwls, results)
   }
-  if (!is.null(args$manual) & args$gwas & (!file.exists(gwa) | args$force)) {
-    mdl = read_file(args$manual)
+  if (!is.null(args$manual) & args$gwas) {
+    mdl = read_file(args$manual); cat(mdl)
     sub = str_split(mdl,'\n')[[1]]; sub = sub[which(!is.na(str_match(sub,'SNP')))]
-    mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub) %>% 
-      rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
-    write_tsv(mgwas, gwa)
+    sub_gwa = paste0(args$out,'_', sub %>% str_split_i('~',1) %>% gsub(' ','',.),'.fastGWA')
+    if (!all(sapply(sub_gwa, file.exists)) | args$force){
+      mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub) 
+      save(mgwas,file = paste0(args$out,'.usergwas.rdata'))
+      for (i in 1:length(sub)) write_tsv(mgwas[[i]] %>% 
+        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
+        sub_gwa[i])
+    }
   }
 }
 
