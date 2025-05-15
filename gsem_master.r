@@ -32,6 +32,7 @@ parser$add_argument('-o','--out', help = 'Output prefix')
 # analyses
 parser$add_argument('--common', default = F, action = 'store_true', help = 'Common factor model')
 parser$add_argument('--efa', default = F, action = 'store_true', help = 'Exploratory factor analysis')
+parser$add_argument('--efa_n', default = -1, type = 'integer', help = 'number of factors')
 parser$add_argument('--efa_thr', default = 0.3, help = 'loading threshold to keep an item')
 parser$add_argument('--mdl', default = F, action = 'store_true', 
   help = 'Causal model and subtraction model; enter --mdl --gwas for GWAS by subtraction')
@@ -201,23 +202,26 @@ main = function(args){
     se.logit = metadata$selogit, linprob = metadata$linprob)
     save(ss, file = sumstats_cache)
   }
+  cat('\nCache files are saved at', ldsc_cache,'\n')
   #### common factor model ####
   results = paste0(args$out,'_common_mdl.txt')
   gwa = paste0(args$out,'_common.fastGWA')
-  if (args$common & (!file.exists(results) | args$force)){
+  if (args$common){
     print('Compiling common factor model ...')
-    if (len(p2) > 0) warning(paste0(args$p2[1],' is also included in common factor'))
-    if (len(cov)> 0) warning('Covariates are also included in common factor') 
+    if (length(p2) > 0) warning(paste0(args$p2[1],' is also included in common factor'))
+    if (length(cov)> 0) warning('Covariates are also included in common factor') 
     dwls = commonfactor(ldscoutput, 'DWLS')
     out = dwls$results %>% rename(beta_unstd = 'Unstandardized_Estimate',
       se_unstd = 'Unstandardized_SE', beta = 'Standardized_Est', se = 'Standardized_SE',
-      p = 'p_value') %>% mutate(q = p.adjust(p)) %>% add_column(chi2_p = dwls$modelfit$p_chisq, 
-      CFI = dwls$modelfit$CFI, SRMR = dwls$modelfit$SRMR)
+      p = 'p_value') %>% mutate(q = p.adjust(p)) %>% 
+      add_column(chi2 = dwls$modelfit$chisq, chi2_p = dwls$modelfit$p_chisq, 
+        df = dwls$modelfit$df, CFI = dwls$modelfit$CFI, SRMR = dwls$modelfit$SRMR)
     write_tsv(out, file = results, quote = 'needed')
     
     #### common factor GWAS ####
     if (args$gwas & (!file.exists(gwa) | args$force)){
-      if (len(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
+      print('Compiling common factor GWAS ...')
+      if (length(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
       cgwas = commonfactorGWAS(ldscoutput, ss) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
         select(-lhs, -op, -rhs)
@@ -226,8 +230,8 @@ main = function(args){
   }
   
   #### EFA and CFA ####
-  results = paste0(args$out,'_efa.txt')
-  if (args$efa & (!file.exists(results) | args$force)){
+  results = paste0(args$out,'_cfa.txt')
+  if (args$efa){
     print('Performing exploratory factor analysis ...')
     ldsccache_even = paste0(tmpdir,'/',sha256(paste(p1,collapse='.')),'.ldsc.even.rdata')
     ldsccache_odd = paste0(tmpdir,'/',sha256(paste(p1,collapse='.')),'.ldsc.odd.rdata')
@@ -245,11 +249,18 @@ main = function(args){
       ld = args$ld, wld = args$ld, trait.names = p1, select = 'ODD',
       ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
       save(ldscoutput_odd, file = ldsccache_odd)} else load(ldsccache_odd)
-    n_factors = paLDSC_mod(ldscoutput_even$S, ldscoutput_even$V) # determine the number of factors
+    if (args$efa_n == -1) n_factors = paLDSC_mod(ldscoutput_even$S, ldscoutput_even$V
+      ) else n_factors = args$efa_n
     s_smooth = (Matrix::nearPD(ldscoutput_even$S))$mat %>% as.matrix()
     if (n_factors == 0) n_factors = 1
     efa = factanal(covmat=s_smooth, factors = n_factors, rotation = 'promax',
       control = list(nstart = 100))
+    loadings = efa$loadings
+    loadings = matrix(as.numeric(loadings), attributes(loadings)$dim, 
+      dimnames = attributes(loadings)$dimnames)
+    colnames(loadings) = paste0('f',1:n_factors)
+    loadings %>% as_tibble() %>% add_column(phenotype = p1, .before = 1) %>% 
+      write_tsv(paste0(args$out, '_efa.txt'))
     
     # compile factor model formula
     print('Performing confirmatory factor analysis ...')

@@ -137,7 +137,7 @@ def main(args):
     # tasks string
     tasks = []
     if args.common: tasks.append('--common')
-    if args.efa: tasks.append('--efa'); tasks.append(f'--efa_thr {args.efa_thr}')
+    if args.efa: tasks.append('--efa'); tasks.append(f'--efa_thr {args.efa_thr}'); tasks.append(f'--efa_n {args.efa_n}')
     if args.mdl: tasks.append('--mdl')
     if args.gwas: tasks.append('--gwas')
     if args.force: tasks.append('--force')
@@ -207,13 +207,19 @@ def main(args):
     if len(outcomes) == 0:
         if not args.all_exp: 
             RuntimeWarning('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
-        outdir = f'{args.out}/'+('_'.join([x for x,_ in exposures_short])).replace('/','_')
-        if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
-        out_prefix = f'{outdir}/{"_".join(args.p1)}_all'
+        if not os.path.isfile(args.manual):
+            outdir = f'{args.out}/'+'_'.join([x for x,_ in exposures_short])
+            if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
+            tmp_prefix = '_'.join([x+'_'+'_'.join(y) for x,y in exposures_short])
+            if len(tmp_prefix) > 100:
+                import hashlib
+                tmp_prefix = hashlib.sha256(tmp_prefix)
+                RuntimeWarning(f'Output prefix too long, using sha256 {tmp_prefix}')
+            out_prefix = f'{outdir}/{tmp_prefix}'
         pheno = covariates + mediators + exposures
         p1 = [f'{g}/{p}' for g, p in exposures]
         if os.path.isfile(args.manual): 
-            md = manual_model(pheno, out_prefix, args.manual, *[f'{g}/{p}' for g, p in exposures], **manual_kwd)
+            md = manual_model(pheno, args.manual, args.manual, *[f'{g}/{p}' for g, p in exposures], **manual_kwd)
         elif len(args.manual) > 0:
             md = manual_model(pheno, out_prefix, **manual_kwd)
         if len(args.manual) > 0: out_prefix = md.out; p1 = md.check_pheno(p1)
@@ -254,6 +260,7 @@ if __name__ == '__main__':
     tasks = parser.add_argument_group('Analyses specifications')
     tasks.add_argument('--common', help = 'Common factor model', action = 'store_true', default = False)
     tasks.add_argument('--efa', help = 'Exploratory factor analysis', action = 'store_true', default = False)
+    tasks.add_argument('--efa_n', help = 'Number of factors to keep, -1 for unsupervised', default = -1, type = int)
     tasks.add_argument('--efa_thr', help = 'loading threshold to keep in a factor', default = 0.3, type = float)
     tasks.add_argument('--mdl', help = 'Causal and subtraction model', action = 'store_true', default = False)
     tasks.add_argument('--manual', default = '',

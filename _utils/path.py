@@ -70,7 +70,7 @@ def find_gwas(*pheno,
     if len(pheno) == 0: return []
     if type(pheno[0]) in [list, tuple]:
         pheno = [y for x in pheno for y in x]
-    for p in pheno:
+    for p in sorted(pheno):
         xlist = []
         pdir = p.split('/')[0]
         ppat = '*' if p.find('/') < 0 else '*' + p.split('/')[1] + '*'
@@ -88,7 +88,8 @@ def find_gwas(*pheno,
                 hdr = [x.upper() for x in hdr]
                 if not 'SE' in hdr: continue
             xlist.append(x.replace(f'.{ext}','').replace('.gz',''))
-        out.append((pdir, xlist))
+        if len(out) == 0 or pdir != out[-1][0]: out.append((pdir, xlist))
+        else: out[-1] = (pdir, sorted(out[-1][1] + xlist))
     if long: out = [(x,z) for x,y in out for z in y]
     return out
 
