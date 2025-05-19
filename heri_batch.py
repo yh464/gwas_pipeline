@@ -16,6 +16,8 @@ Requires following inputs:
 def main(args):
     import os
     from fnmatch import fnmatch
+    from logparser import parse_h2_log
+    import numpy as np
     
     force = '-f' if args.force else ''
     
@@ -37,16 +39,15 @@ def main(args):
         if fnmatch(y, '*X.fastGWA'):
             continue                               # autosomes
         prefix = y.replace('.fastGWA','')
-        if os.path.isfile(f'{args.out}/{x}/{prefix}.h2.log') and not args.force: continue
-        submitter.add('python '+
+        h2, _ = parse_h2_log(f'{args.out}/{x}/{prefix}.h2.log')
+        if np.isnan(h2) or args.force: submitter.add('python '+
             f'heri_by_trait.py -i {args._in}/{x}/{y} -o {args.out}/{x}/ --ldsc {args.ldsc} {force}')
     submitter.submit()
 
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
+    from _utils.slurm import slurm_parser
 
-    parser = argparse.ArgumentParser(description = 
+    parser = slurm_parser(description = 
       'This script batch runs the LDSC heritability pipeline for local phenotypes')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',

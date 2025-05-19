@@ -311,8 +311,7 @@ class array_submitter():
                   f' --array=0-{self._nfiles} {self._wrap_name}', shell = True
                   ).decode().replace('\n','')
         jobid = int(msg.split()[-1])
-        print(msg)
-        print(f'Job name is {self.name}')
+        print(f'Submitted batch job {self.name} under SLURM array ID {jobid}')
         self._slurmid.append(jobid)
         self.submitted = True
         return jobid

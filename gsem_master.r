@@ -37,7 +37,8 @@ parser$add_argument('--efa_thr', default = 0.3, help = 'loading threshold to kee
 parser$add_argument('--mdl', default = F, action = 'store_true', 
   help = 'Causal model and subtraction model; enter --mdl --gwas for GWAS by subtraction')
 parser$add_argument('--manual', help = 'Enter text file containing manually specified model')
-parser$add_argument('--gwas', default = F, action = 'store_true', help = 'Output factor GWAS')
+parser$add_argument('--gwas', default = 0, type = 'integer', help = 'Output GWAS, by chromosome')
+# need to do GWAS by single chromosomes because HPC will time out
 parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
   default = F, action = 'store_true')
 args = parser$parse_args(commandArgs(TRUE))
@@ -203,9 +204,12 @@ main = function(args){
     save(ss, file = sumstats_cache)
   }
   cat('\nCache files are saved at', ldsc_cache,'\n')
+  if (args$gwas == 23) ss = ss %>% filter(CHR %in% c(23, 'X', '23')) else if
+    (args$gwas) ss = ss %>% filter(CHR == args$gwas)
+  
   #### common factor model ####
   results = paste0(args$out,'_common_mdl.txt')
-  gwa = paste0(args$out,'_common.fastGWA')
+  gwa = paste0(args$out,'_common.chr',args$gwas,'.fastGWA')
   if (args$common){
     print('Compiling common factor model ...')
     if (length(p2) > 0) warning(paste0(args$p2[1],' is also included in common factor'))
@@ -222,10 +226,11 @@ main = function(args){
     if (args$gwas & (!file.exists(gwa) | args$force)){
       print('Compiling common factor GWAS ...')
       if (length(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
-      cgwas = commonfactorGWAS(ldscoutput, ss) %>% 
+      cgwas = commonfactorGWAS(ldscoutput, ss, cores = 16) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
-        select(-lhs, -op, -rhs)
-      write_tsv(c_gwas, gwa)
+        select(-lhs, -op, -rhs, -i)
+      save(cgwas, file = paste0(args$out,'_common.chr',args$gwas,'.rdata'))
+      write_tsv(cgwas, gwa)
     }
   }
   
@@ -275,7 +280,7 @@ main = function(args){
       if (length(eqn) == 0) eqn = p1[which.max(abs(efa$loadings[,i]))]
       eqn = paste0('F',i, ' =~ NA*', paste(eqn, collapse=' + ')); mdl = c(mdl,eqn)
       mdl_snp = c(mdl_snp, paste0('F', i,' ~ SNP'))
-      gwa = c(gwa, paste0(args$out, '_efa.f',i,'.fastGWA'))
+      gwa = c(gwa, paste0(args$out, '_efa.f',i,'.chr',args$gwas,'.fastGWA'))
     }
     dwls = usermodel(ldscoutput_odd, 'DWLS', paste0(mdl, collapse = ' \n '), 
                      CFIcalc = T, std.lv = T, imp_cov = T)
@@ -283,7 +288,7 @@ main = function(args){
     
     #### factor GWAS ####
     if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
-      mgwas = userGWAS(ldscoutput, ss, 'ML', smooth_check = T, sub = mdl_snp,
+      mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T)
       for (i in 1:length(gwa)) write_tsv(mgwas[[i]] %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
@@ -295,7 +300,7 @@ main = function(args){
     c(med,cov)[1],'.txt')
   results_med = paste0(args$out, '_',length(args$med),'med_',med[1],'.txt')
   results_sub = paste0(args$out, '_subtraction_mdl.txt')
-  gwa = paste0(args$out,'_subtraction.fastGWA')
+  gwa = paste0(args$out,'_subtraction.chr',args$gwas,'.fastGWA')
   if (args$mdl) {
     #### direct causal model ####
     if (!file.exists(results) | args$force){
@@ -352,7 +357,7 @@ main = function(args){
         'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
         'shared ~ SNP \n indep ~ SNP \n SNP ~~ SNP')
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
-      sgwas = userGWAS(ldscoutput, ss, model = mdl, sub = 'indep ~ SNP') %>% 
+      sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP') %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
       write_tsv(sgwas[[1]], gwa)
     }
@@ -369,10 +374,11 @@ main = function(args){
   if (!is.null(args$manual) & args$gwas) {
     mdl = read_file(args$manual); cat(mdl)
     sub = str_split(mdl,'\n')[[1]]; sub = sub[which(!is.na(str_match(sub,'SNP')))]
-    sub_gwa = paste0(args$out,'_', sub %>% str_split_i('~',1) %>% gsub(' ','',.),'.fastGWA')
+    sub_gwa = paste0(args$out,'_', sub %>% str_split_i('~',1) %>% gsub(' ','',.),
+                     '.chr',args$gwas,'.fastGWA')
     if (!all(sapply(sub_gwa, file.exists)) | args$force){
-      mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub) 
-      save(mgwas,file = paste0(args$out,'.usergwas.rdata'))
+      mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub, cores = 16) 
+      save(mgwas,file = paste0(args$out,'.usergwas.chr',args$gwas,'.rdata'))
       for (i in 1:length(sub)) write_tsv(mgwas[[i]] %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
         sub_gwa[i])

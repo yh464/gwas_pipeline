@@ -16,7 +16,7 @@ optlist = list(
   make_option('--p1', help = 'Exposure, format <group>/<pheno>'),
   make_option('--p2', help = 'Outcome, format <group>/<pheno>'),
   make_option(c('-i','--in'), dest = 'inst', help = 'Instruments, absolute path separated by colons'),
-  make_option('--meta', help = 'Metadata, absolute path separated by colons'),
+  make_option('--meta', help = 'Metadata, absolute path separated by colons', default = ''),
   make_option('--c1', dest = 'clump1', help = '*CLUMPED* trait 1 summary stats, one file only'),
   make_option('--g1', dest = 'gwa1', help = 'raw trait 1 summary stats, one file only'),
   make_option('--c2', dest = 'clump2', help = '*CLUMPED* trait 2 summary stats, one file only'),

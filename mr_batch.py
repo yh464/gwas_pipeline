@@ -79,9 +79,9 @@ def main(args):
             # filter for rg
             rginfo = exp_corr_out.loc[(exp_corr_out.group1==g1) & (exp_corr_out.pheno1==p1) & \
                 (exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2),:]
-            if rginfo.shape[0] == 0 or (args.rgp > 0 and rginfo.p.values[0] > args.rgp) or \
-                (args.rgp < 0 and rginfo.q.values[0] > 0.05):
-                print(f'No rg for {g1}/{p1} and {g2}/{p2}')
+            if rginfo.shape[0] == 0: print(f'No rg for {g1}/{p1} and {g2}/{p2}'); continue
+            if (args.rgp > 0 and rginfo.p.values[0] > args.rgp) or (args.rgp < 0 and rginfo.q.values[0] > 0.05):
+                print(f'Correlation between {g1}/{p1} and {g2}/{p2} is not significant, skipping')
                 continue
             
             # find h2 log for trait 1

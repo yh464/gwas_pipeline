@@ -132,14 +132,14 @@ def main(args):
     submitter = array_submitter(
         name = name, env = 'gentoolsr',
         partition = 'icelake-himem' if args.gwas else 'icelake',
-        n_cpu = 8 if args.gwas else 1, timeout = 60 if args.gwas else 15)
+        n_cpu = 8 if args.gwas else 1, timeout = 240 if args.gwas else 15)
     
     # tasks string
     tasks = []
     if args.common: tasks.append('--common')
     if args.efa: tasks.append('--efa'); tasks.append(f'--efa_thr {args.efa_thr}'); tasks.append(f'--efa_n {args.efa_n}')
     if args.mdl: tasks.append('--mdl')
-    if args.gwas: tasks.append('--gwas')
+    if args.gwas: tasks.append('--gwas chr')
     if args.force: tasks.append('--force')
 
     # metadata
@@ -184,7 +184,10 @@ def main(args):
             elif len(args.manual) > 0:
                 manual_model(pheno, out_prefix, **manual_kwd)
                 cmd += ['--manual', f'{out_prefix}.mdl']
-            submitter.add(' '.join(cmd))
+            cmd = ' '.join(cmd)
+            if args.gwas:
+                for chrom in range(1,23): submitter.add(cmd.replace('--gwas chr',f'--gwas {chrom}'))
+            else: submitter.add(cmd)
         
         # individual correlated exposures in each model
         else:
@@ -202,7 +205,10 @@ def main(args):
                 elif len(args.manual) > 0:
                     manual_model(pheno, out_prefix, **manual_kwd)
                     cmd += ['--manual', f'{out_prefix}.mdl']
-                submitter.add(' '.join(cmd))
+                cmd = ' '.join(cmd)
+                if args.gwas:
+                    for chrom in range(1,23): submitter.add(cmd.replace('--gwas chr',f'--gwas {chrom}'))
+                else: submitter.add(cmd)
             
     if len(outcomes) == 0:
         if not args.all_exp: 
@@ -226,7 +232,10 @@ def main(args):
         cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
             '--p1'] + p1 + tasks 
         if len(args.manual) > 0: cmd += ['--manual', f'{out_prefix}.mdl']
-        submitter.add(' '.join(cmd))
+        cmd = ' '.join(cmd)
+        if args.gwas:
+            for chrom in range(1,23): submitter.add(cmd.replace('--gwas chr',f'--gwas {chrom}'))
+        else: submitter.add(cmd)
     submitter.submit()
     return submitter
 
