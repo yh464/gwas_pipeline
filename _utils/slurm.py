@@ -110,7 +110,7 @@ class array_submitter():
         self._slurmid = []
         
         # limit of commands per file
-        max_time = 720 if self._mode == 'long' else 15 # timeout = 12 hrs max
+        max_time = 720 if self._mode == 'long' else 60 # timeout = 12 hrs max
         if lim != -1: max_time = 720 # so that time limit can be manually specified
         import math
         if lim == -1:

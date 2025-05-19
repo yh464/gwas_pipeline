@@ -20,9 +20,10 @@ class manual_model():
         self.phenotypes = [x.replace('/','_') for x in phenotypes]
         self.out = out
         self.model = []; self.constraints = []
-        if file == None or not os.path.isfile(file): self._input()
-        else: self.load(file, *args); self.print_model(); self.out = file.replace('.mdl','')
         if 'heywood' in kwargs.keys() and kwargs['heywood']: self.add_heywood(phenotypes)
+        self.silent = True if 'silent' in kwargs.keys() and kwargs['silent'] else False
+        if file == None or not os.path.isfile(file): self._input()
+        else: self.load(file, *args); self.print_model(silent = self.silent)
         self.save()
     
     def print_phenotypes(self):
@@ -31,15 +32,17 @@ class manual_model():
             print(f'{i+2}: {p}')
         print()
     
-    def print_model(self):
+    def print_model(self, silent = False):
+        if silent: return
         print('Current model:')
         for x in self.model + self.constraints: print(x)
         print()
 
     def save(self):
-        tmp = input(f'Specify output prefix: [{self.out}] \n')
-        if len(tmp) > 0 and tmp.find('/') > -1: self.out = tmp
-        elif len(tmp) > 0: self.out = os.path.dirname(self.out) + '/' + tmp
+        if self.out == os.devnull:
+            tmp = input(f'Specify output prefix: [{self.out}] \n')
+            if len(tmp) > 0 and tmp.find('/') > -1: self.out = tmp
+            elif len(tmp) > 0: self.out = os.path.dirname(self.out) + '/' + tmp
         with open(self.out+'.mdl', 'w') as f:
             for x in self.model + self.constraints: print(x, file = f)
 
@@ -117,6 +120,8 @@ class manual_model():
         self.print_model()
 
 def main(args):
+    import hashlib
+
     # find GWAS summary stats
     from _utils.path import find_gwas
     exposures = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
@@ -155,6 +160,7 @@ def main(args):
     from gcorr_plot import crosscorr_parse
     if len(outcomes) > 0: exp_corr_out = crosscorr_parse(exposures_short, outcomes_short, logdir=args.rg)
     manual_kwd = {'heywood': True} if args.gwas else {}
+    manual_kwd['silent'] = (len(outcomes) > 0)
 
     for g2, p2 in outcomes:
         print(f'Outcome: {g2}/{p2}')
@@ -177,7 +183,7 @@ def main(args):
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                    '--p1'] + [f'{g}/{p}' for g, p in exposures_filtered]
             cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
-            pheno = exposures + covariates + mediators + [f'{g2}/{p2}']
+            pheno = exposures + covariates + mediators + [(g2,p2)]
             if os.path.isfile(args.manual): 
                 manual_model(pheno, out_prefix, args.manual, f'{g2}/{p2}', **manual_kwd); 
                 cmd += ['--manual', f'{out_prefix}.mdl']
@@ -198,7 +204,7 @@ def main(args):
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                        '--p1', f'{g1}/{p1}']
                 cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
-                pheno = covariates + mediators + [f'{g2}/{p2}', f'{g1}/{p1}']
+                pheno = covariates + mediators + [(g1,p1),(g2,p2)]
                 if os.path.isfile(args.manual): 
                     manual_model(pheno, out_prefix, args.manual, f'{g1}/{p1}',f'{g2}/{p2}', **manual_kwd); 
                     cmd += ['--manual', f'{out_prefix}.mdl']
@@ -218,7 +224,6 @@ def main(args):
             if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
             tmp_prefix = '_'.join([x+'_'+'_'.join(y) for x,y in exposures_short])
             if len(tmp_prefix) > 100:
-                import hashlib
                 tmp_prefix = hashlib.sha256(tmp_prefix)
                 RuntimeWarning(f'Output prefix too long, using sha256 {tmp_prefix}')
             out_prefix = f'{outdir}/{tmp_prefix}'
@@ -227,7 +232,7 @@ def main(args):
         if os.path.isfile(args.manual): 
             md = manual_model(pheno, args.manual, args.manual, *[f'{g}/{p}' for g, p in exposures], **manual_kwd)
         elif len(args.manual) > 0:
-            md = manual_model(pheno, out_prefix, **manual_kwd)
+            md = manual_model(pheno, **manual_kwd)
         if len(args.manual) > 0: out_prefix = md.out; p1 = md.check_pheno(p1)
         cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
             '--p1'] + p1 + tasks 
