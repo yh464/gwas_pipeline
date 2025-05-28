@@ -4,78 +4,26 @@ python script that runs the asym_stats.py script in batches
 '''
 
 def main(args):
-    import os
-    import numpy as np
-    import pandas as pd
-    import time
+  import numpy as np
     
-    # nroi: HCP = 376, 500sym = 334, aparc = 84, economo = 102, sjh = 1027
-    nroi = 376
-      
-    if args.force:
-      fs = ' -f'
-    else: fs = ''
-    
-    # array submitter
-    from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = 'pheno',
-        partition = 'icelake',
-        timeout = 5, mode = 'long',
-        debug = False
-        )
-    
-    tic = time.perf_counter()
-    subjs = np.loadtxt(args.subjs,dtype = 'U')
-    nsubj = subjs.size
-    logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/'
-    logout = 'asym_stats_batch.log'
-    f = open(logdir+logout,'w')
-    
-    for subj in subjs:
-      in_fname = args._in.replace('%sub',subj)
-      
-      # check progress
-      if not os.path.isfile(in_fname):
-        print(f'{subj}: no connectome found', file = f)
-        continue
-      
-      skip = True
-      if args.force: skip = False
-      
-      if skip:
-        try:
-          tmp = np.loadtxt(f'{args.out}/global/{subj}.txt')
-          if tmp.size != 17: skip = False
-        except: skip = False
-      
-      if skip:
-        try:
-          tmp = np.loadtxt(f'{args.out}/global_asym/{subj}.txt')
-          if tmp.size != 17: skip = False
-        except: skip = False
-      
-      if skip:
-        try:
-          tmp = pd.read_csv(f'{args.out}/local/{subj}.txt')
-          if tmp.shape[0] != nroi or tmp.shape[1] != 7: skip = False
-        except: skip = False
-      
-      if skip:
-        try:
-          tmp = pd.read_csv(f'{args.out}/local_asym/{subj}.txt')
-          if tmp.shape[0] != nroi/2 or tmp.shape[1] != 21: skip = False
-        except: skip = False
-      
-      if skip: 
-        print(f'{subj}: connectome is already phenotyped', file = f)
-      else:
-        indir = args._in.replace('%sub', subj)
-        submitter.add(
-          f'python pheno.py {subj} -i {indir} -o {args.out}/{fs}')
-        print(f'{subj} submitted for analysis', file = f)
-    
-    submitter.submit()
+  if args.force:
+    fs = ' -f'
+  else: fs = ''
+  
+  # array submitter
+  from _utils.slurm import array_submitter
+  submitter = array_submitter(
+    name = 'pheno',
+    partition = 'icelake',
+    timeout = 5, mode = 'long',
+    )
+  
+  subjs = np.loadtxt(args.subjs,dtype = 'U')
+  for subj in subjs:
+    subj = subj.replace('UKB','')
+    in_fname = args._in.replace('%sub',subj)
+    submitter.add(f'python pheno.py {subj} -i {in_fname} -o {args.out} {fs}')
+  submitter.submit()
     
     
 if __name__ == '__main__':
