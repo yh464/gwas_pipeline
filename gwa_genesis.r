@@ -11,6 +11,7 @@ parser$add_argument('-i','--in', dest = 'input', help = 'Input phenotype file, f
 parser$add_argument('-b','--bfile', help = 'PLINK binary prefix, should have run grm_pcrelate.r')
 parser$add_argument('--dcov', help = 'Discrete covariates file, first two columns are FID and IID')
 parser$add_argument('--qcov', help = 'Quantitative covariates file, first two columns are FID and IID')
+parser$add_argument('--n_threads', help = 'Number of threads', type = 'integer', default = 8)
 parser$add_argument('-o','--out', help = 'Output directory')
 parser$add_argument('-f','--force', help = 'Force overwrite', default = F, action = 'store_true')
 args = parser$parse_args(commandArgs(T))
@@ -65,7 +66,7 @@ main = function(args){
   #### GWAS Association Test ####
   genoiter = GenotypeBlockIterator(genodata, snpBlock = 5000)
   assoc = assocTestSingle(genoiter, null.model = nullmod, 
-    BPPARAM = BiocParallel::MulticoreParam(workers=16))
+    BPPARAM = BiocParallel::MulticoreParam(workers=args$n_threads))
   h2 = varCompCI(nullmod, prop = T)
   cat('Finished association analysis, time =', proc.time()[3],'\n')
   save(nullmod, assoc, h2, file = paste0(out_prefix,'.rdata'))
