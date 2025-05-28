@@ -10,7 +10,7 @@ A script to batch run GWAS by fastGWA-mlm
 Requires following inputs: 
     phenotype file in FID IID *** format
     PLINK bed binaries
-    covariants files in FID IID *** format
+    covariates files in FID IID *** format
 '''
 
 def main(args):
@@ -35,7 +35,7 @@ def main(args):
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
     
     force = '-f' if args.force else ''
-    xchr = '' if args.xchr else '--no-xchr'
+    xchr = '' if args.xchr else '--nox'
     
     # check validity of the phenotype file
     import pandas as pd
@@ -90,9 +90,9 @@ if __name__ == '__main__':
     io.add_argument('-o','--out',dest  = 'out', help = 'Output directory',
       default = '../gwa/')
     io.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
-      default = '../params/discrete_covars.txt')
+      default = '../params/ukb_dcov.txt')
     io.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file',
-      default = '../params/quantitative_covars.txt')
+      default = '../params/ukb_qcov.txt')
     io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
       default = '../params/bed_files_ukb.txt')
     io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
@@ -107,7 +107,7 @@ if __name__ == '__main__':
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
     
     xchr = parser.add_argument_group(title = 'X chromosome GWAS options')
-    xchr.add_argument('--no-xchr', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
+    xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
         default = True, action = 'store_false')
     xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')

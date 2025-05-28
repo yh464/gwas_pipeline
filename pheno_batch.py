@@ -31,13 +31,8 @@ def main(args):
     logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/'
     logout = 'asym_stats_batch.log'
     f = open(logdir+logout,'w')
-    idx = 0
     
     for subj in subjs:
-      if idx % 100 == 0:
-          toc = time.perf_counter()-tic
-          print(f'Subject {idx} / {nsubj}, time = {toc:.3f}')
-      idx += 1
       in_fname = args._in.replace('%sub',subj)
       
       # check progress

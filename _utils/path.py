@@ -109,6 +109,26 @@ def pair_gwas(gwa1, gwa2 = []):
                 pairwise.append((gwa1[i][0], gwa1[i][1], gwa1[j][0], gwa1[j][1]))
     return pairwise
 
+def find_bed(bed, sep_chr = True, x = False):
+    n_chr = 1 if not sep_chr else 22 if not x else 23
+    if os.path.isfile(bed) and bed[-4:] == '.bed': return [bed[:-4]] * n_chr
+    elif os.path.isfile(bed + '.bed'): return [bed] * n_chr
+    elif os.path.isdir(bed) and sep_chr:
+        out = []
+        for chrom in range(1, n_chr + 1):
+            for file in os.listdir(bed):
+                if fnmatch(file.replace('X','23'),f'*chr{chrom}.bed'):
+                    out.append(file[:-4])
+        if len(out) != n_chr: raise FileNotFoundError('Incorrect number of chromosome-specific bed files')
+        return out
+    else:
+        out = open(bed).read().splitlines()
+        while out.count('') > 0: out.remove('')
+        if len(out) == 1: return out * n_chr
+        elif len(out) == n_chr: return out
+        elif len(out) == n_chr + 1: return out[:-1]
+        else: raise FileNotFoundError('Incorrect number of chromosome-specific bed files')
+
 class normaliser():
     def __init__(self, _dir = os.path.realpath('../path/'), _dict = 'dict.txt'):
         

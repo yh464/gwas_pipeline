@@ -62,7 +62,6 @@ class array_submitter():
             import secrets
             name = secrets.token_urlsafe(6).replace('-','_') # generate a random name
             warnings.warn(f'Job name too long, using random name {name}')
-        else: print(f'Job name is {name}')
         self.name = name.replace('/','_') + '_0'
         self.debug = debug
         self.inter = intr
@@ -87,14 +86,6 @@ class array_submitter():
             if type(dep) in [int, array_submitter]: self.dep.append(dep)
         if type(modules) == type('a'): modules = [modules] # single string
         self.modules = modules
-        
-        # directories
-        self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
-        if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
-        os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
-        self.tmpdir = f'{tmpdir}/{self.name}/' # to prevent confusion with other array submissions
-        if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
-        os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
         
         # internal variables
         self._blank = True
@@ -123,6 +114,14 @@ class array_submitter():
         import __main__
         if 'args' in dir(__main__):
             self.config_cmdarg(__main__.args)
+
+        # directories
+        self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
+        if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
+        os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
+        self.tmpdir = f'{tmpdir}/{self.name}/' # to prevent confusion with other array submissions
+        if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
+        os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
     
     # change settings
     def config(self, **kwargs):
@@ -147,6 +146,8 @@ class array_submitter():
             if not key in valid_keys: continue
             if value == None: continue
             setattr(self, key, value)
+        if 'jobname' in vars(args).keys() and args.jobname != None: 
+            setattr(self, 'name', args.jobname)
             
     # a new file requires a shebang line, so this func resets the file
     def _newfile(self):
@@ -224,7 +225,7 @@ class array_submitter():
             
             # if the total time reaches the file size limit, start a new file
             if self._count >= self.lim:
-                if self._fileid >= self.arraysize:
+                if self._fileid + 1 >= self.arraysize:
                     self.submit()
                     self._newjob()
                 else:
@@ -318,6 +319,7 @@ class array_submitter():
 
 def parser_config(parser):
     slurm = parser.add_argument_group('SLURM configuration')
+    slurm.add_argument('--jobname', help = 'Manually specify job name')
     slurm.add_argument('--partition', help = 'partition')
     slurm.add_argument('--account', help = 'account to charge')
     slurm.add_argument('--n_cpu', help = 'number of CPUs per task')

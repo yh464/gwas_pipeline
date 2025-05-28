@@ -100,7 +100,7 @@ if __name__ == '__main__':
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
     
     xchr = parser.add_argument_group(title = 'X chromosome GWAS options')
-    xchr.add_argument('--no-xchr', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
+    xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
         default = True, action = 'store_false')
     xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')
