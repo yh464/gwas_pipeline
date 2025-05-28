@@ -51,6 +51,7 @@ main = function(args){
   covars = c(colnames(dcov)[3:ncol(dcov)], colnames(qcov)[3:ncol(qcov)]) %>% gsub('sex','xxx',.)
   scanannot = phen %>% inner_join(subj) %>% inner_join(dcov) %>% 
     inner_join(qcov) %>% select(-FID) %>% rename(scanID = IID)
+  cat('Found',nrow(scanannot),'individuals with genetic and phenotypic data')
   colnames(scanannot) = gsub('sex','xxx', colnames(scanannot))
   scanannot = ScanAnnotationDataFrame(scanannot)
   
@@ -64,7 +65,7 @@ main = function(args){
   #### GWAS Association Test ####
   genoiter = GenotypeBlockIterator(genodata, snpBlock = 5000)
   assoc = assocTestSingle(genoiter, null.model = nullmod, 
-    BPPARAM = BiocParallel::MulticoreParam(workers=6))
+    BPPARAM = BiocParallel::MulticoreParam(workers=16))
   h2 = varCompCI(nullmod, prop = T)
   cat('Finished association analysis, time =', proc.time()[3],'\n')
   save(nullmod, assoc, h2, file = paste0(out_prefix,'.rdata'))

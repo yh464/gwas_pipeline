@@ -6,12 +6,12 @@ def main(args):
     import os
     
     # fail-safe
-    args.out = os.path.realpath(args.out)
-    if not os.path.isdir(args.out): os.mkdir(args.out)
+    outdir = os.path.dirname(args.out)
+    if not os.path.isdir(outdir): os.mkdir(outdir)
     
     # progress check
-    fout = f'{args.out}/{args.prefix}.txt'
-    errlog = f'{args.out}/{args.prefix}_not_found.txt'
+    fout = f'{args.out}.txt'
+    errlog = args.out.replace('.txt','_not_found.txt')
     if os.path.isfile(fout) and not args.force: 
         print('subj list already generated')
         return
@@ -34,7 +34,6 @@ def main(args):
     print(f'Total {found + not_found} subjects')
     print(f'Found imaging profiles for {found} subjects')
     print(f'No imaging profile for {not_found} subjects')
-    
     return
 
 if __name__ == '__main__':
@@ -45,10 +44,7 @@ if __name__ == '__main__':
         'Target file to screen',
         default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Imaging/'+
         '%subj/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
-    parser.add_argument('-o','--out', dest = 'out', help = 'output subj list dir',
-        default = '../params')
-    parser.add_argument('-p','--prefix', dest = 'prefix', required = True,
-        help = 'output file prefix')
+    parser.add_argument('-o','--out', dest = 'out', help = 'output prefix', required = True)
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
         default = False, help = 'force overwrite')
     args = parser.parse_args()
