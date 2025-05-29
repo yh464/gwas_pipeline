@@ -12,6 +12,10 @@ parser$add_argument('-b','--bfile', help = 'PLINK binary prefix, should have run
 parser$add_argument('--dcov', help = 'Discrete covariates file, first two columns are FID and IID')
 parser$add_argument('--qcov', help = 'Quantitative covariates file, first two columns are FID and IID')
 parser$add_argument('--n_threads', help = 'Number of threads', type = 'integer', default = 8)
+# because GENESIS is used for small populations, use UKB as a reference for MAF filtering
+parser$add_argument('--snp', help = 'SNP information table of reference population, used for MAF filter',
+  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
+parser$add_argument('--maf', help = 'MAF filter', type = 'numeric', default = 0.01)
 parser$add_argument('-o','--out', help = 'Output directory')
 parser$add_argument('-f','--force', help = 'Force overwrite', default = F, action = 'store_true')
 args = parser$parse_args(commandArgs(T))
@@ -63,19 +67,29 @@ main = function(args){
                          cov.mat = pcrelategrm, family = 'gaussian')
   cat('Fit null model, time =', proc.time()[3],'\n')
   
-  #### GWAS Association Test ####
-  genoiter = GenotypeBlockIterator(genodata, snpBlock = 5000)
-  assoc = assocTestSingle(genoiter, null.model = nullmod, 
-    BPPARAM = BiocParallel::MulticoreParam(workers=args$n_threads))
-  h2 = varCompCI(nullmod, prop = T)
-  cat('Finished association analysis, time =', proc.time()[3],'\n')
-  save(nullmod, assoc, h2, file = paste0(out_prefix,'.rdata'))
+  if (!file.exists(paste0(out_prefix,'.rdata'))){
+    #### Select SNPs to include ####
+    if (file.exists(args$snp) & args$maf > 0){
+      snps = read_tsv(args$snp) %>% filter((AF1 > args$maf) & (AF1 < 1-args$maf)) %>%
+        select(SNP) %>% dplyr::intersect(tibble(SNP = getSnpID(genodata)))
+      snps = snps$SNP
+      cat('Including',length(snps),'SNPs for analysis\n')
+      cat('Filtered MAF, time =', proc.time()[3],'\n')
+    } else snps = NULL
+    
+    #### GWAS Association Test ####
+    genoiter = GenotypeBlockIterator(genodata, snpBlock = 5000, snpInclude = snps)
+    assoc = assocTestSingle(genoiter, null.model = nullmod, 
+      BPPARAM = BiocParallel::MulticoreParam(workers=args$n_threads))
+    h2 = varCompCI(nullmod, prop = T)
+    cat('Finished association analysis, time =', proc.time()[3],'\n')
+    save(nullmod, assoc, h2, file = paste0(out_prefix,'.rdata'))
+  } else load(paste0(out_prefix,'.rdata'))
   alleles = tibble(SNP = getSnpID(genodata), A1 = getAlleleA(genodata), 
                    A2 = getAlleleB(genodata))
-  assoc %>% select(-MAC) %>% rename(SNP = variant.id, CHR = chr, POS = pos, 
-    N = n.obs, AF1 = freq, BETA = Est, SE = Est.SE, P = Score.pval) %>% 
-    filter(AF1 > 0.01 & AF1 < 0.99) %>% inner_join(alleles)
-    write_tsv(paste0(out_prefix, '.fastGWA'))
+  assoc %>% as_tibble() %>% select(-MAC) %>% rename(SNP = variant.id, CHR = chr, POS = pos, 
+    N = n.obs, AF1 = freq, BETA = Est, SE = Est.SE, P = Score.pval) %>% inner_join(alleles) %>%
+    mutate(N = N/2) %>% write_tsv(paste0(out_prefix, '.fastGWA'))
   cat('Wrote GWAS output, time =', proc.time()[3],'\n')
 }
 

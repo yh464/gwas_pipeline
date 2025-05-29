@@ -30,13 +30,12 @@ import pandas as pd
 
 prefix = os.path.basename(args._in).replace('.txt','')
 if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
-    import numpy as np
-    from statsmodels.api import OLS
+    import pingouin as pg
     import scipy.stats as sts
     
     # process covars
     dcov = pd.read_table(args.dcov, index_col = ['FID','IID'], sep = '\\s+').astype(str)
-    cov_out = pd.get_dummies(dcov, prefix = dcov.columns, drop_first = True)
+    cov_out = pd.get_dummies(dcov, prefix = dcov.columns, drop_first = True).astype(int)
     cov_out = pd.concat([cov_out,pd.read_table(args.qcov, index_col = ['FID','IID'], sep = '\\s+')], 
                         axis = 1)
     cov_list = cov_out.columns.tolist()
@@ -91,34 +90,31 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
             print(f'    {args.prsdir}/{p}/{prs}.txt')
             
             tmp = out[['score_norm']]
-            tmp.columns = [prs]
+            tmp.columns = ['prs']
             tmp_merge = pd.concat([phen_cov.copy(),tmp], axis = 1, join = 'inner')
             print(f'    Sample size: {tmp_merge.shape[0]}')
             for phen in phen_list:
-                tmp = tmp_merge[cov_list + [prs] + [phen]].dropna().astype(float)
-                endog = tmp[phen].values
-                exog = tmp[cov_list + [prs]].values
                 try:
-                    md = OLS(endog, exog).fit()
+                    tmp = tmp_merge[cov_list + ['prs',phen]].dropna()
+                    partcorr = pg.partial_corr(tmp, x = 'prs', y = phen, y_covar = cov_list)
                     summary.append(
                         pd.DataFrame(dict(
                             group1 = prefix,
                             pheno1 = phen,
                             group2 = [p],
                             pheno2 = prs,
-                            beta = md.params[-1],
-                            z = md.tvalues[-1],
-                            n = tmp.shape[0]                        
+                            r = partcorr['r'].values[0],
+                            p = partcorr['p-val'].values[0],
+                            n = partcorr['n'].values[0]                       
                             ))
                         )
                 except:
                     print(f'        {phen} correlation failed with {prs}')
     summary = pd.concat(summary).dropna()
-    summary['p'] = 1 - sts.chi2.cdf(summary['z']**2, df = 1)
     summary['q'] = sts.false_discovery_control(summary['p'])
     
     # summary table and tabular output
-    tmp_beta = summary.pivot(index = 'pheno1', columns = 'pheno2', values = 'beta')
+    tmp_beta = summary.pivot(index = 'pheno1', columns = 'pheno2', values = 'r')
     tmp_beta.columns.name = None; tmp_beta.index.name = None
     tmp_beta.to_csv(f'{args.out}/{prefix}_beta.txt', sep = '\t',
                     index_label = False, index = True, header = True)

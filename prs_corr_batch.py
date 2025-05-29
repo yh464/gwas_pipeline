@@ -24,7 +24,7 @@ def main(args):
     
     flist = []
     for p in args.pheno:
-        if os.path.isfile(f'{args._in}/p'):
+        if os.path.isfile(f'{args._in}/{p}'):
             flist.append(p)
             continue
         if os.path.isfile(f'{args._in}/{p}.txt'):
@@ -54,9 +54,9 @@ if __name__ == '__main__':
     parser.add_argument('--prsdir', dest = 'prsdir', help = 'PRS score directory',
       default = '../prs/prs_score/')
     parser.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
-      default = '../params/discrete_covars.txt')
+      default = '../params/ukb_dcov.txt')
     parser.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file',
-      default = '../params/quantitative_covars.txt')
+      default = '../params/ukb_qcov.txt')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output directory',
       default = '../prs/prs_corr/')
     parser.add_argument('-f','--force', dest = 'force', help = 'force overwrite',

@@ -64,7 +64,7 @@ def main(args):
       if os.path.isfile(out_prefix+f'_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt') and (not args.force):
         continue
       submitter.add(f'python {args.prscs}/PRScs.py --ref_dir={args.ref} '+
-        f'--bim_prefix={bed_list[j]} --sst_file={tmpgwa} --n_gwas={n} --out_dir={out_prefix} '+
+        f'--bim_prefix={bed_list[j]} --sst_file={tmpgwa} --n_gwas={int(n)} --out_dir={out_prefix} '+
         f'--chrom={j+1} --phi={args.phi} --seed 114514')
   submitter.submit()
         

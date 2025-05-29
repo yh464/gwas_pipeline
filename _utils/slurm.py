@@ -291,12 +291,26 @@ class array_submitter():
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles} {self._wrap_name}') 
     
+    def _splash(self, jobid):
+        msg = []
+        msg.append('#' * 100)
+        msg.append('Following job has been submitted to SLURM:')
+        msg.append(f'    Name:      {self.name}')
+        msg.append(f'    Path:      {self.tmpdir}')
+        msg.append(f'    Partition: {self.partition}')
+        msg.append(f'    Timeout:   {self.timeout*self._count} minutes')
+        msg.append(f'    CPUs:      {self.n_cpu}')
+        msg.append(f'    # files:   {self._nfiles + 1}')
+        msg.append(f'    Job ID:    {jobid}')
+        msg.append('#' * 100)
+        if not self._blank: print('\n'.join(msg))
+
     def submit(self):
         '''
         Submits all commands to the cluster (SLURM manager)
         '''
         # if debug mode is on, debug instead
-        if self._nfiles < 0: return
+        if self._blank: return
         if self.debug: self._print(); return
         if self.intr: import os; os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
         
@@ -310,26 +324,12 @@ class array_submitter():
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles} {self._wrap_name}', shell = True
-                  ).decode().replace('\n','')
-        jobid = int(msg.split()[-1])
-        print(f'Submitted batch job {self.name} under SLURM array ID {jobid}')
+                  ).decode().strip()
+        jobid = int(msg.split()[-1]) # raises an error if sbatch fails
+        self._splash(jobid)
         self._slurmid.append(jobid)
         self.submitted = True
         return jobid
-
-def parser_config(parser):
-    slurm = parser.add_argument_group('SLURM configuration')
-    slurm.add_argument('--jobname', help = 'Manually specify job name')
-    slurm.add_argument('--partition', help = 'partition')
-    slurm.add_argument('--account', help = 'account to charge')
-    slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
-    slurm.add_argument('--n_node', help = 'number of nodes needed')
-    slurm.add_argument('--n_task', help = 'number of tasks per job')
-    slurm.add_argument('--timeout', help = 'timeout in minutes')
-    slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
-    slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
-    slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
-    return parser
 
 class slurm_parser(argparse.ArgumentParser):
     '''
@@ -337,5 +337,18 @@ class slurm_parser(argparse.ArgumentParser):
     '''
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
-        self = parser_config(self)
+        self.parser_config()
+
+    def parser_config(self):
+        slurm = self.add_argument_group('SLURM configuration')
+        slurm.add_argument('--jobname', help = 'Manually specify job name')
+        slurm.add_argument('--partition', help = 'partition')
+        slurm.add_argument('--account', help = 'account to charge')
+        slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
+        slurm.add_argument('--n_node', help = 'number of nodes needed')
+        slurm.add_argument('--n_task', help = 'number of tasks per job')
+        slurm.add_argument('--timeout', help = 'timeout in minutes')
+        slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
+        slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
+        slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
         
