@@ -53,6 +53,7 @@ def main(args):
       if os.path.isfile(out_file) and not args.force: continue
       cmd = ['Rscript', 'gwa_genesis.r', p, '-i', pheno_file, '-o', outdir, '-b', args.bed, '--dcov', args.dcov, 
              '--qcov', args.qcov, '--snp', args.snp,'--maf', str(args.maf), '--n_threads',str(args.n_threads)]
+      if args.extract != None and os.path.isfile(args.extract): cmd += ['--extract', args.extract]
       if args.force: cmd.append('-f')
       submitter.add(' '.join(cmd))
   submitter.submit()
@@ -71,6 +72,7 @@ if __name__ == '__main__':
   parser.add_argument('-s','--snp', 
     help = 'SNP information table from larger population as GENESIS is used for small sample size, requires SNP and AF1 columns',
     default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
+  parser.add_argument('--extract', help = 'List of SNPs to extract')
   parser.add_argument('--maf', type = float, default = 0.01, help = 'Minor allele frequency threshold for SNPs')
   parser.add_argument('--n_threads', type = int, default = 8, help = 'Number of threads to use')
   parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
@@ -80,6 +82,7 @@ if __name__ == '__main__':
   import os
   for arg in ['_in','out','dcov','qcov','bed']:
       exec(f'args.{arg} = os.path.realpath(args.{arg})')
+  if args.extract != None: args.extract = os.path.realpath(args.extract)
   
   from _utils import cmdhistory, path, logger
   logger.splash(args)
