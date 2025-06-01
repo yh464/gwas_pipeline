@@ -44,6 +44,7 @@ class array_submitter():
                  n_cpu = 1,
                  log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
+                 parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
                  lim = -1, # number of commands per file, default -1
                  arraysize = 100, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 50
                  email = True,
@@ -64,7 +65,8 @@ class array_submitter():
             warnings.warn(f'Job name too long, using random name {name}')
         self.name = name.replace('/','_') + '_0'
         self.debug = debug
-        self.inter = intr
+        self.intr = intr
+        self.parallel = parallel
         
         # SLURM config
         self.partition = partition
@@ -99,11 +101,13 @@ class array_submitter():
         self._slurmid = []
         
         # limit of commands per file
+        if lim > 0: self.lim = lim
         self._mode = 'long' if timeout > 15 else 'short' # long jobs are for > 15 min commands
         self.wallclock = 240 if timeout > 15 else 60 # timeout = 12 hrs max
         if wallclock > 0: self.wallclock = min(wallclock,720)
         self.lim = int(self.wallclock/timeout)
         self.lim = max(self.lim, 1) # at least one command per file
+        self.lim *= self.parallel # all parallel processes have the same time limit
         
         # read command line args
         import __main__
@@ -123,10 +127,13 @@ class array_submitter():
         valid_keys = [
             'name', 'debug','partition', 'timeout','wallclock','n_node', 'n_task','n_cpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim','intr','dependency'
+            'tmpdir','lim','intr','dependency', 'parallel'
             ]
-        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'timeout', 'arraysize', 'lim', 'wallclock']
+        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'timeout', 'arraysize', 'lim', 'wallclock','parallel']
         for key, value in kwargs.items():
+            if key in numeric_keys and value.startswith('x'):
+                # if the value starts with 'x', it is a multiplier
+                value = float(value[1:]) * getattr(self, key)
             if not key in valid_keys: continue
             if value == None: continue # skip None values
             if key in numeric_keys: value = int(value) # convert to int
@@ -134,8 +141,10 @@ class array_submitter():
         if 'jobname' in kwargs.keys() and kwargs['jobname'] != None and self._blank: 
             setattr(self, 'name', kwargs['jobname'])
         if 'wallclock' in kwargs.keys() and kwargs['wallclock'] != None:
-            self.wallclock = min(int(kwargs['wallclock']),720)
+            self.wallclock = min(self.wallclock,720)
             self.lim = int(self.wallclock/self.timeout)
+            self.lim = max(self.lim, 1) # at least one command per file
+            self.lim *= self.parallel # all parallel processes have the same time limit
 
     # a new file requires a shebang line, so this func resets the file
     def _newfile(self):
@@ -176,6 +185,12 @@ class array_submitter():
         # they are considered a single command and take care of the time limit!
         
         self._blank = False
+        # preprocess command
+        cmd = ' && '.join(cmd)
+        if self.parallel > 1:
+            cmd += ' &'
+            if self._count % self.parallel == 0: cmd += ' wait'
+
         if self._mode == 'long':
             # first iteration: reset files
             if self._count == 1:
@@ -185,7 +200,7 @@ class array_submitter():
             # append command
             fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
             _file = open(fname,'a')
-            print(*cmd, file = _file, sep = '\n')
+            print(cmd, file = _file)
             _file.close() # I do not want 2000 file handles!
             
             # proceed to next file
@@ -208,7 +223,7 @@ class array_submitter():
             
             fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
             _file = open(fname,'a')
-            print(*cmd, file = _file, sep = '\n')
+            print(cmd, file = _file)
             _file.close() # I do not want 2000 file handles!
             
             # if the total time reaches the file size limit, start a new file
@@ -289,6 +304,7 @@ class array_submitter():
         msg.append(f'    Timeout:   {int(self.timeout)*self._count} minutes')
         msg.append(f'    CPUs:      {self.n_cpu}')
         msg.append(f'    # files:   {self._nfiles + 1}')
+        msg.append(f'    Parallel:  {self.parallel}')
         msg.append(f'    Job ID:    {jobid}')
         msg.append('#' * 100)
         if not self._blank: print('\n'.join(msg))
@@ -328,7 +344,8 @@ class slurm_parser(argparse.ArgumentParser):
         self.parser_config()
 
     def parser_config(self):
-        slurm = self.add_argument_group('SLURM configuration')
+        slurm = self.add_argument_group('SLURM configuration, enter numbers to override default resource allocation,\n'+
+            'enter x2, etc. to multiply the default values, leave blank to use defaults')
         slurm.add_argument('--jobname', help = 'Manually specify job name')
         slurm.add_argument('--partition', help = 'partition')
         slurm.add_argument('--account', help = 'account to charge')
@@ -337,6 +354,7 @@ class slurm_parser(argparse.ArgumentParser):
         slurm.add_argument('--n_task', help = 'number of tasks per job')
         slurm.add_argument('--timeout', help = 'timeout in minutes')
         slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
+        slurm.add_argument('--parallel', help = 'number of parallel processes')
         slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
         slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
         slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
