@@ -84,9 +84,9 @@ def main(args):
         for phen in prefix_list:
             siglist = outdf.loc[outdf.phenotype==phen,'SNP']
             for snp in siglist:
-                for clump in clumps:
+                for clump, pval in zip(clumps,pvalues):
                     if not snp in clump: continue
-                    idx_snp = clump[0]
+                    idx_snp = clump[pval.index(min(pval))]
                     overlaps.loc[phen,idx_snp] = 1
         overlaps.insert(loc = 0, column = 'label', value = prefix_list)
         overlaps.to_csv(f'{args._in}/{p}_{args.p:.0e}_overlaps.txt',sep = '\t',index = False)
@@ -102,9 +102,9 @@ def main(args):
             siglist = crosstrait_clumps.loc[(crosstrait_clumps.phen_group == pheng) &
                 (crosstrait_clumps.phenotype == phen),'SNP']
             for snp in siglist:
-                for clump in clumps:
+                for clump, pval in zip(clumps, pvalues):
                     if not snp in clump: continue
-                    idx_snp = clump[0]
+                    idx_snp = clump[pval.index(min(pval))]
                     overlaps.loc[(pheng,phen), idx_snp] = 1
                     
     norm.normalise(crosstrait_clumps).to_csv(f'{args._in}/all_clumps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t', index = False)
