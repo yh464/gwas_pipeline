@@ -47,7 +47,7 @@ class array_submitter():
                  lim = -1, # number of commands per file, default -1
                  arraysize = 100, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 50
                  email = True,
-                 mode = None,
+                 wallclock = -1, # total time limit per file, default 240 minutes
                  env = 'wd', # default working environment
                  modules = [], # modules to load
                  dependency = [], # dependent jobs
@@ -93,27 +93,22 @@ class array_submitter():
         self._fileid = 0 # current file id
         self._nfiles = -1
         self._jobid = 0
-        self._mode = 'long' if timeout > 15 else 'short'
-        if type(mode) != type(None): self._mode = mode # override mode option if given
         
         # status features
         self._submitted = False
         self._slurmid = []
         
         # limit of commands per file
-        max_time = 720 if self._mode == 'long' else 60 # timeout = 12 hrs max
-        if lim != -1: max_time = 720 # so that time limit can be manually specified
-        import math
-        if lim == -1:
-            self.lim = math.floor(max_time/timeout)
-        else:
-            self.lim = min((lim, math.floor(max_time/timeout)))
-        del math, max_time
+        self._mode = 'long' if timeout > 15 else 'short' # long jobs are for > 15 min commands
+        self.wallclock = 240 if timeout > 15 else 60 # timeout = 12 hrs max
+        if wallclock > 0: self.wallclock = min(wallclock,720)
+        self.lim = int(self.wallclock/timeout)
+        self.lim = max(self.lim, 1) # at least one command per file
         
         # read command line args
         import __main__
-        if 'args' in dir(__main__):
-            self.config_cmdarg(__main__.args)
+        if 'args' in dir(__main__): self.config(**vars(__main__.args))
+        print(f'Max {self.lim} commands per file, {self.arraysize} files per array job')
 
         # directories
         self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
@@ -126,29 +121,22 @@ class array_submitter():
     # change settings
     def config(self, **kwargs):
         valid_keys = [
-            'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
+            'name', 'debug','partition', 'timeout','wallclock','n_node', 'n_task','n_cpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim','intr', 'dependency'
+            'tmpdir','lim','intr','dependency'
             ]
+        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'timeout', 'arraysize', 'lim', 'wallclock']
         for key, value in kwargs.items():
-            if not key in valid_keys:
-                warnings.warn(f'{key} not a valid option for the array submitter')
-                continue
-            setattr(self, key, value)
-    
-    def config_cmdarg(self, args):
-        valid_keys = [
-            'name', 'debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
-            'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim','intr'
-            ]
-        for key, value in vars(args).items():
             if not key in valid_keys: continue
-            if value == None: continue
+            if value == None: continue # skip None values
+            if key in numeric_keys: value = int(value) # convert to int
             setattr(self, key, value)
-        if 'jobname' in vars(args).keys() and args.jobname != None: 
-            setattr(self, 'name', args.jobname)
-            
+        if 'jobname' in kwargs.keys() and kwargs['jobname'] != None and self._blank: 
+            setattr(self, 'name', kwargs['jobname'])
+        if 'wallclock' in kwargs.keys() and kwargs['wallclock'] != None:
+            self.wallclock = min(int(kwargs['wallclock']),720)
+            self.lim = int(self.wallclock/self.timeout)
+
     # a new file requires a shebang line, so this func resets the file
     def _newfile(self):
         fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
@@ -244,7 +232,7 @@ class array_submitter():
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {self.n_cpu}', file = wrap)
-        time = int(self.timeout * self._count)
+        time = int(self.timeout) * self._count
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
@@ -298,7 +286,7 @@ class array_submitter():
         msg.append(f'    Name:      {self.name}')
         msg.append(f'    Path:      {self.tmpdir}')
         msg.append(f'    Partition: {self.partition}')
-        msg.append(f'    Timeout:   {self.timeout*self._count} minutes')
+        msg.append(f'    Timeout:   {int(self.timeout)*self._count} minutes')
         msg.append(f'    CPUs:      {self.n_cpu}')
         msg.append(f'    # files:   {self._nfiles + 1}')
         msg.append(f'    Job ID:    {jobid}')
@@ -315,7 +303,7 @@ class array_submitter():
         if self.intr: import os; os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
         
         self._write_wrap()
-        time = int(self.timeout * self._count)
+        time = int(self.timeout) * self._count
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
         
@@ -348,6 +336,7 @@ class slurm_parser(argparse.ArgumentParser):
         slurm.add_argument('--n_node', help = 'number of nodes needed')
         slurm.add_argument('--n_task', help = 'number of tasks per job')
         slurm.add_argument('--timeout', help = 'timeout in minutes')
+        slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
         slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
         slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
         slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')

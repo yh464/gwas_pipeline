@@ -95,7 +95,7 @@ def main(args):
     for x in temp: 
         if type(x) != type(None): all_files.append(x)
     
-    all_files = pd.concat(all_files)
+    all_files = pd.concat(all_files).sort_values(by = ['Group','Phenotype','SNP'])
     if args.out != None: 
         all_files.to_csv(args.out, sep = '\t', index = False)
     norm.normalise(all_files).to_clipboard(index = False)

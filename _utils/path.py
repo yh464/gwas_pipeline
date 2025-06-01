@@ -143,11 +143,10 @@ class normaliser():
                 )).set_index('before')
             df.to_csv(self._dict_file, sep = '\t')
         
-        # load file
-        self._dict = pd.read_table(self._dict_file, index_col = 'before').fillna('')
+        self.load()
     
     def load(self):
-        self._dict = pd.read_table(self._dict_file, index_col = 'before').fillna('')
+        self._dict = pd.read_table(self._dict_file, index_col = 'before').fillna('').sort_index()
     
     def save(self):
         self._dict.to_csv(self._dict_file, sep = '\t', index = True, header = True)
@@ -186,28 +185,26 @@ class normaliser():
                 f' {x}_',f' {y}_', regex = True, case = False).str.removeprefix('_').str.removesuffix('_')
             return series
         
-        df = df_in.copy()
+        df = df_in.copy().reset_index(drop = True)
+        col = df_in.columns.to_frame().reset_index(drop = True)
+        idx = df_in.index.to_frame().reset_index(drop = True)
         for x in self._dict.index:
             y = str(self._dict.loc[x, 'after'])
-            for col in df.columns:
-                if col == 'SNP': continue # NEVER change SNP IDs
-                try: df.loc[:,col] = n(df[col], x, y)
+            for c in df.columns:
+                if c == 'SNP': continue # NEVER change SNP IDs
+                try: df.loc[:,c] = n(df[c], x, y)
                 except: pass
-                
-            col = df.columns.to_frame()
             for c in col.columns:
                 try: col.loc[:,c] = n(col[c],x,y)
                 except: pass
-            if col.shape[1] > 1:
-                df.columns = pd.MultiIndex.from_frame(col)
-            else: df.columns = col.iloc[:,0]
-            idx = df.index.to_frame()
             for c in idx.columns:
                 try: idx.loc[:,c] = n(idx[c],x,y)
                 except: pass
-            if idx.shape[1] > 1:
-                df.set_index(pd.MultiIndex.from_frame(idx), inplace = True)
-            else: df.index = idx.iloc[:,0]
+            
+        if col.shape[1] > 1: df.columns = pd.MultiIndex.from_frame(col)
+        else: df.columns = col.iloc[:,0]
+        if idx.shape[1] > 1: df.set_index(pd.MultiIndex.from_frame(idx), inplace = True)
+        else: df.index = idx.iloc[:,0]
         return df
     
     def normalise(self, data, backup = None):

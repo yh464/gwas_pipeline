@@ -21,10 +21,16 @@ prefix = os.path.basename(args._in).replace('.fastGWA', '')
 
 scripts_path = os.path.realpath(__file__)
 scripts_path = os.path.dirname(scripts_path)
+hdr = open(args._in).readline().strip().split()
+if 'OR' in hdr: ss = 'OR,1'
+elif 'BETA' in hdr: ss = 'BETA,0'
+elif 'Z' in hdr: ss = 'Z,0'
+else: raise ValueError('No valid summary statistics found in the input file')
 if args.force or (not os.path.isfile(f'{args.out}/{prefix}.sumstats')):
     # this command uses python2 so a separate script for ldsc  
     os.system(f'bash {scripts_path}/ldsc_master.sh munge_sumstats.py --sumstats {args._in} '+ \
           f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt '+
+          f'--signed-sumstats {ss} '
           # f'--merge-alleles {args.ldsc}/w_hm3.snplist '
           f'--out {args.out}/{prefix} --chunksize 50000')
 

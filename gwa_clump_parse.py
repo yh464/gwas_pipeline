@@ -13,11 +13,13 @@ Output format: tabular, columns = loci (one representative SNP in the clump), ro
 
 def identify_clumps(df):
     from fnmatch import fnmatch
-    clumps = []
+    df = df.sort_values(by = ['CHR','POS']).dropna()
+    clumps = []; pvalues = []
     snps = df['SNP'].unique()
     if len(snps) == 0: return []
-    current_clump = [snps[0]]
+    current_clump = [snps[0]]; current_p = [df.loc[df.SNP==snps[0],'P'].min()]
     for i in snps[1:]:
+        pval = df.loc[df.SNP==i,'P'].min()
         for j in current_clump:
             all_p2 = df.loc[df.SNP==j,'SP2'] # lists all SNPs within clumping distance
             in_clump = False
@@ -27,11 +29,12 @@ def identify_clumps(df):
             if in_clump:
                 break
         if in_clump:
-            current_clump.append(i); continue
+            current_clump.append(i); current_p.append(pval); continue
         else:
-            clumps.append(current_clump); current_clump = [i]
-    clumps.append(current_clump)
-    return clumps
+            clumps.append(current_clump); pvalues.append(current_p)
+            current_clump = [i]; current_p = [pval]
+    clumps.append(current_clump); pvalues.append(current_p)
+    return clumps, pvalues
 
 def main(args):
     import os
@@ -73,11 +76,11 @@ def main(args):
         
         # identify overlaps 
         ## first identify SNPs in the same clump
-        clumps = identify_clumps(outdf)
+        clumps, pvalues = identify_clumps(outdf)
         
         ## then compile the table of overlaps
         overlaps = pd.DataFrame(data = 0, index = prefix_list, 
-                                columns = [clump[0] for clump in clumps])
+            columns = [clump[pval.index(min(pval))] for clump, pval in zip(clumps,pvalues)])
         for phen in prefix_list:
             siglist = outdf.loc[outdf.phenotype==phen,'SNP']
             for snp in siglist:
@@ -91,9 +94,9 @@ def main(args):
     crosstrait_clumps = pd.concat(crosstrait_clumps)
     ct_prefix = '_'.join(args.pheno)
     # identify overlaps as above
-    clumps = identify_clumps(crosstrait_clumps)
+    clumps, pvalues = identify_clumps(crosstrait_clumps)
     overlaps = pd.DataFrame(data = 0, index = pd.MultiIndex.from_frame(crosstrait_clumps[['phen_group','phenotype']]),
-                            columns = [clump[0] for clump in clumps]).sort_index()
+        columns = [clump[pval.index(min(pval))] for clump, pval in zip(clumps,pvalues)]).sort_index()
     for pheng in args.pheno:
         for phen in crosstrait_clumps.phenotype.unique():
             siglist = crosstrait_clumps.loc[(crosstrait_clumps.phen_group == pheng) &

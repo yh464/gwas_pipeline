@@ -16,7 +16,7 @@ def splash(args, silent = False):
     msg.append(f'    {sys.argv[0]}')
     slurm_args = ['jobname','name','debug','partition', 'timeout', 'n_node', 'n_task','n_cpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
-            'tmpdir','lim','intr']
+            'tmpdir','lim','intr','wallclock']
     msg.append('Input options:')
     v = vars(args)
     for var in v:
