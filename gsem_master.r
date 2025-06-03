@@ -228,7 +228,7 @@ main = function(args){
       if (length(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
       cgwas = commonfactorGWAS(ldscoutput, ss, cores = 16) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
-        select(-lhs, -op, -rhs, -i)
+        select(-lhs, -op, -rhs, -i) %>% add_column(N = 1)
       save(cgwas, file = paste0(args$out,'_common.chr',args$gwas,'.rdata'))
       write_tsv(cgwas, gwa)
     }
@@ -290,7 +290,7 @@ main = function(args){
     if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
       mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T)
-      for (i in 1:length(gwa)) write_tsv(mgwas[[i]] %>% 
+      for (i in 1:length(gwa)) write_tsv(mgwas[[i]] %>% add_column(N = 1) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
                                          gwa[i])
   }}
@@ -357,9 +357,9 @@ main = function(args){
         'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
         'shared ~ SNP \n indep ~ SNP \n SNP ~~ SNP')
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
-      sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP') %>% 
-        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate')
-      write_tsv(sgwas[[1]], gwa)
+      sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP')
+      write_tsv(sgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', BETA = 'est', 
+        SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa)
     }
   }
   
@@ -379,7 +379,7 @@ main = function(args){
     if (!all(sapply(sub_gwa, file.exists)) | args$force){
       mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub, cores = 16) 
       save(mgwas,file = paste0(args$out,'.usergwas.chr',args$gwas,'.rdata'))
-      for (i in 1:length(sub)) write_tsv(mgwas[[i]] %>% 
+      for (i in 1:length(sub)) write_tsv(mgwas[[i]] %>% add_column(N = 1) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
         sub_gwa[i])
     }
