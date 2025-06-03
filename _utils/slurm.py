@@ -45,6 +45,7 @@ class array_submitter():
                  log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
+                 mode = DeprecationWarning('Use timeout instead of mode'), # deprecated, use timeout instead
                  lim = -1, # number of commands per file, default -1
                  arraysize = 100, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 50
                  email = True,

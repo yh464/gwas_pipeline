@@ -26,7 +26,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
       name = f'clump_{args.pheno[0]}_{args.p:.0e}',
-      timeout = timeout, mode = 'long')
+      timeout = timeout)
     
     from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)

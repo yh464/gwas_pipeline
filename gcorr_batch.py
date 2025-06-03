@@ -30,11 +30,7 @@ def main(args):
     # array submitter
     timeout = int(max([len(x) for _,x in (gwa1+gwa2)]+[45])/12) # each phenotype takes ~5 seconds
     from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = f'gcorr_{args.p1[0]}',
-        timeout = timeout, mode = 'long', wd = args._in,
-        # debug = True
-        )
+    submitter = array_submitter(name = f'gcorr_{args.p1[0]}',timeout = timeout, wd = args._in)
     
     for g1, p1s, g2, p2s in pairwise:
         # p1s means list of <pheno1>s in group1
