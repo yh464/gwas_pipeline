@@ -55,8 +55,8 @@ def main(args):
 
     # find instruments
     instruments = []
-    for i in args.p1:
-        for j in args.p2:
+    for i,_ in exposures:
+        for j,_ in outcomes:
             instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{args.pval:.0e}.txt')
             instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{args.pval:.0e}.txt')
             instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{args.pval:.0e}.txt')

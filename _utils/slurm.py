@@ -131,7 +131,7 @@ class array_submitter():
             ]
         numeric_keys = ['n_node', 'n_task', 'n_cpu', 'timeout', 'arraysize', 'lim', 'wallclock','parallel']
         for key, value in kwargs.items():
-            if key in numeric_keys and value.startswith('x'):
+            if key in numeric_keys and value != None and value.startswith('x'):
                 # if the value starts with 'x', it is a multiplier
                 value = float(value[1:]) * getattr(self, key)
             if not key in valid_keys: continue
@@ -247,7 +247,7 @@ class array_submitter():
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {self.n_cpu}', file = wrap)
-        time = int(self.timeout) * self._count
+        time = int(self.timeout * self._count / self.parallel)
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
@@ -301,7 +301,7 @@ class array_submitter():
         msg.append(f'    Name:      {self.name}')
         msg.append(f'    Path:      {self.tmpdir}')
         msg.append(f'    Partition: {self.partition}')
-        msg.append(f'    Timeout:   {int(self.timeout)*self._count} minutes')
+        msg.append(f'    Timeout:   {int(self.timeout*self._count/self.parallel)} minutes')
         msg.append(f'    CPUs:      {self.n_cpu}')
         msg.append(f'    # files:   {self._nfiles + 1}')
         msg.append(f'    Parallel:  {self.parallel}')

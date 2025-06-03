@@ -25,10 +25,9 @@ def main(args):
     force = ' -f' if args.force else ''
     
     # parse list of outcomes and exposures
-    if not args.bid:
-        exposures = find_gwas(args.p1)
-    else:
-        exposures = find_gwas(args.p1 + args.p2)
+    if not args.bid: exposures = find_gwas(args.p1)
+    else: exposures = find_gwas(args.p1 + args.p2)
+    all_pheno = find_gwas(args.p1 + args.p2)
     
     print('Trying to find genetic instruments for all exposure phenotypes')
     for expg, expp in exposures:
@@ -44,7 +43,7 @@ def main(args):
             for x in all_snps: print(x, file=file)
             file.close()
         
-        for p in (args.p1 + args.p2):
+        for p,_ in all_pheno:
             out_file = f'{args.out}/{p}_clumped_for_{expg}_{args.pval:.0e}.txt'
             if os.path.isfile(out_file) and not args.force: continue
             cmd = f'python gwa_extract_snp.py {temp_snps} -p {p} -o {out_file} {force}'

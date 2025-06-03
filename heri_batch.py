@@ -14,35 +14,31 @@ Requires following inputs:
 '''
 
 def main(args):
-    import os
-    from fnmatch import fnmatch
-    from logparser import parse_h2_log
-    import numpy as np
+  import os
+  from fnmatch import fnmatch
+  from logparser import parse_h2_log
+  import numpy as np
+  
+  force = '-f' if args.force else ''
+  
+  # array submitter
+  from _utils.slurm import array_submitter
+  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10)
+  
+  for x in args.pheno:
+    os.chdir(args._in)
+    os.chdir(x)
+    if not os.path.isdir(f'{args.out}/{x}'): os.mkdir(f'{args.out}/{x}')
     
-    force = '-f' if args.force else ''
-    
-    # array submitter
-    from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = f'heri_{args.pheno[0]}',
-        timeout = 10, mode = 'long',
-        debug = False
-        )
-    
-    for x in args.pheno:
-      os.chdir(args._in)
-      os.chdir(x)
-      if not os.path.isdir(f'{args.out}/{x}'): os.mkdir(f'{args.out}/{x}')
-      
-      for y in os.listdir():
-        if not fnmatch(y, '*.fastGWA'): continue
-        if fnmatch(y, '*X.fastGWA'):
-            continue                               # autosomes
-        prefix = y.replace('.fastGWA','')
-        h2, _ = parse_h2_log(f'{args.out}/{x}/{prefix}.h2.log')
-        if np.isnan(h2) or args.force: submitter.add('python '+
-            f'heri_by_trait.py -i {args._in}/{x}/{y} -o {args.out}/{x}/ --ldsc {args.ldsc} {force}')
-    submitter.submit()
+    for y in os.listdir():
+      if not fnmatch(y, '*.fastGWA'): continue
+      if fnmatch(y, '*X.fastGWA'):
+          continue                               # autosomes
+      prefix = y.replace('.fastGWA','')
+      h2, _ = parse_h2_log(f'{args.out}/{x}/{prefix}.h2.log')
+      if np.isnan(h2) or args.force: submitter.add('python '+
+          f'heri_by_trait.py -i {args._in}/{x}/{y} -o {args.out}/{x}/ --ldsc {args.ldsc} {force}')
+  submitter.submit()
 
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
