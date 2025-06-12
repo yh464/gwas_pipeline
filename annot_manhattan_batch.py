@@ -62,7 +62,7 @@ if __name__ == '__main__':
     args.pheno.sort()
     import os
     for arg in ['gwa','magma','smr','ref','out']:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
         
     from _utils import cmdhistory, path, logger
     logger.splash(args)

@@ -18,7 +18,7 @@ args = parser.parse_args()
 
 import os
 for arg in ['_in','out']:
-    exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
 import time
 

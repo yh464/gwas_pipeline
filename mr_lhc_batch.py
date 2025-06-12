@@ -140,7 +140,7 @@ if __name__ == '__main__':
     
     import os
     for arg in ['_in','out','ldsc','rho','hm3','refld']:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
     try: args.n1 = int(args.n1)
     except: args.n1 = os.path.realpath(args.n1)
     try: args.n2 = int(args.n2)

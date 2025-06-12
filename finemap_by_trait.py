@@ -40,7 +40,7 @@ args = parser.parse_args()
 
 import os
 for arg in ['dir','clump','out','bfile']:
-    exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
 from _utils import logger
 logger.splash(args)

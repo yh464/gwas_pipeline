@@ -53,7 +53,7 @@ if __name__ == '__main__':
     
     import os
     for arg in ['_in',]:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if type(args.out) == type(None): args.out = args._in
     
     from _utils import cmdhistory, path

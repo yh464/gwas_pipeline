@@ -22,7 +22,7 @@ parser.add_argument('-f','--force', dest = 'force', help = 'force overwrite',
 args=parser.parse_args()
 import os
 for arg in ['_in','out','dcov','qcov','prsdir']:
-    exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
 import time
 tic = time.perf_counter()

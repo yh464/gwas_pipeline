@@ -23,7 +23,7 @@ parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
 args = parser.parse_args()
 import os
 for arg in ['_in','magma','bfile','annot','ref']:
-    exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    setattr(args, arg, os.path.realpath(getattr(args, arg)))
 if type(args.out) == type(None): args.out = args._in
 else: args.out = os.path.realpath(args.out)
 

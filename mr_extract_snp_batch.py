@@ -62,7 +62,7 @@ def api(**kwargs):
         setattr(args, key, value)
     for key, value in kwargs.items(): setattr(args, key, value)
     for arg in ['_in','out','clump']:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
     submitter = main(args)
     return submitter
 
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     
     import os
     for arg in ['_in','out','clump']:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path, logger
     logger.splash(args)

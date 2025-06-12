@@ -92,7 +92,7 @@ if __name__ == '__main__':
     # path normalisation
     import os
     for arg in ['_in','annot','bfile','out','magma','gset']:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path
     cmdhistory.log()

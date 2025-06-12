@@ -95,7 +95,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     import os
     for arg in ['_in','qtl','gwa']:
-        exec(f'args.{arg} = os.path.realpath(args.{arg})')
+        setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, logger
     logger.splash(args)

@@ -38,7 +38,7 @@ import os
 from fnmatch import fnmatch
 # path normalisation
 for arg in ['dir','annot','bfile','out','magma','gset']:
-    exec(f'args.{arg} = os.path.realpath(args.{arg})')
+    setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
 os.system('module load gcc/11') # IMPORTANT!!!!!
 os.chdir(f'{args.dir}/{args.pheno}')
