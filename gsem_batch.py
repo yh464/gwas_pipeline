@@ -157,7 +157,7 @@ def main(args):
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
 
     # if modelling exposure-outcome effects, use only correlated traits
-    from gcorr_plot import crosscorr_parse
+    from logparser import crosscorr_parse
     if len(outcomes) > 0: exp_corr_out = crosscorr_parse(exposures_short, outcomes_short, logdir=args.rg)
     manual_kwd = {'heywood': True} if args.gwas else {}
     manual_kwd['silent'] = (len(outcomes) > 0)

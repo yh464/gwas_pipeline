@@ -9,7 +9,7 @@ Scans the entire directory for GWAS summary stats of the same data extension.
 '''
 
 def main(args):
-    from gcorr_plot import crosscorr_parse
+    from logparser import crosscorr_parse
     from _utils.path import find_gwas
     import warnings
     

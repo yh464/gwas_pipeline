@@ -24,7 +24,7 @@ def main(args):
     import pandas as pd
     from logparser import parse_h2_log
     from _utils.path import find_clump, find_gwas
-    from gcorr_plot import crosscorr_parse
+    from logparser import crosscorr_parse
     
     # array submitter
     from mr_extract_snp_batch import api
@@ -91,13 +91,13 @@ def main(args):
             # input file name specification
             try:
                 gwa1 = f'{args.gwa}/{g1}/{p1}.{args.ext1}'
-                clump1, pval1 = find_clump(f'{args.clump}/{g1}',p1, args.pval)
-                clump001, _ = find_clump(f'{args.clump}/{g1}',p1, 0.001)
+                clump1, pval1 = find_clump(g1, p1, args.clump, args.pval)
+                clump001, _ = find_clump(g1, p1, args.clump, 0.001)
             except: print(f'{g1} missing clumped GWAS sumstats'); continue
             try: 
                 gwa2 = f'{args.gwa}/{g2}/{p2}.{args.ext2}'
-                clump2, pval2 = find_clump(f'{args.clump}/{g2}',p2, args.pval)
-                clump002, _ = find_clump(f'{args.clump}/{g2}',p2, 0.001)
+                clump2, pval2 = find_clump(g2, p2, args.clump, args.pval)
+                clump002, _ = find_clump(g2, p2, args.clump, 0.001)
             except: print(f'{g2} missing clumped GWAS sumstats'); continue
             pval_thr = max([pval1, pval2])
             

@@ -39,7 +39,7 @@ def main(args):
     if len(args.pheno) > 1 and args.filter:
         gwa1 = find_gwas(args.pheno[0], dirname = args._in)
         gwa2 = find_gwas(*args.pheno[1:], dirname = args._in)
-        from gcorr_plot import crosscorr_parse
+        from logparser import crosscorr_parse
         rg = crosscorr_parse(gwa1, gwa2, logdir = args.rg)
         rg = rg.loc[rg.q < 0.05, ['group1','pheno1','group2','pheno2']]
         
@@ -66,7 +66,7 @@ def main(args):
     # read clump outputs for each phenotype
     for x,y in gwa:
         print(f'Identifying blocks for {x}/{y}')
-        clump,_ = find_clump(f'{args.clump}/{x}',y,args.p)
+        clump,_ = find_clump(x, y, args.clump, pval = args.p)
         try: clump = pd.read_table(clump, sep = '\\s+', usecols = ['CHR','BP'])
         except: continue
         

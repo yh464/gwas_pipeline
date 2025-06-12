@@ -17,7 +17,9 @@ import warnings
 import re
 import pandas as pd
 
-def find_clump(dirname, prefix, pval):
+def find_clump(group, pheno, 
+               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_users/yh464/clump',
+               pval = 5e-8):
     '''
     Find PLINK clump files for a specific trait
     Quality controls to find strictest p-value threshold with >5 SNP
@@ -25,28 +27,29 @@ def find_clump(dirname, prefix, pval):
     prefix: name of phenotype
     pval: p-value
     '''
-    if os.path.isfile(f'{dirname}/{prefix}_{pval:.0e}.clumped'):
+    dirname = f'{dirname}/{group}'
+    if os.path.isfile(f'{dirname}/{pheno}_{pval:.0e}.clumped'):
         # min 5 SNPs
-        if len(open(f'{dirname}/{prefix}_{pval:.0e}.clumped').read().splitlines()) > 5:
-            return f'{dirname}/{prefix}_{pval:.0e}.clumped', pval
+        if len(open(f'{dirname}/{pheno}_{pval:.0e}.clumped').read().splitlines()) > 5:
+            return f'{dirname}/{pheno}_{pval:.0e}.clumped', pval
     # identify clump file with lowest p-value with >=5 SNPs
     flist = [] 
     for y in os.listdir(dirname):
-        if fnmatch(y,f'{prefix}_?e-??.clumped'): 
+        if fnmatch(y,f'{pheno}_?e-??.clumped'): 
             if len(open(f'{dirname}/{y}').read().splitlines()) > 5:
                 flist.append(y)
     if len(flist) > 0:
         plist = [float(z[-13:-8]) for z in flist]
-        return f'{dirname}/{prefix}_{min(plist):.0e}.clumped', min(plist)
+        return f'{dirname}/{pheno}_{min(plist):.0e}.clumped', min(plist)
     
     for y in os.listdir(dirname):
-        if fnmatch(y,f'{prefix}_?e-??.clumped'): 
+        if fnmatch(y,f'{pheno}_?e-??.clumped'): 
              flist.append(y)
     if len(flist) > 0:
         plist = [float(z[-13:-8]) for z in flist]
-        warnings.warn(f'{prefix} has <5 SNPs')
-        return f'{dirname}/{prefix}_{max(plist):.0e}.clumped', max(plist)
-    raise FileNotFoundError(f'No clump found for {prefix}')
+        warnings.warn(f'{pheno} has <5 SNPs')
+        return f'{dirname}/{pheno}_{max(plist):.0e}.clumped', max(plist)
+    raise FileNotFoundError(f'No clump found for {pheno}')
     
 def find_gwas(*pheno, 
               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
@@ -64,6 +67,8 @@ def find_gwas(*pheno,
         True - output = [(<group0>, <pheno0.0>), (<group0>, <pheno0.1>), ...]
         False - output = [(<group0>, [<pheno0.0>, <pheno0.1>, ...]), ...]
     signstat: filters for only GWAS with an SE column, not just Z score
+    returns: a list of (group, [pheno1, pheno2, ...]) pairs or (group, pheno) pairs if long = True
+    all returned phenotypes are filtered to have a valid GWAS summary stats file
     '''
     
     out = []
