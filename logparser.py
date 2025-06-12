@@ -12,8 +12,9 @@ import os
 from fnmatch import fnmatch
 import pandas as pd
 import numpy as np
+import scipy.stats as sts
     
-def parse_h2_log(file):
+def parse_h2_log(file, full = False):
     '''
     Parses LDSC H2 logs
     input: file name *.h2.log
@@ -21,13 +22,26 @@ def parse_h2_log(file):
     '''
     try:
         for line in open(file).read().splitlines():
-            if fnmatch(line, 'Total Observed scale h2*'): break
-        l = line.split()
-        h2 = float(l[-2])
-        se = float(l[-1].replace('(','').replace(')',''))
+            if fnmatch(line, 'Total Observed scale h2*'): 
+                l = line.split()
+                h2 = float(l[-2])
+                se = float(l[-1].replace('(','').replace(')',''))
+            if fnmatch(line, 'Intercept*'):
+                l = line.split()
+                gcov_int = float(l[-2]); gcov_int_se = float(l[-1].replace('(','').replace(')',''))
     except:
-        h2 = np.nan; se = np.nan
-    return h2, se
+        h2 = np.nan; se = np.nan; gcov_int = np.nan; gcov_int_se = np.nan
+    if not full: return h2, se
+    df = pd.DataFrame(dict(
+        group1 = [os.path.basename(os.path.dirname(file))],
+        pheno1 = os.path.basename(file).replace('.h2.log','').replace('.gz',''),
+        group2 = os.path.basename(os.path.dirname(file)),
+        pheno2 = os.path.basename(file).replace('.h2.log','').replace('.gz',''),
+        rg = h2, se = se, p = 1 - sts.chi2.cdf(h2**2/se**2, df = 1),
+        h2_obs = h2, h2_obs_se = se, h2_int = gcov_int, h2_int_se = gcov_int_se,
+        gcov_int = gcov_int, gcov_int_se = gcov_int_se
+    ))
+    return df
 
 def parse_greml_h2_log(file):
     '''
@@ -106,6 +120,18 @@ def crosscorr_parse(gwa1, gwa2 = [],
             flip = True
         else: flip = False
         for p1 in p1s:
+            if g1 == g2 and h2dir != None: # heritability
+                fname = f'{h2dir}/{g1}/{p1}.h2.log'
+                if not full:
+                    h2, se = parse_h2_log(fname)
+                    rg = pd.DataFrame(dict(group1 = [g1], pheno1 = p1, group2 = g1, 
+                        pheno2 = p1, rg = h2, se = se, 
+                        p = 1-sts.chi2.cdf(h2**2/se**2, df = 1),fixed_int = False))
+                else: rg = parse_h2_log(fname, full = True)
+                rg['fixed_int'] = False
+                if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
+                summary.append(rg)
+                
             fname = f'{logdir}/{g1}.{g2}/{g1}_{p1}.{g2}.rg.log'
             if not os.path.isfile(fname) and g1 != g2: 
                 warnings.warn(f'No gene correlation found for {g1}/{p1} with {g2}\n'+
@@ -121,15 +147,6 @@ def crosscorr_parse(gwa1, gwa2 = [],
             if os.path.isfile(fname_noint):
                 rg = parse_rg_log(fname_noint, full = full)
                 rg['fixed_int'] = True
-                if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
-                summary.append(rg)
-            
-            if g1 == g2 and h2dir != None: # heritability
-                fname = f'{h2dir}/{g1}/{p1}.h2.log'
-                h2, se = parse_h2_log(fname)
-                rg = pd.DataFrame(dict(group1 = [g1], pheno1 = p1, group2 = g1, 
-                    pheno2 = p1, rg = h2, se = se, 
-                    p = 1-sts.chi2.cdf(rg**2/se**2, df = 1),fixed_int = False))
                 if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
                 summary.append(rg)
             

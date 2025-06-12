@@ -21,7 +21,7 @@ parser$add_argument('--clump', nargs = '*', help = 'clumping outputs, in order t
 parser$add_argument('--all-loci', default = F, action = 'store_true', help = 'use all loci for regional correlation')
 parser$add_argument('--overlap', help = 'sample overlap file from LDSC gcov_int')
 parser$add_argument('--ref', help = 'Reference files directory', default = 
-                      '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/1000g_by_eth/')
+                      '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
 parser$add_argument('--eth', help = 'ethnicity', choices = c('afr','amr','eas','eur','sas'), default = 'eur')
 parser$add_argument('--all-exp', dest = 'all_exp', help = 'Multiple regression with all exposures',
                     action = 'store_true', default = F)
@@ -58,30 +58,29 @@ parse_metadata = function(file){
 }
 
 #### Normalising LAVA outputs ####
-norm_univ = function(univ) return(univ %>% 
+norm_univ = function(univ) if (is.null(univ)) return(NULL) else return(univ %>% 
   rename(stat = h2.obs) %>%
   mutate(se = abs(stat/qnorm(1-p/2)),
-         group1 = str_split_1(phen,':'), 
-         pheno1 = str_split_i(phen,':',2)) %>%
+         group1 = str_split_i(phen,':',1), pheno1 = str_split_i(phen,':',2)) %>%
   mutate(group2 = group1, pheno2 = pheno1) %>%
   select(group1, pheno1, group2, pheno2, stat, se, p) %>% add_column(type = 'h2'))
-norm_biv = function(biv) return(biv %>% 
+norm_biv = function(biv) if (is.null(biv)) return(NULL) else return(biv %>% 
   rename(stat = rho) %>%
   mutate(se = (rho.upper-rho.lower)/2,
-         group1 = str_split_1(phen1,':'), pheno1 = str_split_i(phen1,':',2),
-         group2 = str_split_1(phen2,':'), pheno2 = str_split_i(phen2,':',2)) %>%
+         group1 = str_split_i(phen1,':',1), pheno1 = str_split_i(phen1,':',2),
+         group2 = str_split_i(phen2,':',1), pheno2 = str_split_i(phen2,':',2)) %>%
   select(group1, pheno1, group2, pheno2, stat, se, p) %>% add_column(type = 'rg'))
-norm_pcor = function(pcor) return(pcor %>%
+norm_pcor = function(pcor) if (is.null(pcor)) return(NULL) else return(pcor %>%
   rename(stat = pcor) %>%
   mutate(se = (ci.upper - ci.lower)/2,
-         group1 = str_split_1(phen1,':'), pheno1 = str_split_i(phen1,':',2),
-         group2 = str_split_1(phen2,':'), pheno2 = str_split_i(phen2,':',2)) %>%
+         group1 = str_split_i(phen1,':',1), pheno1 = str_split_i(phen1,':',2),
+         group2 = str_split_i(phen2,':',1), pheno2 = str_split_i(phen2,':',2)) %>%
   select(group1, pheno1, group2, pheno2, stat, se, p) %>% add_column(type = 'pcor'))
-norm_mreg = function(mreg) return(mreg %>%
+norm_mreg = function(mreg) if (is.null(mreg)) return(NULL) else return(mreg %>%
   rename(state = gamma) %>%
   mutate(se = (gamma.upper-gamma.lower)/2,
-         group1 = str_split_1(phen1,':'), pheno1 = str_split_i(phen1,':',2),
-         group2 = str_split_1(phen2,':'), pheno2 = str_split_i(phen2,':',2)) %>%
+         group1 = str_split_i(phen1,':',1), pheno1 = str_split_i(phen1,':',2),
+         group2 = str_split_i(phen2,':',1), pheno2 = str_split_i(phen2,':',2)) %>%
   select(group1, pheno1, group2, pheno2, stat, se, p) %>% add_column(type = 'mreg'))
 
 #### Main execution block ####
@@ -91,10 +90,10 @@ main = function(args) {
   library(tidyverse)
   library(LAVA)
   library(openssl)
+  library(progress)
   
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
-  tmpfiles = character(0)
   if (! dir.exists(dirname(args$out))) dir.create(dirname(args$out), recursive = T)
   if (file.exists(args$out) & !args$force) return(NULL)
   
@@ -115,19 +114,18 @@ main = function(args) {
            phenotype = paste0(group,':',pheno)) %>%
     rename(cases = nca, controls = nco, prevalence = pop_prev) %>%
     select(phenotype, cases, controls, prevalence, filename)
-  infofile = paste0(rand_bytes(8),collapse = '') %>% paste0('.info.txt')
-  tmpfiles = c(tmpfiles, infofile)
+  infofile = paste0(rand_bytes(8),collapse = '') %>% paste0(tempdir(), .,'.info.txt')
   write_tsv(metadata, file = infofile)
   
   #### read loci ####
   blocks = list()
   source('https://github.com/cadeleeuw/lava-partitioning/raw/refs/heads/main/ldblock.r')
   for (chrom in 1:22){
-    blocks[[i]] = load.breaks(paste0(args$ref,'/',args$eth,'/chr',chrom)) %>% 
-      make.blocks() %>% add_column(CHR = chrom, .before = 1)
+    blocks[[chrom]] = load.breaks(paste0(args$ref,'/',args$eth,'/chr',chrom)) %>% 
+      make.blocks() %>% as_tibble() %>% add_column(CHR = chrom, .before = 1)
   }
   blocks = bind_rows(blocks) %>% rename(START = start, STOP = stop) %>% add_column(sig = F)
-
+  
   # filter loci based on significance
   if (length(args$clump) == 0) {
     args$all_loci = T
@@ -150,6 +148,7 @@ main = function(args) {
     blocks = blocks %>% filter(sig)
   }
   loci = blocks %>% select(CHR,START,STOP) %>% add_column(LOC=1:nrow(blocks), .before = 1)
+  cat('\n\nFound',nrow(loci),'loci for analysis\n\n')
   
   #### read input sumstats ####
   cache = paste0(tmpdir,'/',sha256(paste(p1,p2,cov, collapse = '_')),'.lava.rdata')
@@ -162,6 +161,7 @@ main = function(args) {
   } else load(cache)
   
   #### run LAVA ####
+  pb = progress_bar$new(total = nrow(loci), format = '[:bar] :percent :elapsedfull / eta :eta')
   stats = list()
   for (i in 1:nrow(loci)){
     locus = process.locus(loci[i,], input)
@@ -197,7 +197,10 @@ main = function(args) {
       CHR = locus$chr, START = locus$start, STOP = locus$stop, nsnp = locus$n.snps
     )
     stats[[i]] = locus_stats
+    pb$tick()
   }
   stats = bind_rows(stats)
   write_tsv(stats, args$out)
 }
+
+main(args)

@@ -18,7 +18,8 @@ Outputs:
 def lava_cmd(out, exp, cov, overlap, clump, task, outfile, 
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'):
   from hashlib import sha256
-  overlap_prefix = sha256(f'{out[0]}:{out[1]})_' + '_'.join([f'{g}:{p}' for g, ps in exp + cov for p in ps])) + '_overlap.txt'
+  overlap_prefix = sha256((f'{out[0]}:{out[1]})_' + '_'.join([f'{g}:{p}' for g, ps in (exp + cov) for p in ps])
+                          ).encode()).hexdigest() + '_overlap.txt'
   overlap_file = f'{tmpdir}/{overlap_prefix}'
   subidx = [f'{out[0]}:{out[1]}'] + [f'{g}:{p}' for g, ps in exp + cov for p in ps]
   overlap_sub = overlap.loc[subidx, subidx]
@@ -60,8 +61,8 @@ def main(args):
   if len(cov) > 0: task += ['--cov'] + [f'{g}:{p}' for g, p in cov]
 
   if 0 < args.pval < 1 and not args.all_loci:
-    exposures_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval) for j in js] for i, js in exposures]
-    outcomes_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval) for j in js] for i, js in outcomes]
+    exposures_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in exposures]
+    outcomes_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in outcomes]
   
   # sample overlap matrix
   gcorr = crosscorr_parse(exposures + outcomes + cov, logdir = args.rg, full = True)
@@ -69,9 +70,10 @@ def main(args):
   gcorr['phen2'] = gcorr['group2'] + ':' + gcorr['pheno2']
   gcorr_rev = gcorr.copy()
   gcorr_rev['phen1'] = gcorr['phen2']; gcorr_rev['phen2'] = gcorr['phen1']
-  gcorr = gcorr.append(gcorr_rev, ignore_index = True).drop_duplicates(subset = ['phen1', 'phen2'], keep = 'first')
-  gcorr = gcorr.pivot_table(index = 'phen1', columns = 'phen2', values = 'gcov_int', fill_value = 0)
+  gcorr = pd.concat([gcorr, gcorr_rev]).drop_duplicates(subset = ['phen1', 'phen2'], keep = 'first')
+  gcorr = gcorr.pivot_table(index = 'phen1', columns = 'phen2', values = 'gcov_int')
   overlap = pd.DataFrame(cov2corr(gcorr.values), columns = gcorr.columns, index = gcorr.index)
+  overlap.index.name = None
 
   # all exposures for each outcome
   if args.all_exp:
@@ -101,13 +103,13 @@ def main(args):
         outfile = f'{outdir}/{g1}_{p1}.{g2}.lava.txt'
         if os.path.isfile(outfile) and not args.force: continue
         # all phenotypes in g2 are included and correlated with g1_p1
-        cmd = lava_cmd((g1, p1), (g2, p2s), cov, overlap, [c1] + c2s, task, outfile)
+        cmd = lava_cmd((g1, p1), [(g2, p2s)], cov, overlap, [c1] + c2s, task, outfile)
         submitter.add(cmd)
   submitter.submit()
 
 if __name__ == '__main__':
   from _utils.slurm import slurm_parser
-  parser = slurm_parser('This script runs LAVA for local genetic correlation')
+  parser = slurm_parser(description = 'This script runs LAVA for local genetic correlation')
   parser.add_argument('-p1', nargs = '+', required = True, help = 'Exposures')
   parser.add_argument('-p2', nargs = '*', default = [],
     help = 'Outcomes, leave blank to run pairwise correlations across exposures')
@@ -121,7 +123,7 @@ if __name__ == '__main__':
   parser.add_argument('--clump', dest = 'clump', help = 'Clumping output directory', 
     default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump/')
   parser.add_argument('--ref', help = 'Reference LD Blocks directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/1000g_by_eth/')
+    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
   parser.add_argument('--all-loci', action = 'store_true', help = 'Analyse all loci')
@@ -138,7 +140,7 @@ if __name__ == '__main__':
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()
-  proj.add_input(f'{args.gwa}', __file__)
+  proj.add_input(f'{args._in}', __file__)
   proj.add_input(f'{args.clump}',__file__)
   proj.add_input(args.rg,__file__)
   proj.add_output(f'{args.out}',__file__)
