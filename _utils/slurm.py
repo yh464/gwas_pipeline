@@ -61,8 +61,8 @@ class array_submitter():
         
         import warnings
         if len(name) > 30:
-            import secrets
-            name = secrets.token_urlsafe(6).replace('-','_') # generate a random name
+            from hashlib import sha256
+            name = sha256(name.encode()).hexdigest()[:10] # truncate to 10 characters
             warnings.warn(f'Job name too long, using random name {name}')
         self.name = name.replace('/','_') + '_0'
         self.debug = debug
