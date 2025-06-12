@@ -31,6 +31,8 @@ import pandas as pd
 prefix = os.path.basename(args._in).replace('.txt','')
 if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
     import pingouin as pg
+    import numpy as np
+    from statsmodels.api import OLS
     import scipy.stats as sts
     
     # process covars
@@ -97,6 +99,9 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
                 try:
                     tmp = tmp_merge[cov_list + ['prs',phen]].dropna()
                     partcorr = pg.partial_corr(tmp, x = 'prs', y = phen, y_covar = cov_list)
+                    endog = tmp[phen].values; exog = tmp[cov_list + ['prs']].values
+                    md = OLS(endog, exog).fit()
+                    ols_beta = md.params[-1]; ols_p = 1-sts.chi2.cdf(md.tvalues[-1]**2, df=1)
                     summary.append(
                         pd.DataFrame(dict(
                             group1 = prefix,
@@ -105,6 +110,7 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
                             pheno2 = prs,
                             r = partcorr['r'].values[0],
                             p = partcorr['p-val'].values[0],
+                            ols_beta = ols_beta, ols_p = ols_p,
                             n = partcorr['n'].values[0]                       
                             ))
                         )
@@ -112,6 +118,7 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
                     print(f'        {phen} correlation failed with {prs}')
     summary = pd.concat(summary).dropna()
     summary['q'] = sts.false_discovery_control(summary['p'])
+    summary['ols_q'] = sts.false_discovery_control(summary['ols_p'])
     
     # summary table and tabular output
     tmp_beta = summary.pivot(index = 'pheno1', columns = 'pheno2', values = 'r')

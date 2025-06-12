@@ -7,6 +7,12 @@ Everything is processed on the basis of **groups of phenotypes**.
 2. This `pheno_batch.py` script generates a per-subject phenotype file in tabular format and can be concatenated using `pheno_concat.py`. This results in a TXT file in the following format: `FID  IID  <pheno_0>  <pheno_1> ...`. All phenotypes in this file are considered a group of phenotype. The name of this file should be used for the rest of the pipeline.
 3. Call `gwa_batch.py <name of phenotype group>` to run fastGWA-MLM for every phenotype in that group.
 4. External GWAS summary statistics can be integrated into the pipeline at this stage; they should be re-formatted to the fastGWA format with columns: `CHR SNP POS A1 A2 AF1 N BETA/OR SE P` and optional `INFO N_CAS N_CON DIRE` columns. A `metadata` file can be manually included in every phenotype group folder for information that cannot be directly inferred from the GWAS summary statistics (e.g. effective sample size for genomic SEM).
+    Metadata file should contain a subset of the following columns:
+    1. `pheno`: phenotype name
+    2. `n`: sample size
+    3. `nca`, `nco`: cases and controls
+    4. `sample_prev`, `pop_prev`: prevalence
+    5. `ols`, `selogit`, `linprob`: values should be True/False; `ols = False` for all binary traits; `selogit = True` if SE columns is `log(OR)`; `linprob = True` if original GWAS conducted a linear regression on probability
 5. For all other scripts, call `*.py --help` to get complete usage options and parameters. For all `pheno` arguments, use **groups of phenotypes** separated by blank spaces.
 6. All scripts with the `_batch` label require a SLURM manager so that lengthy jobs can be run parallel in the background.
 7. All scripts with the `_parse` label generate human-readable summary tables.

@@ -44,7 +44,6 @@ parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',
 args = parser$parse_args(commandArgs(TRUE))
 args$p1 = sort(args$p1); args$p2 = sort(args$p2)
 args$cov = sort(args$cov); args$med = sort(args$med)
-args$out = normalizePath(args$out)
 if (!is.null(args$manual)) args$manual = normalizePath(args$manual)
 #### Sanity checks to command line arguments ####
 args$input = normalizePath(args$input); args$out = normalizePath(args$out)
@@ -174,7 +173,7 @@ main = function(args){
     if (length(which(match)) > 1) stop('Conflicting metadata found!')
     if (any(match)) metadata[i,3:8] = all_metadata[match,3:8]
   }
-  # default metadata options
+  # defaults to quantitative traits
   metadata$selogit = replace_na(metadata$selogit,F)
   metadata$ols = replace_na(metadata$ols, T)
   metadata$linprob = replace_na(metadata$linprob,F)
@@ -210,7 +209,7 @@ main = function(args){
   #### common factor model ####
   results = paste0(args$out,'_common_mdl.txt')
   gwa = paste0(args$out,'_common.chr',args$gwas,'.fastGWA')
-  if (args$common){
+  if (args$common & length(trait.names_med) > 2){
     print('Compiling common factor model ...')
     if (length(p2) > 0) warning(paste0(args$p2[1],' is also included in common factor'))
     if (length(cov)> 0) warning('Covariates are also included in common factor') 
@@ -226,11 +225,27 @@ main = function(args){
     if (args$gwas & (!file.exists(gwa) | args$force)){
       print('Compiling common factor GWAS ...')
       if (length(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
-      cgwas = commonfactorGWAS(ldscoutput, ss, cores = 16) %>% 
+      cgwas = commonfactorGWAS(ldscoutput, ss, cores = 16, toler = .Machine$double.xmin) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
         select(-lhs, -op, -rhs, -i) %>% add_column(N = 1)
       save(cgwas, file = paste0(args$out,'_common.chr',args$gwas,'.rdata'))
       write_tsv(cgwas, gwa)
+    }
+  } else if (args$common & length(trait.names_med) == 2) {
+    # enforce equal weight if only two factors
+    print('Compiling common factor model, enforcing equal weight to two indicators ...')
+    mdl = c(paste0('F1 =~ a*', trait.names_med[1],'+ a*', trait.names_med[2]),
+      'F1 ~~ 1 * F1', 'a > 0.0001')
+    mdl_snp = 'F1 ~ SNP'
+    dwls = usermodel(ldscoutput, 'DWLS', paste0(mdl, collapse = ' \n '), 
+      CFIcalc = T, imp_cov = T)
+    write_model(dwls, results)
+    if (args$gwas & (!file.exists(gwa) | args$force)){
+      print('Compling common factor GWAS, enforcing equal weight to two indicators ...')
+      mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
+        model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T, toler = .Machine$double.xmin)
+      write_tsv(mgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', 
+        BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa[1])
     }
   }
   
@@ -291,8 +306,7 @@ main = function(args){
       mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T)
       for (i in 1:length(gwa)) write_tsv(mgwas[[i]] %>% add_column(N = 1) %>% 
-        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
-                                         gwa[i])
+        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa[i])
   }}
   
   #### exposure-outcome model ####
@@ -337,9 +351,10 @@ main = function(args){
     
     #### subtraction model ####
     if (!file.exists(results_sub) | args$force){
+      indep = paste0('indep_',p2)
       mdl = c(paste0('shared =~ NA*',paste(c(p2,cov,p1), collapse = ' + start(0.4)*')),
-        paste0('indep =~ NA*',p2), 
-        'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep')
+        paste0(indep,' =~ NA*',p2), 
+        'shared ~~ 1*shared \n ',indep,' ~~ 1*',indep,' \n shared ~~ 0*',indep)
       zero_cov = paste0(combn(c(p1,cov,p2),2)[1,],' ~~ 0*', combn(c(p1,cov,p2),2)[2,])
       zero_cov = c(zero_cov, paste0(c(p1,cov,p2),' ~~ 0*',c(p1,cov,p2)))
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
@@ -351,15 +366,16 @@ main = function(args){
     
     #### subtraction GWAS ####
     if (args$gwas & (!file.exists(gwa) | args$force)){
+      indep = paste0('indep_',p2)
       mdl = c(paste0('shared =~ NA*',p2,' + start(0.2)*',
                      paste(c(p2,p1), collapse = ' + start(0.4)*')),
-        paste0('indep =~ NA*',p2,' + start(0.2)*',p2),
-        'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
-        'shared ~ SNP \n indep ~ SNP \n SNP ~~ SNP')
+        paste0(indep,' =~ NA*',p2,' + start(0.2)*',p2),
+        'shared ~~ 1*shared \n ',indep,' ~~ 1*',indep,' \n shared ~~ 0*',indep,
+        'shared ~ SNP \n ',indep,' ~ SNP \n SNP ~~ SNP')
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP')
       write_tsv(sgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', BETA = 'est', 
-        SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa)
+        Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa)
     }
   }
   
@@ -380,7 +396,7 @@ main = function(args){
       mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub, cores = 16) 
       save(mgwas,file = paste0(args$out,'.usergwas.chr',args$gwas,'.rdata'))
       for (i in 1:length(sub)) write_tsv(mgwas[[i]] %>% add_column(N = 1) %>% 
-        rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate'), 
+        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate'), 
         sub_gwa[i])
     }
   }

@@ -62,7 +62,7 @@ def main(args):
     df_sig.to_csv(out.replace('clumped','siglist'), sep = '\t',index = False)      # export top few snps
     
     tmp_flist = []                                                                 # list of temp files
-    chrs = df_sig['CHR'].unique()
+    chrs = df_sig['CHR'].unique().astype(int)
     idx = 0
     
     out_df = []
