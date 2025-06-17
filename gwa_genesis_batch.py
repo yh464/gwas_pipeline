@@ -2,7 +2,7 @@
 '''
 Author: Yuankai He
 Correspondence: yh464@cam.ac.uk
-Versparsern 1: 2025-05-27
+Version 1: 2025-05-27
 
 A script to batch run GWAS by GENESIS
 
