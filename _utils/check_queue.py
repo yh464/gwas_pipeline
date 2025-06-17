@@ -28,22 +28,28 @@ def parse_entry(line):
         first_job = int(x.split('-')[0].split('%')[0])
         if last_job < first_job: last_job *= 10 # if last digit is not displayed
         njobs += last_job - first_job + 1
-  
+  arrayid = jobid.split('_')[0]
+
   # crsid
   userid = line[3]
   # number of nodes
   nnodes = int(line[6])
   # running or not
   # running = (line[5] != '0:00')
-  return userid, njobs, nnodes*njobs
+  return userid, njobs, nnodes*njobs, arrayid
 
 def partition_info(partition):
   # get queue info
   squeue = check_output(['squeue','-p', partition]).decode().splitlines()
-  jobs = Counter(); nodes = Counter(); arrays = Counter()
+  jobs = Counter(); nodes = Counter(); arrays = dict()
   for line in squeue[1:]:
-    uid, j, n = parse_entry(line)
-    jobs.update({uid: j}); nodes.update({uid: n}); arrays.update({uid: 1})
+    uid, j, n, aid = parse_entry(line)
+    jobs.update({uid: j}); nodes.update({uid: n})
+    if uid in arrays.keys(): 
+      if not aid in arrays[uid]: arrays[uid].append(aid)
+    else: arrays[uid] = [aid]
+  for uid in arrays.keys(): arrays[uid] = len(arrays[uid])
+  arrays = Counter(arrays)
 
   sinfo = check_output(['sinfo','-p', partition]).decode().splitlines()
   up = 0; down = 0; idle = 0
@@ -57,14 +63,14 @@ def partition_info(partition):
   print(f'Partition: {partition:15}Idle: {idle!s:6}Available: {up!s:6}Down: {down}')
   print(f'Total jobs: {jobs.total()} in {arrays.total()} arrays    Total nodes: {nodes.total()}')
   print('Top users:')
-  print('User          Jobs /arrays   Nodes')
+  print('User           Jobs / arrays   Nodes')
   for uid, n in nodes.most_common(5):
-    print(f'{uid:15}{jobs[uid]!s:7}/{arrays[uid]!s:7}{n}')
+    print(f'{uid:15}{jobs[uid]!s:7}/ {arrays[uid]!s:7}{n}')
   print('#'*100)
-  return up, down, idle, jobs.total(), nodes.total(), arrays.total()
+  return up, down, idle, jobs.total(), nodes.total(), arrays.total(), len(jobs.keys())
 
-info_table = ['Partition      Idle  Avail Down  Jobs / arrays   Nodes']
+info_table = ['Partition      Idle  Avail Down  Users Jobs / arrays   Nodes']
 for partition in ['cclake','cclake-himem','sapphire','icelake','icelake-himem','desktop']:
-  up, down, idle, jobs, nodes, arrays = partition_info(partition)
-  info_table.append(f'{partition:15}{idle!s:6}{up!s:6}{down!s:6}{jobs!s:7}/{arrays!s:7}{nodes}')
+  up, down, idle, jobs, nodes, arrays, users = partition_info(partition)
+  info_table.append(f'{partition:15}{idle!s:6}{up!s:6}{down!s:6}{users!s:6}{jobs!s:7}/ {arrays!s:7}{nodes}')
 for x in info_table: print(x)
