@@ -12,6 +12,7 @@ parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
   default = '../gwa/')
 parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
   default = '../gwa/manhattan/')
+parser.add_argument('-p','--pval', help = 'p-value threshold', type = float, default = 5e-8)
 parser.add_argument('-f','--force',dest = 'force', help = 'force output',
   default = False, action = 'store_true')
 args = parser.parse_args()
@@ -43,7 +44,7 @@ _,ax = plt.subplots(figsize = (6,2), constrained_layout = True)
 if (not os.path.isfile(out_fname)) or args.force:
   df = pd.read_table(x).sort_values(by = ['CHR','POS'])
   sig = df.loc[df.P < 1e-3,:]
-  
+  nsig = (df.P < 5e-8).sum()
   # truncated Manhattan plot, pdf
   _,ax = plt.subplots(figsize = (6,2))
   manhattanplot(data = sig,
@@ -51,7 +52,7 @@ if (not os.path.isfile(out_fname)) or args.force:
                 pos = 'POS',
                 pv = 'P',
                 snp = 'SNP',
-                is_annotate_topsnp=True, # annotate sig. SNPs
+                is_annotate_topsnp=nsig <= 5, # annotate sig. SNPs
                 sign_marker_p = 5e-8,  # Genome wide significant p-value
                 sign_marker_color="r",
                 logp = True,
@@ -71,7 +72,7 @@ if (not os.path.isfile(out_fname)) or args.force:
                 pos = 'POS',
                 pv = 'P',
                 snp = 'SNP',
-                is_annotate_topsnp=True, # annotate sig. SNPs
+                is_annotate_topsnp=nsig <= 5, # annotate sig. SNPs
                 sign_marker_p = 5e-8,  # Genome wide significant p-value
                 sign_marker_color="r",
                 logp = True,

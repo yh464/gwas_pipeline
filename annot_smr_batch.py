@@ -43,12 +43,7 @@ def main(args):
     
     # array submitter
     from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = f'annot_smr_{args.pheno[0]}',
-        n_cpu = 2,
-        timeout = 90,
-        debug = True
-    )
+    submitter = array_submitter(name = f'annot_smr_{args.pheno[0]}',n_cpu = 2,timeout = 90)
     
     # annotation utility for single fastGWA and single xQTL dataset
     def annot_smr(gwa, xqtl, bfile, out, smr, force):

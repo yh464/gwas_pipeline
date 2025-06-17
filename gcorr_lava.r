@@ -91,6 +91,7 @@ main = function(args) {
   library(LAVA)
   library(openssl)
   library(progress)
+  library(doParallel)
   
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
@@ -115,6 +116,7 @@ main = function(args) {
     rename(cases = nca, controls = nco, prevalence = pop_prev) %>%
     select(phenotype, cases, controls, prevalence, filename)
   infofile = paste0(rand_bytes(8),collapse = '') %>% paste0(tempdir(), .,'.info.txt')
+  temp_files = infofile
   write_tsv(metadata, file = infofile)
   
   #### read loci ####
@@ -161,9 +163,15 @@ main = function(args) {
   } else load(cache)
   
   #### run LAVA ####
+  # registerDoParallel(makeCluster(4))
   pb = progress_bar$new(total = nrow(loci), format = '[:bar] :percent :elapsedfull / eta :eta')
-  stats = list()
-  for (i in 1:nrow(loci)){
+  pb$tick(0)
+  stats_files = character(0)
+  # stats = foreach(i=1:nrow(loci)) %dopar% {
+  for (i in 1:nrow(loci)) {
+    tmpfile = paste0(tmpdir,'/',sha256(paste(p1,p2,cov, collapse = '_')),'_locus_',i,'.txt')
+    temp_files[i+1]=tmpfile
+    if (file.exists(tmpfile) & !args$force) {stats_files[i] = tmpfile; pb$tick(); next}
     locus = process.locus(loci[i,], input)
     locus_stats = list()
     
@@ -196,11 +204,20 @@ main = function(args) {
     locus_stats = bind_rows(locus_stats) %>% add_column(
       CHR = locus$chr, START = locus$start, STOP = locus$stop, nsnp = locus$n.snps
     )
-    stats[[i]] = locus_stats
-    pb$tick()
+    if (! is.null(locus_stats)){
+      stats_files[[i]] = tmpfile
+      write_tsv(locus_stats, tmpfile)
+    }
+    cat('\n',i,'/',nrow(loci), 'time =',proc.time()[3],'\n')
+    # pb$tick()
   }
-  stats = bind_rows(stats)
+  stats = lapply(stats_files, read_tsv, col_types = 
+    cols(CHR = 'i', START='d', STOP = 'd', nsnp = 'i')) %>% bind_rows() %>% 
+    mutate(p_bonferroni = p * nrow(loci))
   write_tsv(stats, args$out)
+  
+  # clean up
+  # for (file in temp_files) file.remove(file)
 }
 
 main(args)

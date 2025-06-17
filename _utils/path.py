@@ -18,7 +18,7 @@ import re
 import pandas as pd
 
 def find_clump(group, pheno, 
-               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_users/yh464/clump',
+               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
                pval = 5e-8):
     '''
     Find PLINK clump files for a specific trait
@@ -56,7 +56,8 @@ def find_gwas(*pheno,
               ext = 'fastGWA',
               exclude = [],
               long = False,
-              se = False):
+              se = False,
+              clump = False):
     '''
     Data structure: {dirname}/{pheno[0]}/*.{ext}
     pheno: phenotype groups or <group>/<pheno>
@@ -66,7 +67,8 @@ def find_gwas(*pheno,
     long: specifies two handy output formats
         True - output = [(<group0>, <pheno0.0>), (<group0>, <pheno0.1>), ...]
         False - output = [(<group0>, [<pheno0.0>, <pheno0.1>, ...]), ...]
-    signstat: filters for only GWAS with an SE column, not just Z score
+    se: filters for only GWAS with an SE column, not just Z score
+    clump: filters for GWAS with a clump output
     returns: a list of (group, [pheno1, pheno2, ...]) pairs or (group, pheno) pairs if long = True
     all returned phenotypes are filtered to have a valid GWAS summary stats file
     '''
@@ -92,6 +94,9 @@ def find_gwas(*pheno,
                 hdr = f.readline().replace('\n','').split()
                 hdr = [x.upper() for x in hdr]
                 if not 'SE' in hdr: continue
+            if clump:
+                try: _, _ = find_clump(p, x.replace(f'.{ext}',''))
+                except: continue
             xlist.append(x.replace(f'.{ext}','').replace('.gz',''))
         if len(out) == 0 or pdir != out[-1][0]: out.append((pdir, xlist))
         else: out[-1] = (pdir, sorted(out[-1][1] + xlist))

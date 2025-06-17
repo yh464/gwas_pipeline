@@ -8,9 +8,8 @@ def main(args):
     from fnmatch import fnmatch
     from _utils.slurm import array_submitter
     
-    if args.force: f = '-f'
-    elif args.p: f = '-p'
-    else: f = ''
+    f = f'-p {args.pval}'
+    if args.force: f += ' -f'
     if args.a: f += ' -a'
     if len(args.pheno) == 0:
         args.pheno = os.listdir(args._in)
@@ -56,8 +55,7 @@ if __name__ == '__main__':
       default = '../gwa/manhattan/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
-    parser.add_argument('-p','--plot-only', dest = 'p', help = 'skip concatenation, only plot graphs',
-      default = False, action = 'store_true')
+    parser.add_argument('-p','--pval', help = 'p-value threshold', type = float, default = 5e-8)
     parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
       default = False, action = 'store_true')
     args = parser.parse_args()

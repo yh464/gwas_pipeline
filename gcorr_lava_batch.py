@@ -39,14 +39,15 @@ def main(args):
   
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'gcorr_lava_{args.p2[0]}_{args.p1[0]}', env = 'gentoolsr', n_cpu = 2, timeout = 30)
+  submitter = array_submitter(name = f'gcorr_lava_{args.p2[0]}_{args.p1[0]}', 
+    env = 'gentoolsr', n_cpu = 2, timeout = 240)
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
   if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
 
   # find files
-  exposures = find_gwas(args.p1, dirname = args._in, ext = 'fastGWA')
-  outcomes = find_gwas(args.p2, dirname = args._in, ext = 'fastGWA')
-  cov = find_gwas(args.cov, dirname = args._in, ext = 'fastGWA')
+  exposures = find_gwas(args.p1, dirname = args._in, ext = 'fastGWA', clump = True)
+  outcomes = find_gwas(args.p2, dirname = args._in, ext = 'fastGWA', clump = True)
+  cov = find_gwas(args.cov, dirname = args._in, ext = 'fastGWA', clump = True)
   meta = []
   for g, _ in exposures + outcomes + cov:
     if os.path.isfile(f'{args._in}/{g}/metadata') and not f'{args._in}/{g}/metadata' in meta: 
