@@ -64,7 +64,7 @@ def partition_info(partition):
   return up, down, idle, jobs.total(), nodes.total()
 
 info_table = ['Partition      Idle  Avail Down  Jobs    Nodes']
-for partition in ['cclake', 'cclake-himem', 'icelake','icelake-himem','desktop']:
+for partition in ['cclake','cclake-himem','sapphire','icelake','icelake-himem','desktop']:
   up, down, idle, jobs, nodes = partition_info(partition)
   info_table.append(f'{partition:15}{idle!s:6}{up!s:6}{down!s:6}{jobs!s:8}{nodes}')
 for x in info_table: print(x)
