@@ -133,7 +133,8 @@ def main(args):
 
     from _utils.slurm import array_submitter
     name = '_'.join(['gsem', args.p1[0]]+ args.p2 + ['cov'] + args.med + args.cov
-        ) if len(args.manual) == 0 else 'gsem_'+os.path.basename(args.manual).replace('.mdl','')
+        ) 
+    if len(args.manual) > 0: name += os.path.basename(args.manual).replace('.mdl','')
     submitter = array_submitter(
         name = name, env = 'gentoolsr',
         partition = 'icelake-himem' if args.gwas else 'icelake',
@@ -184,12 +185,14 @@ def main(args):
                    '--p1'] + [f'{g}/{p}' for g, p in exposures_filtered]
             cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
             pheno = exposures + covariates + mediators + [(g2,p2)]
-            if os.path.isfile(args.manual): 
-                manual_model(pheno, out_prefix, args.manual, f'{g2}/{p2}', **manual_kwd); 
-                cmd += ['--manual', f'{out_prefix}.mdl']
+            if os.path.isfile(args.manual):
+                mdl_prefix = f'{out_prefix}_{os.path.basename(args.manual).replace(".mdl","")}'
+                manual_model(pheno, mdl_prefix, args.manual, f'{g2}/{p2}', **manual_kwd); 
+                cmd += ['--manual', f'{mdl_prefix}.mdl']
             elif len(args.manual) > 0:
-                manual_model(pheno, out_prefix, **manual_kwd)
-                cmd += ['--manual', f'{out_prefix}.mdl']
+                mdl_prefix = out_prefix + input('Please enter a model name to include in output file name: \n')
+                manual_model(pheno, mdl_prefix, **manual_kwd)
+                cmd += ['--manual', f'{mdl_prefix}.mdl']
             cmd = ' '.join(cmd)
             if args.gwas:
                 for chrom in range(1,23): submitter.add(cmd.replace('--gwas chr',f'--gwas {chrom}'))
@@ -206,11 +209,13 @@ def main(args):
                 cmd += ['--p2', f'{g2}/{p2}'] + med + cov + tasks
                 pheno = covariates + mediators + [(g1,p1),(g2,p2)]
                 if os.path.isfile(args.manual): 
-                    manual_model(pheno, out_prefix, args.manual, f'{g1}/{p1}',f'{g2}/{p2}', **manual_kwd); 
-                    cmd += ['--manual', f'{out_prefix}.mdl']
+                    mdl_prefix = f'{out_prefix}_{os.path.basename(args.manual).replace(".mdl","")}'
+                    manual_model(pheno, mdl_prefix, args.manual, f'{g1}/{p1}',f'{g2}/{p2}', **manual_kwd); 
+                    cmd += ['--manual', f'{mdl_prefix}.mdl']
                 elif len(args.manual) > 0:
-                    manual_model(pheno, out_prefix, **manual_kwd)
-                    cmd += ['--manual', f'{out_prefix}.mdl']
+                    mdl_prefix = out_prefix + input('Please enter a model name to include in output file name: \n')
+                    manual_model(pheno, mdl_prefix, **manual_kwd)
+                    cmd += ['--manual', f'{mdl_prefix}.mdl']
                 cmd = ' '.join(cmd)
                 if args.gwas:
                     for chrom in range(1,23): submitter.add(cmd.replace('--gwas chr',f'--gwas {chrom}'))
@@ -278,7 +283,7 @@ if __name__ == '__main__':
     tasks.add_argument('--efa_thr', help = 'loading threshold to keep in a factor', default = 0.3, type = float)
     tasks.add_argument('--mdl', help = 'Causal and subtraction model', action = 'store_true', default = False)
     tasks.add_argument('--manual', default = '',
-        help = 'Manual model, enter model file if already specified; random character to manually specify')
+        help = 'Manual model, enter model file if already specified; random character to manually specify; model name will be included in output file name')
     tasks.add_argument('--gwas', help = 'Output GWAS summary statistics', action = 'store_true', default = False)
 
     parser.add_argument('-f','--force', help = 'Force overwrite', action = 'store_true', default = False)

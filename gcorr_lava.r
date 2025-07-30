@@ -48,11 +48,11 @@ parse_metadata = function(file){
   library(tidyverse)
   dat = read_tsv(file)
   colnames(dat) = colnames(dat) %>% tolower()
-  if (is.null(dat$group)) dat$group = basename(dirname(file))
-  if (is.null(dat$pheno)) dat$pheno = '*' # all phenotypes in the group
-  if (is.null(dat$pop_prev)) dat$pop_prev = NA
-  if (is.null(dat$nca)) dat$nca = NA
-  if (is.null(dat$nco)) dat$nco = NA
+  if (!'group' %in% colnames(dat)) dat$group = basename(dirname(file))
+  if (!'pheno' %in% colnames(dat)) dat$pheno = '*' # all phenotypes in the group
+  if (!'pop_prev' %in% colnames(dat)) dat$pop_prev = NA
+  if (!'nca' %in% colnames(dat)) dat$nca = NA
+  if (!'nco' %in% colnames(dat)) dat$nco = NA
   dat = dat %>% select(group, pheno, pop_prev, nca, nco)
   return(dat)
 }
@@ -167,12 +167,15 @@ main = function(args) {
   pb = progress_bar$new(total = nrow(loci), format = '[:bar] :percent :elapsedfull / eta :eta')
   pb$tick(0)
   stats_files = character(0)
+  error_loci = list()
   # stats = foreach(i=1:nrow(loci)) %dopar% {
   for (i in 1:nrow(loci)) {
     tmpfile = paste0(tmpdir,'/',sha256(paste(p1,p2,cov, collapse = '_')),'_locus_',i,'.txt')
     temp_files[i+1]=tmpfile
     if (file.exists(tmpfile) & !args$force) {stats_files[i] = tmpfile; pb$tick(); next}
-    locus = process.locus(loci[i,], input)
+    locus = tryCatch(process.locus(loci[i,], input), error = function(e) NULL)
+    if (is.null(locus)) {error_loci[[i]] = loci[i,]; next}
+    cat('Processed locus, Time =',proc.time()[3], '\n')
     locus_stats = list()
     
     if (length(p2) == 0) {
@@ -207,15 +210,18 @@ main = function(args) {
     if (! is.null(locus_stats)){
       stats_files[[i]] = tmpfile
       write_tsv(locus_stats, tmpfile)
-    }
+    } else error_loci[[i]]= loci[i,]
     cat('\n',i,'/',nrow(loci), 'time =',proc.time()[3],'\n')
-    # pb$tick()
+    pb$tick()
   }
-  stats = lapply(stats_files, read_tsv, col_types = 
+  stats = lapply(stats_files %>% na.omit(), read_tsv, col_types = 
     cols(CHR = 'i', START='d', STOP = 'd', nsnp = 'i')) %>% bind_rows() %>% 
-    mutate(p_bonferroni = p * nrow(loci))
+    mutate(p_bonferroni = p * nrow(loci)) %>% 
+    group_by(type) %>% mutate(q = p.adjust(p, 'BH'))
   write_tsv(stats, args$out)
   
+  if (length(error_loci) > 0) write_tsv(bind_rows(error_loci), 
+    gsub('.txt','',args$out) %>% paste0('.err'))
   # clean up
   # for (file in temp_files) file.remove(file)
 }

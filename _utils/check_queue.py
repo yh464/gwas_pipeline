@@ -63,13 +63,13 @@ def partition_info(partition):
   print(f'Partition: {partition:15}Idle: {idle!s:6}Available: {up!s:6}Down: {down}')
   print(f'Total jobs: {jobs.total()} in {arrays.total()} arrays    Total nodes: {nodes.total()}')
   print('Top users:')
-  print('User           Jobs / arrays   Nodes')
+  print('User           Jobs   / arrays Nodes')
   for uid, n in nodes.most_common(5):
     print(f'{uid:15}{jobs[uid]!s:7}/ {arrays[uid]!s:7}{n}')
   print('#'*100)
   return up, down, idle, jobs.total(), nodes.total(), arrays.total(), len(jobs.keys())
 
-info_table = ['Partition      Idle  Avail Down  Users Jobs / arrays   Nodes']
+info_table = ['Partition      Idle  Avail Down  Users Jobs   / arrays Nodes']
 for partition in ['cclake','cclake-himem','sapphire','icelake','icelake-himem','desktop']:
   up, down, idle, jobs, nodes, arrays, users = partition_info(partition)
   info_table.append(f'{partition:15}{idle!s:6}{up!s:6}{down!s:6}{users!s:6}{jobs!s:7}/ {arrays!s:7}{nodes}')

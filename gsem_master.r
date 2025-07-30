@@ -27,7 +27,7 @@ parser$add_argument('--ld', help = 'LD reference',
   default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
 parser$add_argument('--ref', help = 'Reference file for SNP variance calculation', default = 
   '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
-parser$add_argument('-o','--out', help = 'Output prefix')
+parser$add_argument('-o','--out', help = 'Output prefix; NB manual models will be output where model file is')
 
 # analyses
 parser$add_argument('--common', default = F, action = 'store_true', help = 'Common factor model')
@@ -354,7 +354,7 @@ main = function(args){
       indep = paste0('indep_',p2)
       mdl = c(paste0('shared =~ NA*',paste(c(p2,cov,p1), collapse = ' + start(0.4)*')),
         paste0(indep,' =~ NA*',p2), 
-        'shared ~~ 1*shared \n ',indep,' ~~ 1*',indep,' \n shared ~~ 0*',indep)
+        'shared ~~ 1*shared',paste0(indep,' ~~ 1*',indep),paste0('shared ~~ 0*',indep))
       zero_cov = paste0(combn(c(p1,cov,p2),2)[1,],' ~~ 0*', combn(c(p1,cov,p2),2)[2,])
       zero_cov = c(zero_cov, paste0(c(p1,cov,p2),' ~~ 0*',c(p1,cov,p2)))
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
@@ -370,8 +370,8 @@ main = function(args){
       mdl = c(paste0('shared =~ NA*',p2,' + start(0.2)*',
                      paste(c(p2,p1), collapse = ' + start(0.4)*')),
         paste0(indep,' =~ NA*',p2,' + start(0.2)*',p2),
-        'shared ~~ 1*shared \n ',indep,' ~~ 1*',indep,' \n shared ~~ 0*',indep,
-        'shared ~ SNP \n ',indep,' ~ SNP \n SNP ~~ SNP')
+        'shared ~~ 1*shared', paste0(indep,' ~~ 1*',indep),paste0('shared ~~ 0*',indep),
+        'shared ~ SNP',paste0(indep,' ~ SNP'),'SNP ~~ SNP')
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP')
       write_tsv(sgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', BETA = 'est', 
@@ -380,7 +380,8 @@ main = function(args){
   }
   
   #### manually input model ####
-  results = paste0(args$out, '_manual_mdl.txt')
+  if (!is.null(args$manual)) results = paste0(
+    gsub('.mdl$','',args$manual), '.txt')
   # NB models for genome-wide model and GWAS are incompatible!
   if (!is.null(args$manual) & !args$gwas & (!file.exists(results) | args$force)) {
     mdl = read_file(args$manual); cat(mdl)

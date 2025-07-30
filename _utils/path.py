@@ -57,7 +57,9 @@ def find_gwas(*pheno,
               exclude = [],
               long = False,
               se = False,
-              clump = False):
+              clump = False,
+              no_ukb = False
+            ):
     '''
     Data structure: {dirname}/{pheno[0]}/*.{ext}
     pheno: phenotype groups or <group>/<pheno>
@@ -69,6 +71,9 @@ def find_gwas(*pheno,
         False - output = [(<group0>, [<pheno0.0>, <pheno0.1>, ...]), ...]
     se: filters for only GWAS with an SE column, not just Z score
     clump: filters for GWAS with a clump output
+    no_ukb: True - finds datasets without UKBB cohort if possible
+        False - excludes datasets without UKBB cohort, where one with UKBB is available
+        anything else - includes all datasets
     returns: a list of (group, [pheno1, pheno2, ...]) pairs or (group, pheno) pairs if long = True
     all returned phenotypes are filtered to have a valid GWAS summary stats file
     '''
@@ -95,9 +100,17 @@ def find_gwas(*pheno,
                 hdr = [x.upper() for x in hdr]
                 if not 'SE' in hdr: continue
             if clump:
-                try: _, _ = find_clump(p, x.replace(f'.{ext}',''))
+                try: _, _ = find_clump(pdir, x.replace(f'.{ext}','').replace('.gz',''))
                 except: continue
             xlist.append(x.replace(f'.{ext}','').replace('.gz',''))
+        if no_ukb:
+            tmp = xlist.copy()
+            for x in tmp:
+                if f'{x}_noUKBB' in xlist: xlist.remove(x)
+        elif no_ukb == False:
+            tmp = xlist.copy()
+            for x in tmp:
+                if x[-7:] == '_noUKBB' and x[:-7] in xlist: xlist.remove(x)
         if len(out) == 0 or pdir != out[-1][0]: out.append((pdir, xlist))
         else: out[-1] = (pdir, sorted(out[-1][1] + xlist))
     if long: out = [(x,z) for x,y in out for z in y]

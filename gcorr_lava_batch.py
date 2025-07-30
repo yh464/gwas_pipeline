@@ -124,7 +124,7 @@ if __name__ == '__main__':
   parser.add_argument('--clump', dest = 'clump', help = 'Clumping output directory', 
     default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump/')
   parser.add_argument('--ref', help = 'Reference LD Blocks directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
+    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/')
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
   parser.add_argument('--all-loci', action = 'store_true', help = 'Analyse all loci')
