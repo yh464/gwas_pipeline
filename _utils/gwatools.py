@@ -55,6 +55,7 @@ def validate_columns(colnames, silent = False, **kwargs):
 def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
   '''Imputes Z-scores, P-values and standard errors from existing columns'''
   df.columns = [c.upper() for c in df.columns]
+  kwargs.pop('silent',None)
   cols = validate_columns(df.columns, silent = True, **kwargs)
   def _impute_beta():
     if cols['beta'] == None and cols['odds_ratio'] == 'OR':
@@ -94,17 +95,15 @@ def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
   print()
   return df
 
-def _convert_chrom(df, **kwargs):
+def convert_chrom(df, **kwargs):
   '''Converts chromosome column to numeric format'''
   df.columns = [c.upper() for c in df.columns]
+  kwargs.pop('silent', None)
   cols = validate_columns(df.columns, silent = True, **kwargs)
   if cols['chrom'] != None:
-    if df[cols['chrom']].dtype == 'object':
-      df[cols['chrom']] = df[cols['chrom']].str.replace(
-        'X', '23').str.replace('Y', '24').str.replace('XY', '25').str.replace('MT', '26')
-      df[cols['chrom']] = pd.to_numeric(df[cols['chrom']], errors='coerce')
-    elif df[cols['chrom']].dtype == 'int64': pass  # already numeric
-    else: raise ValueError(f'Cannot convert {cols["chrom"]} to numeric format')
+    try: df[cols['chrom']] = df[cols['chrom']].astype(str).replace(
+      {'X':'23','Y':'24','XY':'25','MT':'26','M':'26'}).astype(float).astype(int)
+    except: raise ValueError(f'Cannot convert {cols["chrom"]} to numeric format')
   return df
 
 def format_gwas(df, beta = 'BETA', odds_ratio = 'OR', 
@@ -137,12 +136,14 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   outcols = [c.upper() for c in outcols]
   
   # match input and output columns
-  print('Specifying output columns')
+  from .logger import logger
+  _logger = logger(**kwargs)
+  _logger.log('Specifying output columns')
   out_cols = validate_columns(outcols, **kwargs)
   # fill out SE, P values and Z scores if requested and not present
   df = _convert_z_p_se(df, out_cols['zscore'] != None, out_cols['pval'] != None, out_cols['se'] != None, **kwargs)
-  df = _convert_chrom(df, **kwargs)
-  print('Parsing input columns')
+  df = convert_chrom(df, **kwargs)
+  _logger.log('Parsing input columns')
   orig_cols = validate_columns(df.columns, **kwargs)
   if orig_cols['a1'] != None: df[orig_cols['a1']] = df[orig_cols['a1']].str.upper()
   if orig_cols['a2'] != None: df[orig_cols['a2']] = df[orig_cols['a2']].str.upper()
@@ -159,13 +160,13 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   if orig_cols['odds_ratio'] != None:
     or_median = np.median(df[orig_cols['odds_ratio']])
     if 0.9 < or_median < 1.1:
-      print(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LINEAR SCALE')
+      _logger.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LINEAR SCALE')
       if all_beta:
         df[beta] = np.log(df[orig_cols['odds_ratio']])
         out_cols['beta'] = beta; orig_cols['beta'] = beta # only beta will be outputted
       else: out_cols['odds_ratio'] = odds_ratio # only OR will be outputted
     elif -0.1 < or_median < 0.1:
-      print(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LOG SCALE')
+      _logger.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LOG SCALE')
       if all_beta == False:
         df[odds_ratio] = np.exp(df[orig_cols['odds_ratio']])
         out_cols['odds_ratio'] = odds_ratio; orig_cols['odds_ratio'] = odds_ratio # only OR will be outputted
@@ -178,17 +179,17 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   else: raise ValueError('Cannot determine signed statistic, please specify beta or odds ratio')
 
   # extract output columns
-  out_cols = []; match_cols = []
+  out_cols_list = []; match_cols = []
   for k, v in out_cols.items():
     if v == None: continue
     if orig_cols[k] == None:
       raise ValueError(f'Column {v} not found in input data, please specify manually')
-    out_cols.append(v); match_cols.append(orig_cols[k])
+    out_cols_list.append(v); match_cols.append(orig_cols[k])
   
-  out_df = df[match_cols].rename(columns=dict(zip(match_cols, out_cols)))
+  out_df = df[match_cols].rename(columns=dict(zip(match_cols, out_cols_list)))
   if out != None:
     out_df.to_csv(out, sep = '\t', index = False)
-    print(f'Output written to {out}')
+    _logger.log(f'Output written to {out}')
   
   return out_df
 
@@ -231,7 +232,7 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
   if chrom != None:
     print(f'Filtering for chromosomes {", ".join(chrom)}')
     if cols['chrom'] == None: raise ValueError('Cannot filter by chromosome without CHR column')
-    df = _convert_chrom(df, **kwargs)
+    df = convert_chrom(df, **kwargs)
     df = df[df[cols['chrom']].isin(chrom)].reset_index(drop = True)
 
     # start and end positions are ignored if chromosome is not specified

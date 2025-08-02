@@ -18,30 +18,20 @@ def main(args):
     from fnmatch import fnmatch
     import numpy as np
     
-    # array submitter
-    from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = 'coloc_'+'_'.join(args.pheno),
-        env = 'gentoolsr',
-        n_cpu = 1,
-        timeout = 360,
-        # debug = True
-        )
-    
     from time import perf_counter as t
     tic = t()
     force = '-f' if args.force else ''
-    
+
     # scans directory for fastGWA files
     from _utils.path import find_gwas, find_clump
-    flist = []
     gwa = []
     if len(args.pheno) > 1 and args.filter:
         gwa1 = find_gwas(args.pheno[0], dirname = args._in)
         gwa2 = find_gwas(*args.pheno[1:], dirname = args._in)
         from logparser import crosscorr_parse
         rg = crosscorr_parse(gwa1, gwa2, logdir = args.rg)
-        rg = rg.loc[rg.q < 0.05, ['group1','pheno1','group2','pheno2']]
+        if args.rgp == None: rg = rg.loc[rg.q < 0.05, ['group1','pheno1','group2','pheno2']]
+        else: rg = rg.loc[rg.p < args.rgp, ['group1','pheno1','group2','pheno2']]
         
         # include phenotypes from group 1 if correlated with anything else
         # include phenotypes from other groups if correlated with anything in group 1
@@ -50,56 +40,50 @@ def main(args):
         rg = pd.concat([rg1,rg2]).drop_duplicates().reset_index(drop = True)
         for idx in rg.index:
             x,y = rg.loc[idx,:]
-            flist.append(f'{args._in}/{x}/{y}.fastGWA')
             gwa.append((x,y))
     else:
-        gwa = find_gwas(*args.pheno, dirname = args._in)
-        for x, ys in gwa:
-            for y in ys:
-                flist.append(f'{args._in}/{x}/{y}.fastGWA')
-                gwa.append((x,y))
-    print(f'Found {len(flist)} GWAS summary statistics files.')
-    submitter.config(timeout = len(flist) * 5)
+        gwa = find_gwas(*args.pheno, dirname = args._in, long = True)
+    print(f'Found {len(gwa)} GWAS summary statistics files.')
     
     # identify blocks of fine-mapping segments
-    blocks = []
-    # read clump outputs for each phenotype
-    for x,y in gwa:
-        print(f'Identifying blocks for {x}/{y}')
-        clump,_ = find_clump(x, y, args.clump, pval = args.p)
-        try: clump = pd.read_table(clump, sep = '\\s+', usecols = ['CHR','BP'])
-        except: continue
-        
-        # select 1MB chunks for fine-mapping
-        clump = clump[['CHR','BP']]
-        clump.columns = ['chr','pos']
-        clump['start'] = clump['pos']- 5e+5
-        clump['stop'] = clump['pos'] + 5e+5
-        blocks.append(clump[['chr','start','stop']])
-    
-    # identify overlaps between blocks from different phenotype groups
-    blocks = pd.concat(blocks).sort_values(by = ['chr','start']).reset_index(drop=True)
-    for x in range(1, blocks.shape[0]):
-        if blocks.loc[x, 'start'] < blocks.loc[x-1, 'stop'] and \
-            blocks.loc[x,'chr'] == blocks.loc[x-1,'chr']:
-            blocks.loc[x,'start'] = blocks.loc[x-1, 'start']
-            blocks.loc[x-1,['start','stop']] = np.nan
-    blocks = blocks.dropna().reset_index(drop=True)
+    from logparser import parse_clump
+    _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
+    loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
+    loci['START'] -= 5e5; loci['STOP'] += 5e5
+    loci = loci.dropna().reset_index(drop=True)
     toc = t()-tic
-    print(f'Identified {blocks.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
+    print(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
     
-    # specify output
-    outdir = f'{args.out}/'+'_'.join(sorted(args.pheno))
+    # check cache
+    cache_files = [f'{args.out}/{g}/{p}_chr{loci.CHR.iloc[i]}_{loci.START.iloc[i]:.0f}_{loci.STOP.iloc[i]:.0f}.txt'\
+        for g,p in gwa for i in range(loci.shape[0])]
+    if not all([os.path.isfile(x) for x in cache_files]):
+        import finemap_coloc_extract
+        dependency = finemap_coloc_extract.main(
+            pheno = [f'{g}/{p}' for g,p in gwa],
+            _in = args._in, clump = args.clump, pval = args.pval, out = args.out,
+            debug = args.debug
+        )
+    else: dependency = []
+
+    # array submitter
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
+        name = 'coloc_'+'_'.join(args.pheno),
+        env = 'gentoolsr', n_cpu = 1,
+        timeout = len(gwa), dependency = dependency
+        )
+    outdir = f'{args.out}/'+'_'.join([g for g,_ in find_gwas(args.pheno)])
     if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
-    for x in range(1, blocks.shape[0]):
-        c = blocks.loc[x, 'chr']
-        start = blocks.loc[x,'start']
-        stop = blocks.loc[x,'stop']
-        out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_coloc.txt'
+    for x in range(1, loci.shape[0]):
+        c = loci.loc[x, 'CHR']
+        start = loci.loc[x,'START']
+        stop = loci.loc[x,'STOP']
+        out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_hyprcoloc.txt'
         if not os.path.isfile(out) or args.force:
-            cmd = 'Rscript finemap_hyprcoloc.r -i '+':'.join(flist) + \
-                f' --chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out} {force}'
-            submitter.add(cmd)
+            cmd = ['Rscript','finemap_hyprcoloc.r'] + [f'{g}/{p}' for g,p in gwa] + \
+                [f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out} {force}']
+            submitter.add(' '.join(cmd))
     submitter.submit()
     
 if __name__ == '__main__':
@@ -117,14 +101,17 @@ if __name__ == '__main__':
       default = False, action = 'store_true')
     parser.add_argument('-r','--rg', help = 'Directory for rg logs, to filter traits',
       default = '../gcorr/rglog/')
-    parser.add_argument('-p', dest = 'p', help = 'p-value', default = 5e-8, type = float)
+    parser.add_argument('--rgp', help = 'p-value threshold for genetic correlation', default = None, type = float)
+    parser.add_argument('-p', '--pval', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
     for arg in ['_in','out','clump', 'rg']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
-    
+    if args.rgp != None and 0 < args.rgp < 1: args.filter = True # specify p-value threshold -> auto filter
+    if args.rgp != None and (args.rgp > 1 or args.rgp <= 0): raise ValueError('p-value threshold must be 0 to 1')
+
     from _utils import path, cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()

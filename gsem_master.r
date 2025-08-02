@@ -313,6 +313,7 @@ main = function(args){
   results = paste0(args$out,'_causal_',length(c(med,cov)),'cov_',
     c(med,cov)[1],'.txt')
   results_med = paste0(args$out, '_',length(args$med),'med_',med[1],'.txt')
+  results_adj = paste0(args$out,'_adjust_',length(cov),'cov_',cov[1],'.txt')
   results_sub = paste0(args$out, '_subtraction_mdl.txt')
   gwa = paste0(args$out,'_subtraction.chr',args$gwas,'.fastGWA')
   if (args$mdl) {
@@ -321,6 +322,22 @@ main = function(args){
       mdl = paste0(p2[1], ' ~ NA*', paste(c(p1,cov,med), collapse = ' + '))
       dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
       write_model(dwls, results)
+    }
+    
+    #### adjusting for covariates ####
+    if (length(cov) > 0 & (!file.exists(results_adj) | args$force)) {
+      # model latent factor outcome - covars
+      indep = paste0('indep_',p1)
+      mdl = c(paste0('shared =~ NA*',paste(c(p1, cov), collapse = '+')), 
+              paste0(indep,' =~ NA*',p1),
+              'shared ~~ 1*shared',paste0(indep,'~~ 1*',indep),paste0('shared ~~ 0*',indep),
+              paste0(p2, '~ NA*shared + ',indep)
+              )
+      zero_cov = paste0(combn(c(p1,cov),2)[1,],' ~~ 0*', combn(c(p1,cov),2)[2,])
+      zero_cov = c(zero_cov, paste0(c(p1,cov),' ~~ 0*',c(p1,cov)))
+      mdl = paste(c(mdl, zero_cov), collapse = '\n')
+      dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
+      write_model(dwls, results_adj)
     }
     
     #### mediation model ####
@@ -333,21 +350,14 @@ main = function(args){
       if (length(cov) > 0) {
         # model with all covariates
         mdl = c(paste0(p2,'~NA*', paste(c(p1,cov,med),collapse = '+')),
-          paste0(med,'~NA*',paste(c(p1,cov), collapse = '+')),
-          paste0(c(p1,cov,med),' ~~ var_',c(p1,cov,med),'*',c(p1,cov,med),
-                 ' \n var_',c(p1,cov,med),' > 0.00001')
-          ) %>% paste0(collapse = '\n')
+                paste0(med,'~NA*',paste(c(p1,cov), collapse = '+')),
+                paste0(c(p1,cov,med),' ~~ var_',c(p1,cov,med),'*',c(p1,cov,med),
+                       ' \n var_',c(p1,cov,med),' > 0.00001')
+        ) %>% paste0(collapse = '\n')
         dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
         write_model(dwls, paste0(args$out,'_mediation_fullcov.txt'))
-        # model latent factor outcome - covars
-        mdl = c(paste0('shared =~ NA*',paste(c(p2, cov), collapse = '+')), 
-          paste0('indep =~ NA*',p2),
-          'shared ~~ 1*shared \n indep ~~ 1*indep \n shared ~~ 0*indep',
-          paste0('indep~NA*', paste(c(p1, med),collapse = '+')),
-          paste0(med, '~NA*', paste(p1, collapse = '+'))) %>% paste(collapse = '\n')
-        dwls = usermodel(ldscoutput, model = mdl, imp_cov = T, CFIcalc = T)
-        write_model(dwls, paste0(args$out,'_mediation_subtract_cov.txt'))
-    }}
+      }
+    }
     
     #### subtraction model ####
     if (!file.exists(results_sub) | args$force){
@@ -372,6 +382,8 @@ main = function(args){
         paste0(indep,' =~ NA*',p2,' + start(0.2)*',p2),
         'shared ~~ 1*shared', paste0(indep,' ~~ 1*',indep),paste0('shared ~~ 0*',indep),
         'shared ~ SNP',paste0(indep,' ~ SNP'),'SNP ~~ SNP')
+      zero_cov = paste0(combn(c(p1,p2),2)[1,],' ~~ 0*', combn(c(p1,p2),2)[2,])
+      zero_cov = c(zero_cov, paste0(c(p1,p2),' ~~ 0*',c(p1,p2)))
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP')
       write_tsv(sgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', BETA = 'est', 

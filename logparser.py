@@ -163,3 +163,72 @@ def crosscorr_parse(gwa1, gwa2 = [],
         summary = summary.loc[~((summary.group1.isin(exclude_g) & summary.pheno1.isin(exclude_p)) |
             (summary.group2.isin(exclude_g) & summary.pheno2.isin(exclude_p))),:]
     return summary.drop_duplicates().reset_index(drop = True)
+
+def parse_clump_file(file):
+    return pd.read_table(file, sep = '\\s+').rename(columns = {'BP':'POS'})
+
+class clump():
+    # automatically identifies overlapping clumps from dataframe ROWS 
+    # from parse_clump_file with added 'group' and 'pheno'
+    def __init__(self, entry):
+        self.chr = entry['CHR']
+        self.start = entry['POS']; self.stop = entry['POS']
+        self.sig_snps = {entry['SNP']}
+        self.sentinel_snp = entry['SNP']
+        self.pval = entry['P']
+        self.phenotypes = {(entry['group'], entry['pheno'])}
+        self.snps = set(entry['SP2'].replace('(1)','').split(','))
+
+    # returns False if the new entry is independent from the clump
+    def update(self, entry):
+        if entry['CHR'] != self.chr or entry['SNP'] not in self.snps: return False
+        self.sig_snps.add(entry['SNP'])
+        self.snps.update(set(entry['SP2'].replace('(1)','').split(',')))
+        self.phenotypes.add((entry['group'], entry['pheno']))
+        self.start = min(self.start, entry['POS'])
+        self.stop = max(self.stop, entry['POS'])
+        if entry['P'] < self.pval:
+            self.pval = entry['P']
+            self.sentinel_snp = entry['SNP']
+        return True
+
+    def to_dataframe(self):
+        df = pd.DataFrame(dict(
+            CHR = [self.chr], START = [self.start], STOP = [self.stop],
+            SNP = [self.sentinel_snp], P = [self.pval],
+            SIG = [','.join(sorted(self.sig_snps))]))
+        for g, p in self.phenotypes: df[f'{g}_{p}'] = 1
+        df['TOTAL'] = len(self.phenotypes)
+        return df
+
+def overlap_clumps(df):
+    df = df.sort_values(by = ['CHR','POS']).dropna()
+    clumps = []
+    current_clump = clump(df.iloc[0,:])
+    for i in range(1, df.shape[0]):
+        if not current_clump.update(df.iloc[i,:]):
+            clumps.append(current_clump)
+            current_clump = clump(df.iloc[i,:])
+    clumps.append(current_clump)
+    return pd.concat([c.to_dataframe() for c in clumps]).fillna(0), clumps
+
+def parse_clump(pheno, clump_dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump', pval = 5e-08):
+    '''Identifies all clumps from a list of GWAS summary statistics'''
+    # long format list of phenotypes
+    if isinstance(pheno[0][1], list): pheno = [(g,p) for g, ps in pheno for p in ps]
+    
+    from _utils.path import find_clump
+    clumps = []
+    for g, p in pheno:
+        try:
+            clump_file,_ = find_clump(g, p, dirname = clump_dir, pval = pval)
+            df = parse_clump_file(clump_file)
+            df.insert(loc = 0, column = 'group', value = g)
+            df.insert(loc = 1, column = 'pheno', value = p)
+            clumps.append(df)
+        except:
+            Warning(f'No clump file found for {g}/{p}')
+            continue
+    clumps = pd.concat(clumps).sort_values(by = ['CHR','POS']).reset_index(drop = True)
+    overlaps, _ = overlap_clumps(clumps)
+    return clumps, overlaps

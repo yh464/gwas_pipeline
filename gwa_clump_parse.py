@@ -12,7 +12,6 @@ Output format: tabular, columns = loci (one representative SNP in the clump), ro
 '''
 
 def identify_clumps(df):
-    from fnmatch import fnmatch
     df = df.sort_values(by = ['CHR','POS']).dropna()
     clumps = []; pvalues = []
     snps = df['SNP'].unique()
@@ -24,10 +23,9 @@ def identify_clumps(df):
             all_p2 = df.loc[df.SNP==j,'SP2'] # lists all SNPs within clumping distance
             in_clump = False
             for p2 in all_p2:
-                if fnmatch(p2, f'*{i}*'):
-                    in_clump = True; break
-            if in_clump:
-                break
+                p2_snps = p2.replace('(1)','').split(',')
+                if i in p2_snps: in_clump = True; break
+            if in_clump: break
         if in_clump:
             current_clump.append(i); current_p.append(pval); continue
         else:
@@ -36,12 +34,16 @@ def identify_clumps(df):
     clumps.append(current_clump); pvalues.append(current_p)
     return clumps, pvalues
 
-def main(args):
+def main(args = None, **kwargs):
     import os
     import pandas as pd
     from fnmatch import fnmatch
     from _utils.path import normaliser
     
+    if args == None:
+        from _utils.gadgets import namespace
+        args = namespace(**kwargs)
+
     norm = normaliser()
     
     crosstrait_clumps = []
@@ -109,16 +111,14 @@ def main(args):
                     
     norm.normalise(crosstrait_clumps).to_csv(f'{args._in}/all_clumps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t', index = False)
     norm.normalise(overlaps).to_csv(f'{args._in}/all_overlaps_{ct_prefix}_{args.p:.0e}.txt', sep = '\t')
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='This programme uses PLINK1.9'+
       ' to clump the GWAS output, identifying independent SNPs')
-    parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
-      default=['deg_local','degi_local','degc_local','clu_local','eff_local','mpl_local'])
-    parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
-      default = '../clump/')
-    parser.add_argument('-p',help = 'p-value threshold',
-      default = 5e-8, type = float) # or 3.1076e-11, or 1e-6
+    parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
+    parser.add_argument('-i','--in', dest = '_in', help = 'Input directory', default = '../clump/')
+    parser.add_argument('-p',help = 'p-value threshold', default = 5e-8, type = float)
     # always overwrites
     args = parser.parse_args()
     import os

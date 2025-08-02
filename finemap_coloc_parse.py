@@ -12,31 +12,29 @@ Required input:
     hyprcoloc tabular output
 '''
 
-def parse_coloc_tabular(file):
+def parse_hyprcoloc_tabular(file):
     import pandas as pd
     df = pd.read_table(file).drop(['iteration','dropped_trait'], axis=1) # valid clusters are now devoid of NA
     df.dropna(inplace = True)
     df = df.loc[df['regional_prob']>0.6, :] # filter by regional probability at 0.6 as in Nat Gen 2023
     return df
 
-def parse_coloc_cluster(entry, groups):
+def parse_hyprcoloc_cluster(entry, pheno):
     '''
     entry: pandas DataFrame single row, with following columns: 'traits', 'candidate_snp';
-    groups: pandas DataFrame with 'group' and 'pheno' columns
+    groups: a list output from _utils.path.find_gwas(long = False)
     '''
     import pandas as pd
     import numpy as np
-    groups['names'] = groups['group'] + '_' + groups['pheno']
     
     # initialise output
     snp = entry['candidate_snp']
-    clusters = pd.DataFrame(data = np.nan, index = [snp], columns = groups['names'])
-    summary = pd.DataFrame(data = np.nan, index = [snp], columns = groups['group'].unique())
+    clusters = pd.DataFrame(data = np.nan, index = [snp], columns = [f'{g}_{p}' for g, ps in pheno for p in ps])
+    summary = pd.DataFrame(data = np.nan, index = [snp], columns = [g for g,_ in pheno])
     
     for trait in entry['traits'].split(', '):
-        group = groups.loc[groups.names==trait, 'group']
-        clusters.loc[snp, trait] = 1
-        summary.loc[snp, group] = 1
+        clusters.loc[snp, trait.replace('/','_')] = 1
+        summary.loc[snp, trait.split('/')[0]] = 1
     clusters.insert(loc = 0, column = 'regional_prob', value = entry['regional_prob'])
     clusters.insert(loc = 1, column = 'prob_explained_by_snp', value = entry['posterior_explained_by_snp'])
     summary.insert(loc = 0, column = 'regional_prob', value = entry['regional_prob'])
@@ -48,33 +46,24 @@ def main(args):
     import os
     import pandas as pd
     from fnmatch import fnmatch
-    from _utils.path import normaliser
+    from _utils.path import normaliser, find_gwas
     
-    pheno = '_'.join(sorted(args.pheno))
-    os.chdir(f'{args._in}/{pheno}')
-    
-    groups = []
-    for p in args.pheno:
-        for x in os.listdir(f'{args.gwa}/{p}'):
-            if not fnmatch(x, '*.fastGWA'): continue
-            if fnmatch(x, '*_X.fastGWA'): continue
-            if fnmatch(x, '*_all_chrs*'): continue
-            prefix = x.replace('.fastGWA','')
-            groups.append(pd.DataFrame(dict(group = p, pheno = [prefix])))
-    groups = pd.concat(groups).reset_index(drop = True)        
+    pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
+    pheno_str = '_'.join([g for g,_ in pheno])
+    in_dir = f'{args._in}/{pheno_str}'  
     
     orig = []
     summary = []
     clusters = []
-    for x in sorted(os.listdir(f'{args._in}/{pheno}')):
-        if not fnmatch(x, '*coloc.txt'): continue
+    for x in sorted(os.listdir(in_dir)):
+        if not fnmatch(x, '*hyprcoloc.txt'): continue
         # parse chromosomal position
         tmp = x.split('_')
         chrom = int(tmp[0][3:]); start = int(tmp[1]); end = int(tmp[2])
         
-        df = parse_coloc_tabular(x)
+        df = parse_hyprcoloc_tabular(f'{in_dir}/{x}')
         for i in range(df.shape[0]):
-            c, s = parse_coloc_cluster(df.iloc[i,:], groups)
+            c, s = parse_hyprcoloc_cluster(df.iloc[i,:], pheno)
             c.insert(loc = 0, column = 'CHR', value = chrom)
             c.insert(loc = 1, column = 'START', value = start)
             c.insert(loc = 2, column = 'END', value = end)
@@ -96,12 +85,11 @@ def main(args):
     clusters = pd.concat(clusters)
     summary.index.name = 'SNP'
     clusters.index.name = 'SNP'
-    clusters = clusters.T
     
     norm = normaliser()
-    norm.normalise(orig).to_csv(f'{args.out}/{pheno}_coloc_raw.txt', sep = '\t', index = True)
-    norm.normalise(summary).to_csv(f'{args.out}/{pheno}_coloc_summary.txt', sep = '\t', index = True)
-    norm.normalise(clusters).to_csv(f'{args.out}/{pheno}_coloc_clusters.txt', sep = '\t', index = True)
+    norm.normalise(orig).to_csv(f'{args.out}/{pheno_str}_coloc_raw.txt', sep = '\t', index = True)
+    norm.normalise(summary).to_csv(f'{args.out}/{pheno_str}_coloc_summary.txt', sep = '\t', index = True)
+    norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
     return
 
 if __name__ == '__main__':
