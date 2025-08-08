@@ -19,6 +19,7 @@ Changelog:
 def main(args):
     import os
     from _utils.path import normaliser, find_gwas
+    import pandas as pd
     from fnmatch import fnmatch
     from logparser import crosscorr_parse
     
@@ -41,7 +42,11 @@ def main(args):
     norm = normaliser()
     if len(args.p2) > 0:
         fout = f'{args.out}/crosscorr_' + '_'.join(args.p1)+'.'+'_'.join(args.p2)
-    else: fout = f'{args.out}/corr_' + '_'.join(args.p1)
+    else: 
+        fout = f'{args.out}/corr_' + '_'.join(args.p1)
+        summary_rev = summary.copy()
+        summary_rev[['group1','pheno1','group2','pheno2']] = summary[['group2','pheno2','group1','pheno1']]
+        summary = pd.concat([summary, summary_rev]).sort_values(['group1','pheno1','group2','pheno2']).drop_duplicates()
     rg_tbl = summary.pivot_table(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
     norm.normalise(rg_tbl).to_csv(f'{fout}.wide.txt', index_label = False, sep = '\t',
                   header = True, index = True)

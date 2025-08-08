@@ -64,7 +64,7 @@ class array_submitter():
             from hashlib import sha256
             name = sha256(name.encode()).hexdigest()[:10] # truncate to 10 characters
             warnings.warn(f'Job name too long, using random name {name}')
-        self.name = name.replace('/','_') + '_0'
+        self.name = '_' + name.replace('/','_') + '_0'
         self.debug = debug
         self.intr = intr
         self.parallel = parallel
@@ -106,14 +106,14 @@ class array_submitter():
         self._mode = 'long' if timeout > 15 else 'short' # long jobs are for > 15 min commands
         self.wallclock = 240 if timeout > 15 else 60 # timeout = 12 hrs max
         if wallclock > 0: self.wallclock = min(wallclock,720)
-        self.lim = int(self.wallclock/timeout)
-        self.lim = max(self.lim, 1) # at least one command per file
-        self.lim *= self.parallel # all parallel processes have the same time limit
-        
-        # read command line args
+        # read command line args before specifying limit of commands per file
         import __main__
         if 'args' in dir(__main__): self.config(**vars(__main__.args))
         print(f'Max {self.lim} commands per file, {self.arraysize} files per array job')
+        # number of commands per file
+        self.lim = int(self.wallclock/timeout)
+        self.lim = max(self.lim, 1) # at least one command per file
+        self.lim *= self.parallel # all parallel processes have the same time limit
 
         # directories
         self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
@@ -143,9 +143,9 @@ class array_submitter():
             setattr(self, 'name', kwargs['jobname'])
         if 'wallclock' in kwargs.keys() and kwargs['wallclock'] != None:
             self.wallclock = min(self.wallclock,720)
-            self.lim = int(self.wallclock/self.timeout)
-            self.lim = max(self.lim, 1) # at least one command per file
-            self.lim *= self.parallel # all parallel processes have the same time limit
+        self.lim = int(self.wallclock/self.timeout)
+        self.lim = max(self.lim, 1) # at least one command per file
+        self.lim *= self.parallel # all parallel processes have the same time limit
 
     # a new file requires a shebang line, so this func resets the file
     def _newfile(self):
@@ -321,6 +321,7 @@ class array_submitter():
         
         self._write_wrap()
         time = int(self.timeout) * self._count
+        time = min(time, 720)
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
         

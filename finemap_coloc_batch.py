@@ -15,20 +15,20 @@ Required input:
 
 def main(args):
     import pandas as pd
-    from fnmatch import fnmatch
-    import numpy as np
-    
+    from hashlib import sha256
     from time import perf_counter as t
     tic = t()
     force = '-f' if args.force else ''
+    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
+    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
 
     # scans directory for fastGWA files
-    from _utils.path import find_gwas, find_clump
+    from _utils.path import find_gwas
+    from logparser import crosscorr_parse
     gwa = []
     if len(args.pheno) > 1 and args.filter:
-        gwa1 = find_gwas(args.pheno[0], dirname = args._in)
-        gwa2 = find_gwas(*args.pheno[1:], dirname = args._in)
-        from logparser import crosscorr_parse
+        gwa1 = find_gwas(args.pheno[0], dirname = args._in, clump = True)
+        gwa2 = find_gwas(*args.pheno[1:], dirname = args._in, clump = True)
         rg = crosscorr_parse(gwa1, gwa2, logdir = args.rg)
         if args.rgp == None: rg = rg.loc[rg.q < 0.05, ['group1','pheno1','group2','pheno2']]
         else: rg = rg.loc[rg.p < args.rgp, ['group1','pheno1','group2','pheno2']]
@@ -55,7 +55,7 @@ def main(args):
     print(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
     
     # check cache
-    cache_files = [f'{args.out}/{g}/{p}_chr{loci.CHR.iloc[i]}_{loci.START.iloc[i]:.0f}_{loci.STOP.iloc[i]:.0f}.txt'\
+    cache_files = [f'{args.out}/loci/{g}/{p}_chr{loci.CHR.iloc[i]}_{loci.START.iloc[i]:.0f}_{loci.STOP.iloc[i]:.0f}.txt'\
         for g,p in gwa for i in range(loci.shape[0])]
     if not all([os.path.isfile(x) for x in cache_files]):
         import finemap_coloc_extract
@@ -71,19 +71,38 @@ def main(args):
     submitter = array_submitter(
         name = 'coloc_'+'_'.join(args.pheno),
         env = 'gentoolsr', n_cpu = 1,
-        timeout = len(gwa), dependency = dependency
+        timeout = len(gwa)+10, dependency = dependency
         )
+    
+    # correlation matrix is needed for flashfm
+    if args.flashfm:
+        rg = crosscorr_parse(gwa)
+        rg['p1'] = rg.group1 + '_' + rg.pheno1; rg['p2'] = rg.group2 + '_' + rg.pheno2
+        rg = rg.pivot_table(index = 'p1', columns = 'p2', values = 'rg')
+        rg.columns.name = None; rg.index.name = None
+        rg = rg.fillna(rg.T)
+        for x in rg.columns: rg.loc[x,x] = 1
+        rg.to_csv(f'{tmpdir}/{sha256(repr(gwa).encode()).hexdigest()[:10]}_rg.txt', sep = '\t')
+
     outdir = f'{args.out}/'+'_'.join([g for g,_ in find_gwas(args.pheno)])
     if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
     for x in range(1, loci.shape[0]):
         c = loci.loc[x, 'CHR']
         start = loci.loc[x,'START']
         stop = loci.loc[x,'STOP']
-        out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_hyprcoloc.txt'
-        if not os.path.isfile(out) or args.force:
-            cmd = ['Rscript','finemap_hyprcoloc.r'] + [f'{g}/{p}' for g,p in gwa] + \
-                [f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out} {force}']
-            submitter.add(' '.join(cmd))
+        if args.hyprcoloc:
+            out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_hyprcoloc.txt'
+            if not os.path.isfile(out) or args.force:
+                cmd = ['Rscript','finemap_hyprcoloc.r'] + [f'{g}/{p}' for g,p in gwa] + \
+                    [f'-i {args.out}/loci --chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out} {force}']
+                submitter.add(' '.join(cmd))
+        if args.flashfm:
+            out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_flashfm.txt'
+            if not os.path.isfile(out) or args.force:
+                cmd = ['Rscript', 'finemap_flashfm.r'] + [f'{g}/{p}' for g,p in gwa] + \
+                    ['-i', f'{args.out}/loci',f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out}',
+                    '--gcov',f'{tmpdir}/{sha256(repr(gwa).encode()).hexdigest()[:10]}_rg.txt', force]
+                submitter.add(' '.join(cmd))
     submitter.submit()
     
 if __name__ == '__main__':
@@ -102,6 +121,9 @@ if __name__ == '__main__':
     parser.add_argument('-r','--rg', help = 'Directory for rg logs, to filter traits',
       default = '../gcorr/rglog/')
     parser.add_argument('--rgp', help = 'p-value threshold for genetic correlation', default = None, type = float)
+    parser.add_argument('--hyprcoloc', help = 'run hyprcoloc', action = 'store_true', default = False)
+    parser.add_argument('--flashfm', help = 'run flashfm', action = 'store_true', default = False)
+    parser.add_argument('--mvsusie', help = 'run mvsusie', action = 'store_true', default = False)
     parser.add_argument('-p', '--pval', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
@@ -111,6 +133,9 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if args.rgp != None and 0 < args.rgp < 1: args.filter = True # specify p-value threshold -> auto filter
     if args.rgp != None and (args.rgp > 1 or args.rgp <= 0): raise ValueError('p-value threshold must be 0 to 1')
+    if not any([args.hyprcoloc, args.flashfm, args.mvsusie]):
+        Warning('No algorithm specified, defaulting to hyprcoloc')
+        args.hyprcoloc = True
 
     from _utils import path, cmdhistory, logger
     logger.splash(args)

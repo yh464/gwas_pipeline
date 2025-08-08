@@ -49,6 +49,7 @@ optlist = list(
 )
 
 args = parse_args(OptionParser(option_list = optlist))
+args$inst = unique(strsplit(args$inst,':')[[1]])
 print('Input options')
 print(args)
 
@@ -69,7 +70,7 @@ parse_metadata = function(file){
 merge_gwa_clump = function(gwa, clump, pheno) {
   library(tidyverse)
   # each gwa file should have 'SNP' column, clump should be the standard PLINK output
-  snp = read_tsv(clump)[['SNP']]
+  snp = read.table(clump, header = T)[['SNP']]
   if (is.null(snp)) stop(paste0('Clump file missing ',clump))
   pheno = strsplit(pheno,'/')[[1]]
   if (is.character(gwa)) if (file.exists(gwa)) gwa = read_tsv(gwa)
@@ -260,7 +261,7 @@ main = function(args){
     gsub('/','_',.))
   
   #### Read instruments from mr_extract_snp pipeline ####
-  all_instruments = strsplit(args$inst,':')[[1]] %>% lapply(read_tsv) %>% bind_rows()
+  all_instruments = args$inst %>% lapply(read_tsv) %>% bind_rows()
   gwa1_fwd = merge_gwa_clump(all_instruments, args$clump1, args$p1)
   gwa2_fwd = merge_gwa_clump(all_instruments, args$clump1, args$p2)
   print('SNPs used for forward MR')

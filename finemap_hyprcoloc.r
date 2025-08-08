@@ -38,30 +38,34 @@ cache = paste0(args$input,'/',args$pheno,'_chr',args$chr,'_',args$start,'_',args
 cat('Read cache files, time =', proc.time()[3])
 
 # initialise
-betas = matrix(ncol = 1, nrow = 0)
-colnames(betas) = 'SNP'
-betas = as_tibble(betas)
+betas = cache[[1]] %>% select(SNP, A1)
 ses = betas
-
+N = numeric(0)
 for (i in 1:length(args$pheno)){
   # intended output format: betas matrix, rows = SNP, columns = traits
-  df = cache[[i]]; trait = args$pheno[i]
+  df = cache[[i]] %>% arrange(POS); trait = args$pheno[i]
+  if (nrow(df) < 100) {
+    warning(paste0(trait,' has fewer than 100 SNPs in this region, skipping'))
+    next
+  }
+  N[i] = df$N %>% max()
   df = df[df$CHR == args$chr,]
   df = df[df$POS > args$start,]
   df = df[df$POS < args$stop,]
   if ('OR' %in% colnames(df)) df$BETA = log(df$OR)
-  df = df[,c('CHR','SNP','POS','BETA','SE')]
+  df = df %>% select(SNP, A1, A2, BETA, SE)
+  df_rev = df %>% mutate(A1 = A2, BETA = BETA * -1)
   
-  # outer merge to identify problematic files
-  df1 = df[,c('SNP','BETA')]
-  colnames(df1) = c('SNP',trait)
-  betas = merge(betas, df1, all = T)
-  
-  df1 = df[,c('SNP','SE')]
-  colnames(df1) = c('SNP',trait)
-  ses = merge(ses, df1, all = T)
+  # merge betas
+  df1 = bind_rows(df, df_rev) %>% select(SNP, A1, BETA)
+  colnames(df1) = c('SNP','A1',trait)
+  betas = merge(betas, df1)
+  # merge ses
+  df1 = bind_rows(df, df_rev) %>% select(SNP, A1, SE)
+  colnames(df1) = c('SNP','A1',trait)
+  ses = merge(ses, df1)
 }
-
+betas = betas %>% select(-A1); ses = ses %>% select(-A1)
 
 #### Run Hyprcoloc ####
 ses[ses==0] = 1e-8

@@ -29,6 +29,7 @@ def parse_h2_log(file, full = False):
             if fnmatch(line, 'Intercept*'):
                 l = line.split()
                 gcov_int = float(l[-2]); gcov_int_se = float(l[-1].replace('(','').replace(')',''))
+        h2; se # important in case the total observed scale h2 is not read from log
     except:
         h2 = np.nan; se = np.nan; gcov_int = np.nan; gcov_int_se = np.nan
     if not full: return h2, se
@@ -39,7 +40,7 @@ def parse_h2_log(file, full = False):
         pheno2 = os.path.basename(file).replace('.h2.log','').replace('.gz',''),
         rg = h2, se = se, p = 1 - sts.chi2.cdf(h2**2/se**2, df = 1),
         h2_obs = h2, h2_obs_se = se, h2_int = gcov_int, h2_int_se = gcov_int_se,
-        gcov_int = gcov_int, gcov_int_se = gcov_int_se
+        gcov_int = gcov_int, gcov_int_se = gcov_int_se, z = h2/se
     ))
     return df
 
@@ -101,7 +102,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
         h2dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
         exclude = [], full = False):
     '''
-    gwa1 and gwa2 are lists of (group, pheno_list) tuples from logparser.find_gwas(long=False)
+    gwa1 and gwa2 are lists of (group, pheno_list) tuples or (group, pheno) tuples, compatible with long/short
     leave gwa2 blank to estimate auto-correlations of gwa1
     '''
     import os
@@ -119,6 +120,8 @@ def crosscorr_parse(gwa1, gwa2 = [],
             g1, p1s, g2, p2s = g2, p2s, g1, p1s
             flip = True
         else: flip = False
+        if isinstance(p1s, str): p1s = [p1s]
+        if isinstance(p2s, str): p2s = [p2s]
         for p1 in p1s:
             if g1 == g2 and h2dir != None: # heritability
                 fname = f'{h2dir}/{g1}/{p1}.h2.log'
@@ -140,6 +143,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
             elif not os.path.isfile(fname) and g1 == g2: continue
             rg = parse_rg_log(fname, full = full)
             rg['fixed_int'] = False
+            rg = rg.loc[rg.pheno2.isin(p2s),:] # due to the file structure, some other traits may be present in the rg log
             if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
             summary.append(rg)
             
@@ -153,6 +157,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
     summary = pd.concat(summary) # creates a long format table
     summary.insert(loc = len(summary.columns), column = 'q', value = np.nan)
     for g1,p1s in gwa1: # FDR correction for each IDP, which are non-independent
+        if isinstance(p1s,str): p1s = [p1s]
         for p1 in p1s:
             summary.loc[(summary.pheno1==p1) & (summary.group1==g1) & ~np.isnan(summary.p),'q'] \
                 = sts.false_discovery_control(
