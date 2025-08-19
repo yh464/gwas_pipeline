@@ -41,9 +41,9 @@ def main(args):
     # tabular output, wide and long
     norm = normaliser()
     if len(args.p2) > 0:
-        fout = f'{args.out}/crosscorr_' + '_'.join(args.p1)+'.'+'_'.join(args.p2)
+        fout = f'{args.out}/crosscorr_' + ('_'.join(args.p1)+'.'+'_'.join(args.p2)).replace('/','_')
     else: 
-        fout = f'{args.out}/corr_' + '_'.join(args.p1)
+        fout = f'{args.out}/corr_' + ('_'.join(args.p1)).replace('/','_')
         summary_rev = summary.copy()
         summary_rev[['group1','pheno1','group2','pheno2']] = summary[['group2','pheno2','group1','pheno1']]
         summary = pd.concat([summary, summary_rev]).sort_values(['group1','pheno1','group2','pheno2']).drop_duplicates()

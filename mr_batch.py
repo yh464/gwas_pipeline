@@ -19,15 +19,14 @@ def qc(file):
 
 def main(args):
     import os
-    from fnmatch import fnmatch
-    import numpy as np
-    import pandas as pd
     from logparser import parse_h2_log
     from _utils.path import find_clump, find_gwas
     from logparser import crosscorr_parse
     
     # array submitter
     from mr_extract_snp_batch import api
+    print('Try running following command to force re-extraction of instruments')
+    print(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
     snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
@@ -53,19 +52,10 @@ def main(args):
             meta.append(f'{args.gwa}/{g}/metadata')
     if len(meta) > 0: cmdargs.append(f'--meta {":".join(meta)}')
 
-    # find instruments
-    instruments = []
-    for i,_ in exposures:
-        for j,_ in outcomes:
-            instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{args.pval:.0e}.txt')
-            instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{args.pval:.0e}.txt')
-            instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{args.pval:.0e}.txt')
-        instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{args.pval:.0e}.txt')
-
     for g2, p2s in outcomes:
       # make output directory wrt g2
       if not os.path.isdir(f'{args.out}/{g2}'): os.mkdir(f'{args.out}/{g2}')
-      
+
       for g1, p1s in exposures:
         for p1 in p1s:
           # find h2 log for trait 1
@@ -101,6 +91,15 @@ def main(args):
             except: print(f'{g2} missing clumped GWAS sumstats'); continue
             pval_thr = max([pval1, pval2])
             
+            # find instruments
+            instruments = []
+            for i,_ in exposures:
+                for j,_ in outcomes:
+                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{pval_thr:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{pval_thr:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{pval_thr:.0e}.txt')
+                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{pval_thr:.0e}.txt')
+
             # check progress and QC output
             out_prefix = f'{args.out}/{g2}/{p2}/{g1}_{p1}_{p2}'
             fwd = f'{out_prefix}_mr_forward_results.txt'

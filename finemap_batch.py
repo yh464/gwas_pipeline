@@ -24,7 +24,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'finemap_{args.pheno[0]}', n_cpu = 2,
-        env = 'gentoolspy',
+        env = '/rds/project/rds-Nl99R8pHODQ/toolbox/polyfun',
         timeout = 60,
         debug = False
         )

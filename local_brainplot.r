@@ -14,8 +14,8 @@ require(tidyverse)
 require(ggsegExtra)
 require(ggsegGlasser)
 
-setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
-# setwd('d:/.cam-pg/2025_psych-img-gwa/brainplots')
+# setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
+setwd('d:/.cam-pg/2025_psych-img-gwa/brainplots')
 
 force <- F
 ref <- glasser$data

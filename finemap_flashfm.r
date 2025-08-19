@@ -51,12 +51,13 @@ extract_ref = function(prefix, snp.list){
 
 #### main execution block ####
 main = function(args){
-  # check progress
-  if (file.exists(args$out) & !args$force) return(NULL)
-  
-  #### read summary stats ####
   library(tidyverse)
   pheno = gsub('/','_', args$pheno)
+  
+  # check progress
+  if (file.exists(paste0(args$out,'.rdata')) & !args$force) load(paste0(args$out,'.rdata')) else {
+  
+  #### read summary stats ####
   cache = paste0(args$input,'/',args$pheno,'_chr',args$chr,'_',args$start,'_',args$stop,'.txt') %>%
     lapply(read_tsv) %>% setNames(pheno)
   cat('Read cache files, time =', proc.time()[3])
@@ -97,14 +98,25 @@ main = function(args){
   
   #### Run flashfm ####
   library(flashfm)
-  # faulty function in flashfm package
-  out = FLASHFMwithFINEMAP(cache, ref$corx, raf, ybar, N, tempdir(), 1, covy, 0.99, 1, 
-    '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap')
+  # computational system may be singular: try multiple times to solve
+  out = NULL; trials = 0
+  while (is.null(out)) {
+    out = tryCatch(FLASHFMwithFINEMAP(cache, ref$corx, raf, ybar, N, tempdir(), 1, covy, 0.99, 1, 
+      '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap'),
+      error = function(e){return(NULL)})
+    trials = trials + 1
+    if (trials >=5 ) break
+  }
+  # one last try
+  if (is.null(out)) out = FLASHFMwithFINEMAP(cache, ref$corx, raf, ybar, N, tempdir(), 1, covy, 
+    0.99, 1, '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap')
+                                   
   cat('Saving temp files to', tempdir(), '\n')
   save(out, file = paste0(args$out,'.rdata'))
+  }
   
   #### parse output ####
-  out.table = list()
+  out.table = list(); out.summary = tibble(SNP = character(0))
   for (trait in pheno) {
     pp = out$mpp.pp$PPg[[trait]] %>% as.data.frame() %>% select(-null) %>% 
       setNames('pp') %>% arrange(desc(pp)) # posterior probability of credible sets, 
@@ -114,19 +126,28 @@ main = function(args){
       snps = rownames(pp)[i] %>% str_split_1('%')
       for (snp in snps) {
         if (snp %in% names(out$snpGroups$groups.flashfm)) {
-          colname = out$snpGroups$groups.flashfm[[snp]] %>% paste(collapse = '_')
-        } else colname = snp
-        tmp[[colname]] = 1
+          colname = out$snpGroups$groups.flashfm[[snp]]
+        } else colname = str_split_1(snp,'%')
+        for (col in colname) tmp[[col]] = 1
       }
       trait.table[[i]] = tmp
       total_pp = total_pp + pp$pp[i]
       if (total_pp > 0.95) break
     }
-    out.table[[trait]] = bind_rows(trait.table)
+    trait.summary = bind_rows(trait.table); trait.summary[is.na(trait.summary)] = 0
+    out.table[[trait]] = trait.summary
+    snp_col = trait.summary %>% select(-pheno, -pp) %>% colnames()
+    trait.summary = (trait.summary %>% select(-pheno) * trait.summary$pp) %>% select(-pp) %>%
+      colSums(na.rm = T) %>% as.matrix(nrow = length(snp_col)) %>% as.data.frame() %>% 
+      set_names(trait) %>% add_column(SNP = snp_col, .before = 1)
+    out.summary = merge(out.summary, trait.summary, all = T)
   }
-  out.table = bind_rows(out.table)
-  out.table[is.na(out.table)] = 0
-  write_tsv(out.table, args$out)
+  out.table = bind_rows(out.table); out.table[is.na(out.table)] = 0
+  out.summary$overlap = (out.summary %>% select(-SNP) %>% as.matrix() %>% is.na() %>% rowSums() < length(pheno) - 1)
+  out.summary[is.na(out.summary)] = 0
+  out.summary = out.summary %>% add_column(CHR = args$chr, START = args$start, STOP = args$stop, .before = 1)
+  write_tsv(out.table, paste0(args$out, '_raw.txt'))
+  write_tsv(out.summary, paste0(args$out, '.txt'))
 }
 
 main(args)

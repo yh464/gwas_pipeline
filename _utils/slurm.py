@@ -47,7 +47,7 @@ class array_submitter():
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
                  mode = DeprecationWarning('Use timeout instead of mode'), # deprecated, use timeout instead
                  lim = -1, # number of commands per file, default -1
-                 arraysize = 100, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 50
+                 arraysize = 200, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500
                  email = True,
                  wallclock = -1, # total time limit per file, default 240 minutes
                  env = 'wd', # default working environment
@@ -75,7 +75,7 @@ class array_submitter():
         self.n_node = n_node
         self.n_task = n_task
         self.n_cpu = n_cpu
-        arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 500
+        if n_cpu < 20: arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 100
         self.arraysize = arraysize # the default array job size limit is 2000 for SLURM
         self.email = '--mail-type=ALL' if email else ''
         self.account = account
@@ -109,11 +109,11 @@ class array_submitter():
         # read command line args before specifying limit of commands per file
         import __main__
         if 'args' in dir(__main__): self.config(**vars(__main__.args))
-        print(f'Max {self.lim} commands per file, {self.arraysize} files per array job')
         # number of commands per file
         self.lim = int(self.wallclock/timeout)
         self.lim = max(self.lim, 1) # at least one command per file
         self.lim *= self.parallel # all parallel processes have the same time limit
+        print(f'Max {self.lim} commands per file, {self.arraysize} files per array job')
 
         # directories
         self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
