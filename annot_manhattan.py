@@ -94,10 +94,10 @@ def main(args):
     
     # parse MAGMA output
     ref = pd.read_table(args.ref)
-    magma_dir = f'{args.magma}/{args.pheno}/genes'
+    magma_dir = f'{args.magma}/{args.pheno}'
     for x in os.listdir(magma_dir):
         if not fnmatch(x, f'{args.prefix}*.genes.out'): continue
-        gset = x.replace(f'{args.prefix}_','').replace('.genes','').replace(
+        gset = x.replace(f'{args.prefix}.','').replace('.genes','').replace(
             '.annot','').replace('.out','')
         if os.path.isfile(f'{outdir}/{args.prefix}.{gset}.manhattan.pdf') and not args.force:
             continue

@@ -40,7 +40,7 @@ def main(args):
     annot_list = []
     for x in os.listdir(args.annot):
         if fnmatch(x, '*.genes.annot'): 
-            annot_list.append(x)
+            annot_list.append(x.replace('.genes.annot',''))
     
     # cell types of interest
     f = open(args.gset).read().splitlines()
@@ -72,7 +72,7 @@ def main(args):
             out_fname = f'summary/{prefix}.{annot}.gsasummary.txt'
             dflist = []
             for xprefix in gset:
-              tmp = pd.read_csv(f'gsa/{prefix}.{annot}.{xprefix}.gsa.out', sep = '\s+', comment = '#')
+              tmp = pd.read_csv(f'{prefix}.{annot}.{xprefix}.gsa.out', sep = '\s+', comment = '#')
               tmp.insert(0,'gene_set',value = xprefix)
               tmp.insert(0,'annot', value = annot)
               tmp.insert(0,'pheno', value = prefix)
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Parses MAGMA GSA outputs for a group of phenotypes')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'MAGMA output directory',
-      default = '../annot/magma')
+      default = '../sc/magma_gsea')
     parser.add_argument('-a', '--annot', dest ='annot', help = 'directory to annotation files',
       default = '../toolbox/hmagma')
     parser.add_argument('--gset', dest ='gset', help = 'cell types to study enrichment',
@@ -165,8 +165,7 @@ if __name__ == '__main__':
     cmdhistory.log()
     proj = path.project()
     proj.add_var('%gset',r'.+','gene set')
-    proj.add_input(args._in+'/%pheng/genes/%pheno_%maf.genes.outM ', __file__)
-    proj.add_output(args._in+'/%pheng/gsa/%pheno_%maf.%gset.gsa.out',__file__)
+    proj.add_input(args._in+'/%pheng/%pheno_%maf.%gset.gsa.out',__file__)
     proj.add_output(args._in+'/%pheng/%pheno_%maf.gsasummary.txt',__file__)
     try: main(args)
     except: cmdhistory.errlog()

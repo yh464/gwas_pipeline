@@ -32,11 +32,11 @@ def main(args):
     annot_list = []
     for x in os.listdir(args.annot):
         if fnmatch(x, '*.genes.annot'): 
-            annot_list.append(x)
+            annot_list.append(x.replace('.genes.annot',''))
     
     for x in args.pheno:
       print(f'Processing: {x}')
-      os.chdir(f'{args._in}/{x}/genes')
+      os.chdir(f'{args._in}/{x}')
       all_annot = []
       
       if not os.path.isdir(f'{args._in}/{x}/summary'):
@@ -47,7 +47,7 @@ def main(args):
           for y in os.listdir():
             if fnmatch(y, f'*{annot}.genes.out'):
               prefix = y.replace(f'_{annot}.genes.out','')
-              df = pd.read_table(y, sep = '\s+')
+              df = pd.read_table(y, sep = '\\s+')
               df.drop(['CHR','START','STOP','NSNPS','NPARAM','N'], axis = 1, inplace = True)
               df = df.merge(ref_lbl, how = 'inner', on = 'GENE')
               tmp = df.P.values.copy()    

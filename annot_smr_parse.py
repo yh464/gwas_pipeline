@@ -22,62 +22,58 @@ def main(args):
     import numpy as np
     import pandas as pd
     from scipy.stats import false_discovery_control as fdr
-    from _utils.path import normaliser
+    from _utils.path import normaliser, find_gwas
     norm = normaliser()
     os.chdir(args._in)
     
     qtl_list = []
-    for y in os.listdir(args.qtl):
-        if fnmatch(y, '*.besd'): qtl_list.append(y)
-        if os.path.isdir(f'{args.qtl}/{y}'):
-            if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]):
-                qtl_list.append(y)
+    for p in os.listdir(args.qtl):
+        if fnmatch(p, '*.besd'): qtl_list.append(p)
+        if os.path.isdir(f'{args.qtl}/{p}'):
+            if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{p}')]):
+                qtl_list.append(p)
     print('Following QTL have been found:')
     for qtl in qtl_list: print(qtl)
     print()    
     
-    for x in args.pheno:
+    pheno = find_gwas(args.pheno, dirname = args.gwa)
+
+    for g, ps in pheno:
         # overall summary table
         all_phenos = []
+        print(f'Following phenotypes have been found for {g}:')
+        for p in ps: print(p)
         
-        prefix_list = []
-        for y in os.listdir(f'{args.gwa}/{x}'):
-            if fnmatch(y,'*.fastGWA') and (not fnmatch(y,'*_X.fastGWA')) and (not fnmatch(y, '*_all_chrs*')):
-                prefix_list.append(y.replace('.fastGWA',''))
-        
-        print('Following phenotypes have been found:')
-        for y in prefix_list: print(y)
-        
-        for y in prefix_list:
+        for p in ps:
             all_qtls = []
             for qtl in qtl_list:
-                if os.path.isfile(f'{args._in}/{x}/{y}.{qtl}.smr'):
-                    smr = read_smr(f'{args._in}/{x}/{y}.{qtl}.smr')
+                if os.path.isfile(f'{args._in}/{g}/{p}.{qtl}.smr'):
+                    smr = read_smr(f'{args._in}/{g}/{p}.{qtl}.smr')
                 else:
                     smr = []
-                    for chrom in os.listdir(f'{args._in}/{x}/{y}.{qtl}'):
+                    for chrom in os.listdir(f'{args._in}/{g}/{p}.{qtl}'):
                         if not fnmatch(chrom, '*.smr'): continue
-                        smr.append(read_smr(f'{args._in}/{x}/{y}.{qtl}/{chrom}'))
+                        smr.append(read_smr(f'{args._in}/{g}/{p}.{qtl}/{chrom}'))
                     try: 
                         smr = pd.concat(smr)
                         smr.insert(loc = 0, column = 'qtl', value = qtl)
-                        smr.insert(loc = 0, column = 'pheno', value = y)
+                        smr.insert(loc = 0, column = 'pheno', value = p)
                     except: 
                         smr = pd.DataFrame(columns = ['pheno','qtl','probe','chr','gene','SNP','A1','A2','beta',
                                                       'se','p','p_heidi','nsnp_heidi','q'], index = [])
                         all_qtls.append(smr)
-                        print(f'WARNING: SMR results for {x}/{y}.{qtl} are missing')
+                        print(f'WARNING: SMR results for {g}/{p}.{qtl} are missing')
                         continue
                 smr['q'] = np.nan
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
                 all_qtls.append(smr)
             all_qtls = pd.concat(all_qtls).sort_values(by = ['q', 'p_heidi'])
-            all_qtls.to_csv(f'{args._in}/{x}/{y}.txt', sep = '\t', index = False)
+            all_qtls.to_csv(f'{args._in}/{g}/{p}.smr', sep = '\t', index = False)
             all_phenos.append(all_qtls)
         all_phenos = pd.concat(all_phenos).sort_values(by = ['q','p_heidi'])
         all_phenos = norm.normalise(all_phenos)
-        all_phenos.to_csv(f'{args._in}/{x}.txt', sep = '\t', index = False)
-        all_phenos.loc[all_phenos.p < 0.05,:].to_csv(f'{args._in}/{x}_sig.txt', sep = '\t', index = False)
+        all_phenos.to_csv(f'{args._in}/{g}.smr', sep = '\t', index = False)
+        all_phenos.loc[all_phenos.p < 0.05,:].to_csv(f'{args._in}/{g}_sig.smr', sep = '\t', index = False)
         
 if __name__ == '__main__':
     import argparse

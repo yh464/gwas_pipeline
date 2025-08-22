@@ -152,6 +152,35 @@ def find_bed(bed, sep_chr = True, x = False):
         elif len(out) == n_chr + 1: return out[:-1]
         else: raise FileNotFoundError('Incorrect number of chromosome-specific bed files')
 
+def find_gene_sumstats(group, pheno, 
+    dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/annot/magma',
+    annot = 'ENSG', ext = 'genes.out'):
+    '''Finds gene-level summary stats for a given phenotype
+    pheno parameter should be a single <group>, <pheno> tuple '''
+    
+    annot = annot.replace('.genes.annot','')
+    if dirname.find('smr') > -1: 
+        if not annot in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/xqtl'):
+            annot = 'psychencode_eqtl'
+        ext = 'smr'
+        Warning('Found SMR in directory name, automatically setting config to SMR output')
+    if dirname.find('magma') > -1:
+        if not annot in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma') and not \
+            f'{annot}.genes.annot' in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma'):
+            annot = 'ENSG'
+        ext = 'genes.out'
+        Warning('Found MAGMA in directory name, automatically setting config to MAGMA output')
+    
+    # first try exact match
+    out = f'{dirname}/{group}/{pheno}.{annot}.{ext}'
+    if os.path.isfile(out): return os.path.realpath(out)
+
+    # then try non-exact match over annotation
+    out = f'{dirname}/{group}/{pheno}.*{annot}*.{ext}'
+    for x in os.listdir(f'{dirname}/{group}'):
+        if fnmatch(x, out): return os.path.realpath(f'{dirname}/{group}/{x}')
+    return False
+
 class normaliser():
     def __init__(self, _dir = os.path.realpath('../path/'), _dict = 'dict.txt'):
         

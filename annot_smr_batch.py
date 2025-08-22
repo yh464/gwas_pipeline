@@ -54,7 +54,8 @@ def main(args):
         
         # munge input summary statistics
         if not os.path.isfile(f'{tmpdir}/{prefix}.txt') or force:
-            format_gwa(gwa, f'{tmpdir}/{prefix}.txt')
+            try: format_gwa(gwa, f'{tmpdir}/{prefix}.txt')
+            except: Warning(f'{prefix} missing necessary columns'); return
         
         # parse input xqtl file
         from fnmatch import fnmatch

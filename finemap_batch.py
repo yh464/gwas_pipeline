@@ -25,7 +25,7 @@ def main(args):
     submitter = array_submitter(
         name = f'finemap_{args.pheno[0]}', n_cpu = 2,
         env = '/rds/project/rds-Nl99R8pHODQ/toolbox/polyfun',
-        timeout = 60,
+        timeout = 120,
         debug = False
         )
     scripts_path = os.path.realpath(__file__)
@@ -75,7 +75,7 @@ if __name__ == '__main__':
       default = '../params/bed/')
     parser.add_argument('--polyfun', help = 'directory of POLYFUN tool',
       default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
-    parser.add_argument('-p', dest = 'p', help = 'p-value', default = 3.1076e-11, type = float)
+    parser.add_argument('-p', dest = 'p', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()

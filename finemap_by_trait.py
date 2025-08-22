@@ -46,9 +46,7 @@ from _utils import logger
 logger.splash(args)
 
 if not os.path.isdir(args.out): os.mkdir(args.out)
-os.chdir(args.out)
 if not os.path.isdir(args.pheno): os.mkdir(args.pheno)
-os.chdir(args.pheno)
 stats_dir = f'{args.out}/{args.pheno}/polyfun_stats'
 if not os.path.isdir(stats_dir): os.system(f'mkdir -p {stats_dir}')
 
@@ -71,12 +69,10 @@ if (not os.path.isfile(f'{stats_dir}/{prefix}.snpvar')) or args.force:
   if o != 0: raise Exception(f'ERROR for {args._in} at step 2: extract snpvar')
 
 import pandas as pd
+from logparser import parse_clump
 # identify SNPs that need to be clumped
-overlaps = pd.read_table(f'{args.clump}/{args.pheno}_{args.p:.0e}_overlaps.txt', index_col ='label').T
-prefix = args._in.replace('.fastGWA','')
-overlaps = overlaps[prefix]
-overlaps = overlaps[overlaps > 0]
-snps = overlaps.index
+clumps,_ = parse_clump([(args.pheno, args._in.replace('.fastGWA',''))], args.clump, args.p)
+snps = clumps['SNP']
 
 df = pd.read_csv(f'{args.dir}/{args.pheno}/{args._in}', sep = '\s+', 
                  usecols = ['SNP','CHR','POS','N'])
@@ -87,7 +83,7 @@ print('Following SNPs are being fine-mapped')
 print(snps.to_numpy())
 for snp in snps:
     pos = df.loc[df.SNP == snp, 'POS'].iloc[0]
-    start = int(min(pos-5*10**5,1))
+    start = int(max(pos-5*10**5,1))
     stop = start + 10**6
     c = df.loc[df.SNP == snp, 'CHR'].iloc[0]
     if c < 23: geno = f'{args.bfile}/chr{c:.0f}'
@@ -101,7 +97,7 @@ for snp in snps:
       cmd = f'python {args.polyfun}/finemapper.py '+ \
         f'--method susie --n {n:.0f} --sumstats {stats_dir}/{prefix}.snpvar --chr {c:.0f} ' + \
         f'--start {start:.0f} --end {stop:.0f} --geno {geno} --out {stats_dir}/{prefix}_chr{c}_{start}_{stop}.txt '+ \
-        '--max-num-causal 5 --allow-swapped-indel-alleles'
+        '--max-num-causal 5 --allow-swapped-indel-alleles --allow-missing'
       o = os.system(cmd)
       
       # o = os.system(f'bash {scripts_path}/'+
