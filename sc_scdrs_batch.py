@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs/siletti_2023') # intentionally absolute
     parser.add_argument('--label', nargs = '*', default = [], help = 'Columns containing cell classifications/types in the h5ad dataset',
-        default = 'ROIGroup ROIGroupCoarse ROIGroupFine roi supercluster_term cluster_id subcluster_id development_stage'.split())
+        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()

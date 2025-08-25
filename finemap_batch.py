@@ -11,54 +11,33 @@ Required input:
 '''
 
 def main(args):
-    if args.force: force = '-f'
-    else: force = ''
-    
     # make output directories
     import os
     if not os.path.isdir(args.out): os.mkdir(args.out)
-    logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/'
-    log = open(f'{logdir}/finemap_batch.log','w')
     
     # array submitter
     from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = f'finemap_{args.pheno[0]}', n_cpu = 2,
-        env = '/rds/project/rds-Nl99R8pHODQ/toolbox/polyfun',
-        timeout = 120,
-        debug = False
-        )
-    scripts_path = os.path.realpath(__file__)
-    scripts_path = os.path.dirname(scripts_path)
+    submitter = array_submitter(name = f'finemap_{args.pheno[0]}', n_cpu = 2,
+        env = '/rds/project/rds-Nl99R8pHODQ/toolbox/polyfun', timeout = 120)
     
-    from fnmatch import fnmatch
-    for x in args.pheno:
-      os.chdir(args._in)
-      os.chdir(x)
-      
-      flist = []
-      for y in os.listdir():
-        if fnmatch(y,'*.fastGWA') and (not fnmatch(y,'*_X.fastGWA')) and (not fnmatch(y, '*_all_chrs*')):
-          flist.append(y)
-      
-      for y in flist:
-        skip = True
-        prefix = y.replace('.fastGWA','')
-        
-        if not os.path.isfile(f'{args.out}/{args.pheno}/{prefix}.finemap.summary'):
-          skip = False
-        
-        if skip and (not args.force):
-          print(f'{prefix} summary already generated - skipping', file = log)
-          continue
-        
-        print(f'{prefix} submitted to slurm', file = log)
-        
-        submitter.add(
-          f'python finemap_by_trait.py {x} -i {y} -d {args._in} -c {args.clump} -o {args.out}'+
-          f' -p {args.p:.4e} --polyfun {args.polyfun} -b {args.bfile} {force}')
+    from _utils.path import find_gwas, find_clump
+    pheno = find_gwas(args.pheno, dirname = args._in, clump = True, long = True)
+    for g, p in pheno:
+        try: clump,_ = find_clump(g, p, dirname = args.clump, pval = args.p)
+        except: Warning(f'No clump file found for {g}/{p} - skipping'); continue
+
+        outdir = f'{args.out}/{g}'
+        if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
+
+        out_file = f'{args.out}/{g}/{p}.finemap.summary'
+        if os.path.isfile(out_file) and (not args.force): continue
+
+        cmd = ['python', 'finemap_by_trait.py', '-i', f'{args._in}/{g}/{p}.fastGWA', '-c', clump, 
+            '-o', out_file, '-b', args.bfile, '-p', f'{args.p:.4e}', '--polyfun', args.polyfun]
+        if args.force: cmd.append('-f')
+        submitter.add(' '.join(cmd))
     submitter.submit()
-    # submitter.debug()
+    return submitter
     
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser

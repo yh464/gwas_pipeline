@@ -185,8 +185,10 @@ class clump():
         self.snps = set(entry['SP2'].replace('(1)','').split(','))
 
     # returns False if the new entry is independent from the clump
-    def update(self, entry):
-        if entry['CHR'] != self.chr or entry['SNP'] not in self.snps: return False
+    def update(self, entry, dist:int = 0):
+        if entry['CHR'] != self.chr: return False
+        if not dist and entry['SNP'] not in self.snps: return False
+        if dist and (entry['POS'] > self.stop + dist or entry['POS'] < self.start - dist): return False
         self.sig_snps.add(entry['SNP'])
         self.snps.update(set(entry['SP2'].replace('(1)','').split(',')))
         self.phenotypes.add((entry['group'], entry['pheno']))
@@ -206,12 +208,13 @@ class clump():
         df['TOTAL'] = len(self.phenotypes)
         return df
 
-def overlap_clumps(df):
+def overlap_clumps(df, dist:int = 0):
+    '''Set distance = 0 to merge clumps by SP2; otherwise merge clumps within specified distance'''
     df = df.sort_values(by = ['CHR','POS']).dropna()
     clumps = []
     current_clump = clump(df.iloc[0,:])
     for i in range(1, df.shape[0]):
-        if not current_clump.update(df.iloc[i,:]):
+        if not current_clump.update(df.iloc[i,:], dist):
             clumps.append(current_clump)
             current_clump = clump(df.iloc[i,:])
     clumps.append(current_clump)

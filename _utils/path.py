@@ -141,7 +141,7 @@ def find_bed(bed, sep_chr = True, x = False):
         for chrom in range(1, n_chr + 1):
             for file in os.listdir(bed):
                 if fnmatch(file.replace('X','23'),f'*chr{chrom}.bed'):
-                    out.append(file[:-4])
+                    out.append(f'{bed}/{file[:-4]}')
         if len(out) != n_chr: raise FileNotFoundError('Incorrect number of chromosome-specific bed files')
         return out
     else:
