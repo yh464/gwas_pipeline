@@ -37,3 +37,7 @@ Everything is processed on the basis of **groups of phenotypes**.
     2. `prs_corr_*.py`: Correlation analysis
 6. Genomic SEM pipeline
     1. `gsem_batch.py` is a very flexible framework which can implement common factor analysis, EFA/CFA, causal models, GWAS by subtraction and manually input models.
+7. Single-cell mapping pipeline `sc_*.py`
+    1. `sc_magma_gsea_batch.py` runs MAGMA gene-set association test based on lists of genes and MAGMA gene-level summary stats
+    2. `sc_scdrs_batch.py` runs single-cell Disease Risk Score (scDRS)
+    3. `sc_gsmap_batch.py` runs spatial enrichment using gsMap

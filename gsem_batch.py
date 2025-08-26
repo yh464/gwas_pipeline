@@ -124,12 +124,20 @@ def main(args):
 
     # find GWAS summary stats
     from _utils.path import find_gwas
-    exposures = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
-    exposures_short = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude)
-    outcomes = find_gwas(args.p2, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
-    outcomes_short = find_gwas(args.p2, dirname=args._in, ext='sumstats',exclude = args.exclude)
-    mediators = find_gwas(args.med, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
-    covariates = find_gwas(args.cov, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+    if not args.gwas:
+        exposures = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+        exposures_short = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude)
+        outcomes = find_gwas(args.p2, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+        outcomes_short = find_gwas(args.p2, dirname=args._in, ext='sumstats',exclude = args.exclude)
+        mediators = find_gwas(args.med, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+        covariates = find_gwas(args.cov, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
+    else:
+        exposures = find_gwas(args.p1, dirname=args.full, ext='fastGWA', exclude = args.exclude, long=True, se = True)
+        exposures_short = find_gwas(args.p1, dirname=args.full, ext='fastGWA', exclude = args.exclude, se = True)
+        outcomes = find_gwas(args.p2, dirname=args.full, ext='fastGWA', exclude = args.exclude, long=True, se = True)
+        outcomes_short = find_gwas(args.p2, dirname=args.full, ext='fastGWA',exclude = args.exclude, se = True)
+        mediators = find_gwas(args.med, dirname=args.full, ext='fastGWA', exclude = args.exclude, long=True, se = True)
+        covariates = find_gwas(args.cov, dirname=args.full, ext='fastGWA', exclude = args.exclude, long=True, se = True)
 
     from _utils.slurm import array_submitter
     name = '_'.join(['gsem', args.p1[0]]+ args.p2 + ['cov'] + args.med + args.cov

@@ -11,7 +11,7 @@ CHECK LOG
 
 import os
 import argparse
-import warnings
+import re
 
 class array_submitter():
     '''
@@ -168,11 +168,11 @@ class array_submitter():
         self._nfiles = -1
         
         # reset job name and directories to avoid confusion
-        self.name = self.name.replace(f'_{self._jobid-1}',f'_{self._jobid}')
-        self.logdir = self.logdir.replace(f'_{self._jobid-1}',f'_{self._jobid}')
+        self.name = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.name)
+        self.logdir = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.logdir)
         if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
         os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
-        self.tmpdir = self.tmpdir.replace(f'_{self._jobid-1}',f'_{self._jobid}')
+        self.tmpdir = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.tmpdir)
         if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
         os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
         

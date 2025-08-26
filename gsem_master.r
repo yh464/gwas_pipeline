@@ -385,7 +385,7 @@ main = function(args){
       zero_cov = paste0(combn(c(p1,p2),2)[1,],' ~~ 0*', combn(c(p1,p2),2)[2,])
       zero_cov = c(zero_cov, paste0(c(p1,p2),' ~~ 0*',c(p1,p2)))
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
-      sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = 'indep ~ SNP')
+      sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = paste0(indep,' ~ SNP'))
       write_tsv(sgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', BETA = 'est', 
         Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa)
     }

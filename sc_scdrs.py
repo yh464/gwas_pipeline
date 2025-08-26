@@ -52,16 +52,16 @@ def main(args = None, **kwargs):
     # Stage 1: generate cell-specific scores
     out_score = f'{args.out}.score.txt'
     if not os.path.isfile(out_score) or args.force:
-        adata = scdrs.utils.load_h5ad(args.h5ad)
+        adata = scdrs.util.load_h5ad(args.h5ad)
         gene_list, gene_weight = generate_gene_sets(args)
-        score = scdrs.score_cell(adata, gene_list, gene_weight)
+        score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
         score.to_csv(out_score, index = True, sep = '\t')
     
     # Stage 2: for each column of annotations, generate group-specific enrichments
     out_enrichment = f'{args.out}.enrichment.txt'
     if not os.path.isfile(out_enrichment) or args.force:
         try: adata
-        except: adata = scdrs.utils.load_h5ad(args.h5ad)
+        except: adata = scdrs.util.load_h5ad(args.h5ad)
         try: score
         except: score = pd.read_table(out_score, index_col = 0)
         
@@ -89,8 +89,8 @@ if __name__ == '__main__':
     parser.add_argument('--nmin', help = 'Minimum number of significant genes, number or fraction', type = float, default = 100)
     parser.add_argument('--nmax', help = 'Maximum number of significant genes, number or fraction', type = float, default = 0.1)
     parser.add_argument('--h5ad', help = 'Input h5ad single-cell multiomics dataset', required = True)
-    parser.add_argument('--label', nargs = '*', default = [], help = 'Columns containing cell classifications/types in the h5ad dataset',
-        default = 'ROIGroup ROIGroupCoarse ROIGroupFine roi supercluster_term cluster_id subcluster_id development_stage'.split())
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
+        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
     parser.add_argument('-o', '--out', dest = 'out', help = 'output prefix, no .txt', required = True)
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     import os
     for arg in ['_in','h5ad','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
-    if args.pval == None: args.pval = float(args.pval)
+    if args.pval != None: args.pval = float(args.pval)
 
     from _utils import cmdhistory
     cmdhistory.log()

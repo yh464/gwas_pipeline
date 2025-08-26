@@ -18,10 +18,11 @@ Requires following inputs:
 
 def main(args):
     import os
+    import pandas as pd
     from _utils.path import find_gwas, find_gene_sumstats
     from _utils.slurm import array_submitter
     pheno = find_gwas(args.pheno, long = True)
-    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 12, timeout = 240)
+    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 16, timeout = 360, env = 'gentoolspy')
 
     # scans hdf5 files
     h5ad = [f'{args.h5ad}/{x}' for x in os.listdir(args.h5ad) if x[-5:] =='.h5ad']
@@ -39,19 +40,22 @@ def main(args):
             out_prefix = f'{outdir}/{p}.{h5prefix}.scdrs'
             if os.path.isfile(f'{out_prefix}.score.txt') and os.path.isfile(f'{out_prefix}.enrichment.txt') \
                 and not args.force: continue
-            cmd = ['python', 'sc_scdrs_by_trait.py', '-i', annot, '--pcol', args.pcol, '--bcol', args.bcol,
+            cmd = ['python', 'sc_scdrs.py', '-i', annot, '--pcol', args.pcol, '--bcol', args.bcol,
                    '--gcol', args.gcol, f'--nmax {args.nmax} --nmin {args.nmin}', '--h5ad', h5, '--label'] + args.label
             if args.pval != None: cmd.append(f'-p {args.pval}')
             cmd += ['-o', out_prefix]
             if args.force: cmd.append('-f')
             submitter.add(' '.join(cmd))
-
+        if all([os.path.isfile(f'{outdir}/{p}.{h5prefix}.scdrs.enrichment.txt') for h5prefix in h5ad_prefix]):
+            df = pd.concat([pd.read_table(f'{outdir}/{p}.{h5prefix}.scdrs.enrichment.txt').assign(dataset = h5prefix)
+                for h5prefix in h5ad_prefix], axis = 0)
+            df.to_csv(f'{args.out}/{g}/{p}.scdrs.enrichment.txt', index = False, sep = '\t')
     submitter.submit()
     return submitter
 
-if __name__ == '__main__':
+if __name__ == '__main__':  
     from _utils.slurm import slurm_parser
-    parser = slurm_parser('This script runs cell-type enrichments using scDRS')
+    parser = slurm_parser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing gene-level summary statistics',
         default = '../annot/magma')
@@ -64,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--nmax', help = 'Maximum number of significant genes, number or fraction', type = float, default = 0.1)
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs/siletti_2023') # intentionally absolute
-    parser.add_argument('--label', nargs = '*', default = [], help = 'Columns containing cell classifications/types in the h5ad dataset',
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
