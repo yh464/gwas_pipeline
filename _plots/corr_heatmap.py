@@ -17,7 +17,7 @@ def capitalise(series):
         out.append(tmp)
     return out
 
-def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = ''):
+def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '', p_threshold: list[float] = []):
     '''
     Required input format: long format pd.DataFrame
         1st column: group label (x axis, as xlabel)
@@ -62,13 +62,11 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
     
     fig, ax = plt.subplots(len(group1), len(group2),
                            figsize = (sum(count2)/3, sum(count1)/3),
-                           width_ratios = count2, height_ratios = count1[::-1])
-    
-    if len(group1) == 1 and len(group2) == 1: ax = np.array([ax])
-    ax = ax.reshape((len(group1), len(group2)))
+                           width_ratios = count2, height_ratios = count1[::-1], squeeze = False)
     ax = ax[::-1,:] # invert y axis
     
     # estimate significance:
+    p_threshold = sorted(p_threshold, reverse = True)
     if 'fdr' in summary.columns: summary['q'] = summary['fdr']
     if 'FDR' in summary.columns: summary['q'] = summary['fdr']
     if 'P' in summary.columns: summary['p'] = summary['P']
@@ -80,16 +78,25 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
                 summary.loc[(summary.iloc[:,0] == g) & (summary.iloc[:,1] == trait) & ~np.isnan(summary['p']),'q'] = \
                 fdr(summary.loc[(summary.iloc[:,0] == g) & (summary.iloc[:,1] == trait) & ~np.isnan(summary['p']),'p'])
     
-    if 'p' in summary.columns:
-        summary['Significance'] = 'NS'
+    if 'p' in summary.columns and len(p_threshold) == 0:
+        summary['Significance'] = 'not significant'
         summary.loc[summary['p'] < 0.05, 'Significance'] = 'nominal'
-        summary.loc[summary['q'] < 0.05, 'Significance'] = 'FDR-sig'
+        summary.loc[summary['q'] < 0.05, 'Significance'] = 'FDR-corrected'
+        sig_label = 'FDR-corrected'
         legend_param = 'brief'
+        sizes = {'not significant': 25, 'nominal': 125, 'FDR-corrected': 250}
+    elif 'p' in summary.columns and len(p_threshold) > 0:
+        summary['Significance'] = 'not significant'
+        for p_thr in p_threshold:
+            summary.loc[summary['p'] < p_thr, 'Significance'] = f'p < {p_thr}'
+        sig_label = f'p < {p_threshold[-1]}'
+        legend_param = 'brief'
+        sizes = dict(zip(['not significant'] + [f'p < {x}' for x in p_threshold], np.linspace(25, 250, len(p_threshold)+1)))
     else:
         summary['Significance'] = 'NA'
+        sig_label = ''
         legend_param = False
-    # point size will depend on significance
-    sizes = {'NS': 25, 'nominal': 125, 'FDR-sig': 250, 'NA': 250}
+        sizes = {'NA': 250}
     
     # colour bar range (may manually set to 1)
     if type(absmax) == type(None): absmax = np.abs(summary.iloc[:,4]).max()
@@ -116,9 +123,11 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
                 legend = False,
                 ax = ax[i,j]
                 )
-            if tmp.loc[tmp.Significance == 'FDR-sig',:].size > 0:
+            
+            # dark borders for most significant category
+            if tmp.loc[tmp.Significance == sig_label,:].size > 0:
                 sns.scatterplot(
-                    tmp.loc[tmp.Significance == 'FDR-sig',:],
+                    tmp.loc[tmp.Significance == sig_label,:],
                     x = summary.columns[3], y = summary.columns[1],
                     hue = summary.columns[4], hue_norm = (-absmax, absmax),
                     palette = 'redblue',
@@ -159,21 +168,19 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
     
     # colour bar
     norm = mpl.colors.Normalize(vmin = -absmax, vmax = absmax)
-    cax = fig.add_axes((0.95, 0.4, 0.04, 0.35))
+    figsize = fig.get_size_inches()
+    right_pos = ax[-1,-1].get_position().x1
+    cax = fig.add_axes((right_pos+1/figsize[0], 0.4, 0.3/figsize[0], 0.35))
     cax.set_title(summary.columns[4])
     plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap='redblue'), cax = cax)
     
     # move legend location
     if legend_param:
-        handles = [
-            mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = 25**0.5, # Seaborn point size correspond to the square of diameter 
-                markeredgecolor = '.7', markerfacecolor = '.7', label = 'not significant'),
-            mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = 125**0.5, 
-                markeredgecolor = '.7', markerfacecolor = '.7', label = 'nominal'),
-            mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = 250**0.5, 
-                markeredgecolor = 'k', markeredgewidth = 1.5, markerfacecolor = '.7', label = 'FDR-corrected')
-            ]
+        handles = [mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = y**0.5, # Seaborn point size correspond to the square of diameter 
+            markeredgecolor = '.7', markerfacecolor = '.7', label = x) for x, y in list(sizes.items())[:-1]] + [
+            mpl.lines.Line2D([],[], marker = 'o', linewidth = 0, markersize = list(sizes.values())[-1]**0.5, 
+            markeredgecolor = 'k', markeredgewidth = 1.5, markerfacecolor = '.7', label = list(sizes.keys())[-1])]
         fig.legend(handles=handles, title = 'Significance',
-                   frameon = False, loc = 'upper left', bbox_to_anchor=(0.91, 0.4))
+                   frameon = False, loc = 'upper left', bbox_to_anchor=(right_pos+0.3/figsize[0], 0.4))
         
     return fig

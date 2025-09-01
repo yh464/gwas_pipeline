@@ -180,10 +180,12 @@ def main(args):
         if args.rgp < 0:
             exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
                 (exp_corr_out.q < 0.05),['group1','pheno1']]
-        else:
+            exposures_filtered = list(zip(exposures_corr.group1.to_list(), exposures_corr.pheno1.to_list()))
+        elif args.rgp < 1:
             exposures_corr = exp_corr_out.loc[(exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2) &\
                 (exp_corr_out.p < args.rgp),['group1','pheno1']]
-        exposures_filtered = list(zip(exposures_corr.group1.to_list(), exposures_corr.pheno1.to_list()))
+            exposures_filtered = list(zip(exposures_corr.group1.to_list(), exposures_corr.pheno1.to_list()))
+        else: exposures_filtered = exposures
 
         # all correlated exposures in the same model
         if args.all_exp:

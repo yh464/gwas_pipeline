@@ -17,7 +17,7 @@ from math import e
 def main(args):
     from _utils.gadgets import mv_symlink
     from _utils.slurm import array_submitter
-    submitter = array_submitter('gsmap_'+'_'.join(args.pheno), timeout = 240, n_cpu = 16, env = args.gsmap)
+    submitter = array_submitter('gsmap_'+'_'.join(args.pheno), timeout = 720, n_cpu = 48, env = args.gsmap)
 
     # find ST datasets
     import os

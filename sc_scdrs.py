@@ -16,30 +16,6 @@ Requires following inputs:
             (for Siletti et al 2023: ROIGroup, ROIGroupCoarse, ROIGroupFine, roi, supercluster_term, cluster_id, subcluster_id, development_stage)
 '''
 
-def generate_gene_sets(args):
-    # generate gene sets from the gene-level summary stats
-    import pandas as pd
-    from scipy.stats import false_discovery_control as fdr
-
-    df = pd.read_table(args._in, sep = '\\s+').sort_values(args.pcol, ascending = True)
-    n_genes = df.shape[0]
-    nmin = args.nmin * n_genes if 0 < args.nmin < 1 else args.nmin
-    nmin = int(max(50, nmin))
-    nmax = args.nmax * n_genes if 0 < args.nmax < 1 else args.nmax
-    nmax = int(min(nmax, 0.2 * n_genes))
-    if nmax <= nmin: raise ValueError('Too few genes in dataset')
-    if args.pval == None:
-        q = fdr(df[args.pcol])
-        nsig = sum(q < 0.05)
-    else:
-        nsig = sum(df[args.pcol] < args.pval)
-    nsig = max(nsig, nmin); nsig = min(nsig, nmax)
-
-    gene_list = df[args.gcol].iloc[:nsig].tolist()
-    if args.bcol != None: gene_weight = df[args.bcol].iloc[:nsig].values
-    else: gene_weight = None
-    return gene_list, gene_weight
-
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
     import os
@@ -52,8 +28,10 @@ def main(args = None, **kwargs):
     # Stage 1: generate cell-specific scores
     out_score = f'{args.out}.score.txt'
     if not os.path.isfile(out_score) or args.force:
+        weights = pd.read_table(args._in)
+        gene_list = weights['gene'].tolist()
+        gene_weight = weights['weight'].values if 'weight' in weights.columns else None
         adata = scdrs.util.load_h5ad(args.h5ad)
-        gene_list, gene_weight = generate_gene_sets(args)
         score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
         score.to_csv(out_score, index = True, sep = '\t')
     
@@ -81,13 +59,7 @@ def main(args = None, **kwargs):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser('This script runs cell-type enrichments using scDRS')
-    parser.add_argument('-i','--in', dest = '_in', help = 'Input summary stats', required = True)
-    parser.add_argument('--pcol', help = 'P-value column of input summary stats', default = 'P') # p_SMR
-    parser.add_argument('--bcol', help = 'Effect size column of input summary stats', default = 'ZSTAT') # b_SMR
-    parser.add_argument('--gcol', help = 'Gene ID column of input summary stats', default = 'GENE') # probeID
-    parser.add_argument('-p','--pval', help = 'P-value threshold for significant genes, default FDR 0.05', default = None)
-    parser.add_argument('--nmin', help = 'Minimum number of significant genes, number or fraction', type = float, default = 100)
-    parser.add_argument('--nmax', help = 'Maximum number of significant genes, number or fraction', type = float, default = 0.1)
+    parser.add_argument('-i','--in', dest = '_in', help = 'Input gene list and weights', required = True)
     parser.add_argument('--h5ad', help = 'Input h5ad single-cell multiomics dataset', required = True)
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])

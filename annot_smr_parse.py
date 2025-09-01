@@ -49,6 +49,8 @@ def main(args):
             for qtl in qtl_list:
                 if os.path.isfile(f'{args._in}/{g}/{p}.{qtl}.smr'):
                     smr = read_smr(f'{args._in}/{g}/{p}.{qtl}.smr')
+                elif not os.path.isdir(f'{args._in}/{g}/{p}.{qtl}'):
+                    Warning(f'Missing SMR results for {g}/{p}.{qtl}'); continue
                 else:
                     smr = []
                     for chrom in os.listdir(f'{args._in}/{g}/{p}.{qtl}'):
@@ -67,6 +69,8 @@ def main(args):
                 smr['q'] = np.nan
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
                 all_qtls.append(smr)
+            if len(all_qtls) == 0:
+                Warning(f'Missing SMR results for {g}/{p}'); continue
             all_qtls = pd.concat(all_qtls).sort_values(by = ['q', 'p_heidi'])
             all_qtls.to_csv(f'{args._in}/{g}/{p}.smr', sep = '\t', index = False)
             all_phenos.append(all_qtls)
