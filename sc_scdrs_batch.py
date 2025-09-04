@@ -21,20 +21,20 @@ def generate_gene_sets(gene_sumstats, args):
     import pandas as pd
     from scipy.stats import false_discovery_control as fdr
 
-    df = pd.read_table(gene_sumstats, sep = '\\s+').sort_values(args.pcol, ascending = True)
-    n_genes = df.shape[0]
-    nmin = args.nmin * n_genes if 0 < args.nmin < 1 else args.nmin
-    nmin = int(max(50, nmin))
-    nmax = args.nmax * n_genes if 0 < args.nmax < 1 else args.nmax
-    nmax = int(min(nmax, 0.2 * n_genes))
-    if nmax <= nmin: raise ValueError('Too few genes in dataset')
-    if args.pval == None:
-        q = fdr(df[args.pcol])
-        nsig = sum(q < 0.05)
-    else:
-        nsig = sum(df[args.pcol] < args.pval)
-    nsig = max(nsig, nmin); nsig = min(nsig, nmax)
-
+    df = pd.read_table(gene_sumstats, sep = '\\s+').sort_values(args.pcol, ascending = True).reset_index(drop = True)
+    # n_genes = df.shape[0]
+    # nmin = args.nmin * n_genes if 0 < args.nmin < 1 else args.nmin
+    # nmin = int(max(50, nmin))
+    # nmax = args.nmax * n_genes if 0 < args.nmax < 1 else args.nmax
+    # nmax = int(min(nmax, 0.2 * n_genes))
+    # if nmax <= nmin: raise ValueError('Too few genes in dataset')
+    # if args.pval == None:
+    #     q = fdr(df[args.pcol])
+    #     nsig = sum(q < 0.05)
+    # else:
+    #     nsig = sum(df[args.pcol] < args.pval)
+    # nsig = max(nsig, nmin); nsig = min(nsig, nmax)
+    nsig = 1000
     gene_list = df[args.gcol].iloc[:nsig].tolist()
     if args.bcol != None: gene_weight = df[args.bcol].iloc[:nsig].values
     else: gene_weight = 1
@@ -50,6 +50,7 @@ def main(args):
 
     # scans hdf5 files
     for g, p in pheno:
+        os.makedirs(f'{args.out}/{g}/{p}', exist_ok = True)
         # check annotation file exists
         annot = find_gene_sumstats(g, p, args._in, args.annot)
         if not annot: Warning(f'Missing gene-level sumstats for {g}/{p}'); continue
@@ -63,7 +64,7 @@ def main(args):
             h5ad_dir = f'{args.h5ad}/{sc}'
             if not os.path.isdir(h5ad_dir): continue
             outdir = f'{args.out}/{g}/{p}/{sc}'
-            if not os.path.isdir(outdir): _ = os.system(f'mkdir -p {outdir}')
+            os.makedirs(outdir, exist_ok = True)
             h5ad = [f'{h5ad_dir}/{x}' for x in os.listdir(h5ad_dir) if x[-5:] =='.h5ad']
             h5ad_prefix = [x[:-5] for x in os.listdir(h5ad_dir) if x[-5:] =='.h5ad']
 

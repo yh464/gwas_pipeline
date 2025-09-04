@@ -71,7 +71,6 @@ if __name__ == '__main__':
     import os
     for arg in ['_in','h5ad','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
-    if args.pval != None: args.pval = float(args.pval)
 
     from _utils import cmdhistory
     cmdhistory.log()

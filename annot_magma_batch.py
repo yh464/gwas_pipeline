@@ -29,7 +29,7 @@ def main(args):
     # find annotations
     annots = [(f'{args.annot}/{x}', x.replace('.genes.annot','')) for x in os.listdir(args.annot) if x.endswith('.genes.annot')]
 
-    for g, p in args.pheno:
+    for g, p in pheno:
         outdir = f'{args.out}/{g}'
         if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
 

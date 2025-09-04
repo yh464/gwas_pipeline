@@ -93,7 +93,7 @@ if __name__ == '__main__':
   
   params = parser.add_argument_group(title = 'parameters for GCTA')
   params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-    default = '../toolbox/gcta-1.94.1-linux-kernel-3-x86_64/gcta-1.94.1')
+    default = '../toolbox/gcta/gcta-1.94.1')
   params.add_argument('--maf', dest = 'maf', help = 'Filter by minor allele frequency',
     default = '0.01', type = str)
   params.add_argument('--keep', dest = 'keep', help = 'Subjects to keep', # intentionally absolute

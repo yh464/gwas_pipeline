@@ -116,10 +116,10 @@ class array_submitter():
         print(f'Max {self.lim} commands per file, {self.arraysize} files per array job')
 
         # directories
-        self.logdir = f'{log}/{self.name}/' # to prevent confusion with other array submissions
+        self.logdir = f'{log}/{self.name}' # to prevent confusion with other array submissions
         if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
         os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
-        self.tmpdir = f'{tmpdir}/{self.name}/' # to prevent confusion with other array submissions
+        self.tmpdir = f'{tmpdir}/{self.name}' # to prevent confusion with other array submissions
         if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
         os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
     
@@ -149,7 +149,7 @@ class array_submitter():
 
     # a new file requires a shebang line, so this func resets the file
     def _newfile(self):
-        fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
+        fname = f'{self.tmpdir}/{self.name}_{self._fileid}.sh'
         _file = open(fname,'w')
         print('#!/bin/bash', file = _file) # shebang line
         if type(self.env) != type(None): # mamba environment
@@ -169,10 +169,10 @@ class array_submitter():
         
         # reset job name and directories to avoid confusion
         self.name = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.name)
-        self.logdir = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.logdir)
+        self.logdir = os.path.realpath(f'{self.logdir}/..')+f'/{self.name}'
         if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
         os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
-        self.tmpdir = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.tmpdir)
+        self.tmpdir = os.path.realpath(f'{self.tmpdir}/..')+f'/{self.name}'
         if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
         os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
         
@@ -184,7 +184,7 @@ class array_submitter():
         '''
         # can append multiple commands at once if they need to be run successively
         # they are considered a single command and take care of the time limit!
-        
+        if len(cmd) == 0: return # nothing to add -> do not reset the 'blank' flag
         self._blank = False
         # preprocess command
         cmd = ' && '.join(cmd)
@@ -199,7 +199,7 @@ class array_submitter():
                 self._newfile()
             
             # append command
-            fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
+            fname = f'{self.tmpdir}/{self.name}_{self._fileid}.sh'
             _file = open(fname,'a')
             print(cmd, file = _file)
             _file.close() # I do not want 2000 file handles!
@@ -222,7 +222,7 @@ class array_submitter():
                 self._nfiles += 1
                 self._newfile()
             
-            fname = self.tmpdir+f'{self.name}_{self._fileid}.sh'
+            fname = f'{self.tmpdir}/{self.name}_{self._fileid}.sh'
             _file = open(fname,'a')
             print(cmd, file = _file)
             _file.close() # I do not want 2000 file handles!
