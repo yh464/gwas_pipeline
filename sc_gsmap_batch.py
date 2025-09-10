@@ -12,6 +12,9 @@ Requires following inputs:
 
 '''
 
+from posixpath import islink
+
+
 def main(args):
     import pandas as pd
     import os
@@ -20,7 +23,7 @@ def main(args):
     from _utils.slurm import array_submitter
     ldsc_submitter = array_submitter('gsmap_'+'_'.join(args.pheno), timeout = 120, n_cpu = 4, env = args.gsmap)
     cauchy_submitter = array_submitter('gsmap_cauchy_'+'_'.join(args.pheno), timeout = 10, n_cpu = 4, env = args.gsmap, dependency=ldsc_submitter)
-    rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 90, n_cpu = 20, env = args.gsmap, dependency=ldsc_submitter)
+    rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 360, n_cpu = 40, env = args.gsmap, dependency=ldsc_submitter)
 
     # find ST datasets and phenotype files
     st_datasets = os.listdir(args.st)
@@ -66,20 +69,23 @@ def main(args):
 
             # Cauchy combination
             if not os.path.isfile(out_cauchy_region) or not os.path.isfile(out_cauchy_ct) or args.force:
-                cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation annotation')
-                cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_ct}')
-                cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region')
-                cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_region}')
-                cmds.append(f'ln -s {out_cauchy_region} {gsmap_out_cauchy}') # create a symlink so that report generation can find the cauchy file
+                if os.path.islink(gsmap_out_cauchy): os.unlink(gsmap_out_cauchy) # remove symlink if exists
+                if not os.path.isfile(out_cauchy_ct) or args.force:
+                    cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation annotation')
+                    cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_ct}')
+                if not os.path.isfile(out_cauchy_region) or args.force:
+                    cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region')
+                    cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_region}')
+                cmds.append(f'ln -s {out_cauchy_region} {gsmap_out_cauchy}') # create a symlink for gsmap progress checking
             cauchy_submitter.add(*cmds)
 
             # report generationp
             if args.report:
                 os.makedirs(out_rpt, exist_ok = True)
                 if not os.path.islink(gsmap_out_rpt): os.symlink(out_rpt, gsmap_out_rpt) # symlink the gsmap output directory to output filesystem
-                if not os.path.isfile(f'{out_rpt}/{s}_{g}_{p}_gsMap_plot.html') or args.force:
-                    rpt_submitter.add(f'gsmap run_report --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region '+
-                                f'--sumstats_file {args._in}/{g}/{p}.sumstats --top_corr_genes 50')
+                #if not os.path.isfile(f'{out_rpt}/{s}_{g}_{p}_gsMap_plot.html') or args.force:
+                rpt_submitter.add(f'gsmap run_report --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region '+
+                        f'--sumstats_file {args._in}/{g}/{p}.sumstats --top_corr_genes 50')
     ldsc_submitter.submit()
     cauchy_submitter.submit()
     rpt_submitter.submit()

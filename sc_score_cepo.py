@@ -88,14 +88,14 @@ def main(args):
 
     out_dfs = []
     for label in args.label:
-        tempfile = f'{args.out}.cepo.{label}.txt'
+        tempdir = f'/home/yh464/rds/hpc-work/temp/cepo/{os.path.basename(args._in)[:-5]}/{label}'
+        tempfile = f'{tempdir}/cepo.{label}.txt'
         if os.path.isfile(tempfile) and not args.force:
             df = pd.read_csv(tempfile, sep = '\t', index_col = 0)
             out_dfs.append(df)
             print(label); continue
         if label not in adata.obs.columns: Warning(f'Label {label} not found in adata.obs, skipping'); continue
-        df = singlebatchcepo(adata.X.T, genes, adata.obs[label], mincells = 20, exprspct = 0.05,
-            tempdir = f'/home/yh464/rds/hpc-work/temp/cepo/{os.path.basename(args._in)[:-5]}/{label}')
+        df = singlebatchcepo(adata.X.T, genes, adata.obs[label], mincells = 20, exprspct = 0.05, tempdir = tempdir)
         gc.collect()
         df.columns = [f'cepo.{label}.{x}' for x in df.columns]
         out_dfs.append(df)
@@ -103,6 +103,7 @@ def main(args):
         del df
         print(f'Computed {label} in {t()-tic:.2f}s')
     out_dfs = pd.concat(out_dfs, axis = 1)
+    out_dfs.columns = out_dfs.columns.str.replace(' ','_').str.replace('/','_').str.replace('-','_')
     out_dfs.index.name = 'gene'
     out_dfs.to_csv(f'{args.out}.cepo.txt', sep = '\t', index = True, header = True)
     return out_dfs
@@ -113,7 +114,8 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input h5ad single-cell multiomics dataset', required = True)
     parser.add_argument('-o','--out', help = 'Output prefix', required = True)
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
-        default = ['ROIGroup','ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
+        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
     parser.add_argument('-f','--force', help = 'Force overwrite', action = 'store_true', default = False)
     args = parser.parse_args()
 

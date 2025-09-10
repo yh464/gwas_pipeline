@@ -32,6 +32,7 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
     import matplotlib as mpl
     import numpy as np
     from scipy.stats import false_discovery_control as fdr
+    import warnings
     
     # Red-blue colour map
     cdict = dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
@@ -138,20 +139,22 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
                     )
             
             # remove x labels except for last row
-            if i > 0:
-                ax[i,j].set_xlabel('')
-                ax[i,j].set_xticklabels([''] * len(ax[i,j].get_xticklabels()))
-            else:
-                ax[i,j].set_xlabel(group2[j])
-                for label in ax[i,j].get_xticklabels():
-                    label.set_rotation(90)
-            
-            # remove y labels except for first column
-            if j > 0:
-                ax[i,j].set_ylabel(''); 
-                ax[i,j].set_yticklabels([''] * len(ax[i,j].get_yticklabels()))
-            else:
-                ax[i,j].set_ylabel(group1[i])
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                if i > 0:
+                    ax[i,j].set_xlabel('')
+                    ax[i,j].set_xticklabels([''] * len(ax[i,j].get_xticklabels()))
+                else:
+                    ax[i,j].set_xlabel(group2[j])
+                    for label in ax[i,j].get_xticklabels():
+                        label.set_rotation(90)
+                
+                # remove y labels except for first column
+                if j > 0:
+                    ax[i,j].set_ylabel(''); 
+                    ax[i,j].set_yticklabels([''] * len(ax[i,j].get_yticklabels()))
+                else:
+                    ax[i,j].set_ylabel(group1[i])
             
             # set x and y limits
             ax[i,j].set_xlim(-0.5, count2[j]-0.5)

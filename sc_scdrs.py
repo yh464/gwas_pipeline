@@ -31,7 +31,7 @@ def main(args = None, **kwargs):
         weights = pd.read_table(args._in)
         gene_list = weights['gene'].tolist()
         gene_weight = weights['weight'].values if 'weight' in weights.columns else None
-        adata = scdrs.util.load_h5ad(args.h5ad)
+        adata = scdrs.util.load_h5ad(args.h5ad, flag_raw_count = False)
         score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
         score.to_csv(out_score, index = True, sep = '\t')
     
@@ -39,7 +39,7 @@ def main(args = None, **kwargs):
     out_enrichment = f'{args.out}.enrichment.txt'
     if not os.path.isfile(out_enrichment) or args.force:
         try: adata
-        except: adata = scdrs.util.load_h5ad(args.h5ad)
+        except: adata = scdrs.util.load_h5ad(args.h5ad, flag_raw_count = False)
         try: score
         except: score = pd.read_table(out_score, index_col = 0)
         
@@ -62,7 +62,8 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input gene list and weights', required = True)
     parser.add_argument('--h5ad', help = 'Input h5ad single-cell multiomics dataset', required = True)
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
-        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
+        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
     parser.add_argument('-o', '--out', dest = 'out', help = 'output prefix, no .txt', required = True)
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()

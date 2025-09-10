@@ -305,8 +305,9 @@ main = function(args){
     if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
       mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T)
-      for (i in 1:length(gwa)) write_tsv(mgwas[[i]] %>% add_column(N = 1) %>% 
-        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa[i])
+      for (i in 1:length(gwa)) mgwas[[i]] %>% add_column(N = max(metadata$n)) %>% 
+        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>%
+        select(-label) %>% write_tsv(gwa[i])
   }}
   
   #### exposure-outcome model ####
@@ -386,8 +387,8 @@ main = function(args){
       zero_cov = c(zero_cov, paste0(c(p1,p2),' ~~ 0*',c(p1,p2)))
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = paste0(indep,' ~ SNP'))
-      write_tsv(sgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', BETA = 'est', 
-        Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa)
+      sgwas[[1]] %>% add_column(N = max(metadata$n)) %>% rename(POS = 'BP', BETA = 'est', 
+        Z = 'Z_Estimate',P = 'Pval_Estimate') %>% select(-label) %>% write_tsv(gwa)
     }
   }
   
@@ -408,9 +409,9 @@ main = function(args){
     if (!all(sapply(sub_gwa, file.exists)) | args$force){
       mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub, cores = 16) 
       save(mgwas,file = paste0(args$out,'.usergwas.chr',args$gwas,'.rdata'))
-      for (i in 1:length(sub)) write_tsv(mgwas[[i]] %>% add_column(N = 1) %>% 
-        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate'), 
-        sub_gwa[i])
+      for (i in 1:length(sub)) mgwas[[i]] %>% add_column(N = max(metadata$n)) %>% 
+        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>%
+        select(-label) %>% write_tsv(sub_gwa[i])
     }
   }
 }

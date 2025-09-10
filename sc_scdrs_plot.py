@@ -40,12 +40,17 @@ def main(args):
             summary.append(pheno_summary)
         
         # plot heatmap
+        if len(summary) == 0: Warning(f'No scDRS enrichment found for {sc}'); continue
         summary = pd.concat(summary)
         from _plots.corr_heatmap import corr_heatmap
-        for lab in args.label:
-            summary.loc[summary.annotation == lab,:].to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
-            fig = corr_heatmap(summary.loc[summary.annotation == lab,:], p_threshold = [0.05, 0.001])
-            fig.savefig(f'{out_prefix}_{lab}_enrichment.pdf', bbox_inches = 'tight')
+        for lab in summary.annotation.unique():
+            tmp = summary.loc[summary.annotation == lab,:]
+            tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
+            x_size = tmp.dataset + '_' + tmp.cell_type
+            if 1 <= x_size.unique().size <= 500:
+                fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])
+                fig.savefig(f'{out_prefix}_{lab}_enrichment.pdf', bbox_inches = 'tight')
+            else: Warning(f'{out_prefix}_{lab} is too large to plot, check tabular output')
 
 
 if __name__ == '__main__':  
@@ -57,8 +62,8 @@ if __name__ == '__main__':
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
-        # default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
-        default = ['supercluster_term', 'cluster_id', 'subcluster_id'])
+        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()
     

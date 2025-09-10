@@ -46,7 +46,7 @@ def main(args):
     from _utils.path import find_gwas, find_gene_sumstats
     from _utils.slurm import array_submitter
     pheno = find_gwas(args.pheno, long = True)
-    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 16, timeout = 480, env = 'gentoolspy')
+    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 24, timeout = 480, env = 'gentoolspy')
 
     # scans hdf5 files
     for g, p in pheno:
@@ -97,7 +97,8 @@ if __name__ == '__main__':
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
-        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage'])
+        default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()
