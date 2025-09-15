@@ -31,8 +31,8 @@ def main(args = None, **kwargs):
     pheno = find_gwas(args.pheno, long = True)
 
     for g, p in pheno:
-        outdir = f'{args.out}/{g}'
-        if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
+        outdir = f'{args.out}/{g}/{p}'
+        os.makedirs(outdir, exist_ok = True)
 
         sumstat = find_gene_sumstats(g, p, args._in, args.annot, ext = 'genes.raw')
         if not sumstat: Warning(f'No gene-level sumstat found for {g}/{p}'); continue

@@ -13,8 +13,10 @@ def capitalise(series):
     for x in range(len(series)):
         tmp = series.iloc[x]
         if type(tmp) != str: out.append(tmp)
-        tmp = tmp[0].upper() + tmp[1:]
-        out.append(tmp)
+        elif len(tmp) < 1: out.append(tmp)
+        else:
+            tmp = tmp[0].upper() + tmp[1:]
+            out.append(tmp)
     return out
 
 def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '', p_threshold: list[float] = []):
@@ -73,28 +75,28 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
     if 'P' in summary.columns: summary['p'] = summary['P']
     
     if not 'q' in summary.columns and 'p' in summary.columns:
-        summary['q'] = np.nan
+        summary = summary.assign(q = np.nan)
         for g in group1:
             for trait in summary.loc[summary.iloc[:,0] == g, summary.columns[1]]:
                 summary.loc[(summary.iloc[:,0] == g) & (summary.iloc[:,1] == trait) & ~np.isnan(summary['p']),'q'] = \
                 fdr(summary.loc[(summary.iloc[:,0] == g) & (summary.iloc[:,1] == trait) & ~np.isnan(summary['p']),'p'])
     
     if 'p' in summary.columns and len(p_threshold) == 0:
-        summary['Significance'] = 'not significant'
+        summary = summary.assign(Significance = 'not significant')
         summary.loc[summary['p'] < 0.05, 'Significance'] = 'nominal'
         summary.loc[summary['q'] < 0.05, 'Significance'] = 'FDR-corrected'
         sig_label = 'FDR-corrected'
         legend_param = 'brief'
         sizes = {'not significant': 25, 'nominal': 125, 'FDR-corrected': 250}
     elif 'p' in summary.columns and len(p_threshold) > 0:
-        summary['Significance'] = 'not significant'
+        summary = summary.assign(Significance = 'not significant')
         for p_thr in p_threshold:
             summary.loc[summary['p'] < p_thr, 'Significance'] = f'p < {p_thr}'
         sig_label = f'p < {p_threshold[-1]}'
         legend_param = 'brief'
         sizes = dict(zip(['not significant'] + [f'p < {x}' for x in p_threshold], np.linspace(25, 250, len(p_threshold)+1)))
     else:
-        summary['Significance'] = 'NA'
+        summary = summary.assign(Significance = 'NA')
         sig_label = ''
         legend_param = False
         sizes = {'NA': 250}

@@ -19,6 +19,7 @@ Requires following inputs:
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
     import os
+    import scanpy as sc
     import scdrs
     import pandas as pd
     if args == None:
@@ -31,7 +32,7 @@ def main(args = None, **kwargs):
         weights = pd.read_table(args._in)
         gene_list = weights['gene'].tolist()
         gene_weight = weights['weight'].values if 'weight' in weights.columns else None
-        adata = scdrs.util.load_h5ad(args.h5ad, flag_raw_count = False)
+        adata = sc.read_h5ad(args.h5ad, 'r')
         score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
         score.to_csv(out_score, index = True, sep = '\t')
     
@@ -39,7 +40,7 @@ def main(args = None, **kwargs):
     out_enrichment = f'{args.out}.enrichment.txt'
     if not os.path.isfile(out_enrichment) or args.force:
         try: adata
-        except: adata = scdrs.util.load_h5ad(args.h5ad, flag_raw_count = False)
+        except: adata = sc.read_h5ad(args.h5ad, 'r')
         try: score
         except: score = pd.read_table(out_score, index_col = 0)
         

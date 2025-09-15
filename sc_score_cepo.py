@@ -10,28 +10,50 @@ Requires following inputs:
     h5ad file and columns for cell classifications
 '''
 
-from matplotlib.pylab import f
-
-def segidx(mat):
+def segidx(df, n):
     import pandas as pd
     import numpy as np
-    nz = pd.Series((mat > 0).mean(axis = 1))
-    ms = mat.mean(axis = 1); ms[ms==0] = np.nan
-    sds = ((mat**2).mean(axis = 1) - ms**2) * mat.shape[1]/(mat.shape[1]-1)
+    nz = df['nz']/n
+    ms = df['s']/n; ms[ms==0] = np.nan
+    sds = (df['sumsq']/n - ms**2) * n/(n-1)
     cvs = pd.Series(sds/ms)
-    
     x1 = nz.rank()/(len(nz)+1)
     x2 = 1 - cvs.rank()/(len(cvs)+1)
     return (x1 + x2)/2
 
-def singlebatchcepo(expr, genes, celltypes, mincells = 20, exprspct:float = 0.05, tempdir = '/home/yh464/rds/hpc-work/temp/'):
-    # columns = cells, rows = genes
+def generate_tempfile(adata, subset, block_size = 50000):
     import pandas as pd
-    from time import perf_counter as t
-    import os
     import gc
-    os.makedirs(tempdir, exist_ok = True)
+    from scipy import sparse
+    if adata[subset,:].shape[0] > block_size:
+        from time import perf_counter as t
+        tic = t()
+        df = pd.DataFrame(index = adata.var.index, columns = ['s','sumsq','nz'], data = 0)
+        cells = adata[subset,:].obs_names.to_numpy()
+        for i in range(0, adata[subset,:].shape[0], block_size):
+            print(f'Processing block {i}-{min(i+block_size, adata[subset,:].shape[0])} of {adata[subset,:].shape[0]}, time = {t()-tic:.2f}s')
+            temp = generate_tempfile(adata, cells[i:min(i+block_size, adata[subset,:].shape[0])], block_size = block_size)
+            df += temp; del temp
+        return df
+    mat = adata[subset,:].to_memory().X
+    mat = sparse.csr_array(mat)
+    s = mat.sum(axis = 0)
+    mat.data **= 2
+    ssq = mat.sum(axis = 0)
+    mat.data **= 0.5
+    nz = (mat > 0).sum(axis = 0)
+    del mat
+    gc.collect()
+    return pd.DataFrame(dict(s = s, sumsq = ssq, nz = nz), index = adata.var.index)
+
+def singlebatchcepo(adata, genes, celltypes, mincells = 20, exprspct:float = 0.05, tempdir = '/home/yh464/rds/hpc-work/temp/'):
+    # adata is backed
+    # columns = genes, rows = cells
+    import pandas as pd
+    import os
+    from time import perf_counter as t
     tic = t()
+    os.makedirs(tempdir, exist_ok = True)
     celltypes = pd.Series(celltypes).astype('category')
     celltypes_df = pd.get_dummies(celltypes)
     for ct in celltypes_df.columns:
@@ -39,31 +61,29 @@ def singlebatchcepo(expr, genes, celltypes, mincells = 20, exprspct:float = 0.05
             celltypes_df = celltypes_df.drop(columns = ct)
     if celltypes_df.shape[1] == 0: return []
 
+    # first generate temporary files
+    for i, ct in enumerate(celltypes_df.columns):
+        tempfile = f'{tempdir}/cepo.{ct}.txt'
+        if not os.path.isfile(tempfile):
+            generate_tempfile(adata, celltypes_df[ct].values).to_csv(tempfile, sep = '\t', index = True, header = True)
+            print(f'Generated {tempfile} in {t()-tic:.2f} seconds, {i+1}/{celltypes_df.shape[1]}')
+
     # filter genes such that each gene is expressed in at least exprspct of cells in at least one cell type
     keep = pd.DataFrame(index = genes, columns = celltypes_df.columns, data = False)
     for ct in celltypes_df.columns:
-        tempfile = f'{tempdir}/cepo.{ct}.keep.txt'
-        if os.path.isfile(tempfile):
-            keep[ct] = pd.read_csv(tempfile, sep = '\t', index_col = 0).iloc[:,0].astype(bool)
-        else:
-            keep[ct] = (expr[:, celltypes_df[ct].values]> 0).sum(axis = 1) >= celltypes_df[ct].sum() * exprspct
-            keep[[ct]].to_csv(tempfile, sep = '\t', index = True, header = True)
-        print(ct)
+        tempfile = f'{tempdir}/cepo.{ct}.txt'
+        temp = pd.read_table(tempfile, index_col = 0).loc[:,'nz'] >= celltypes_df[ct].sum() * exprspct
+        temp.index = genes
+        keep[ct] = temp
     keep = keep.any(axis = 1).values
-    print(f'Kept {keep.sum()}/{len(keep)} genes in {t()-tic:.2f}s')
-    gc.collect()
+    print(f'Kept {keep.sum()}/{len(keep)} genes')
 
     segmat = pd.DataFrame(index = genes[keep], columns = celltypes_df.columns, data = float(0))
-    idx = 0
     for ct in celltypes_df.columns:
         tempfile = f'{tempdir}/cepo.{ct}.txt'
-        if os.path.isfile(tempfile):
-            segmat.loc[:,ct] = pd.read_csv(tempfile, sep = '\t', index_col = 0).iloc[:,0]
-        else:
-            segmat[ct] = segidx(expr[keep,:][:, celltypes_df[ct].values]).values
-            segmat[[ct]].to_csv(tempfile, sep = '\t', index = True, header = True)
-        idx += 1
-        print(f'Computed {ct} in {t()-tic:.2f}s, {idx}/{celltypes_df.shape[1]}')
+        temp = pd.read_table(tempfile, index_col = 0)
+        temp.index = genes
+        segmat[ct] = segidx(temp.loc[keep, :], celltypes_df[ct].sum())
     
     out = pd.DataFrame(index = genes, columns = celltypes_df.columns, data = float(0))
     for ct in celltypes_df.columns:
@@ -72,17 +92,15 @@ def singlebatchcepo(expr, genes, celltypes, mincells = 20, exprspct:float = 0.05
     return out
 
 def main(args):
-    import scanpy as sc
+    import anndata
     import pandas as pd
-    import scipy.sparse as sp
     import os
     import gc
     from time import perf_counter as t
 
     if os.path.isfile(f'{args.out}.cepo.txt') and not args.force: return
     tic = t()
-    adata = sc.read_h5ad(args._in)
-    adata.X = sp.csc_array(adata.X)
+    adata = anndata.io.read_h5ad(args._in, 'r')
     genes = adata.var.index
     print(f'Read in data: {adata.shape} in {t()-tic:.2f}s')
 
@@ -91,11 +109,11 @@ def main(args):
         tempdir = f'/home/yh464/rds/hpc-work/temp/cepo/{os.path.basename(args._in)[:-5]}/{label}'
         tempfile = f'{tempdir}/cepo.{label}.txt'
         if os.path.isfile(tempfile) and not args.force:
-            df = pd.read_csv(tempfile, sep = '\t', index_col = 0)
+            df = pd.read_table(tempfile, index_col = 0)
             out_dfs.append(df)
             print(label); continue
         if label not in adata.obs.columns: Warning(f'Label {label} not found in adata.obs, skipping'); continue
-        df = singlebatchcepo(adata.X.T, genes, adata.obs[label], mincells = 20, exprspct = 0.05, tempdir = tempdir)
+        df = singlebatchcepo(adata, genes, adata.obs[label], mincells = 20, exprspct = 0.05, tempdir = tempdir)
         gc.collect()
         df.columns = [f'cepo.{label}.{x}' for x in df.columns]
         out_dfs.append(df)
@@ -103,6 +121,7 @@ def main(args):
         del df
         print(f'Computed {label} in {t()-tic:.2f}s')
     out_dfs = pd.concat(out_dfs, axis = 1)
+    adata.file.close()
     out_dfs.columns = out_dfs.columns.str.replace(' ','_').str.replace('/','_').str.replace('-','_')
     out_dfs.index.name = 'gene'
     out_dfs.to_csv(f'{args.out}.cepo.txt', sep = '\t', index = True, header = True)
