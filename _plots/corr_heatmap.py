@@ -35,14 +35,9 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
     import numpy as np
     from scipy.stats import false_discovery_control as fdr
     import warnings
-    
-    # Red-blue colour map
-    cdict = dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
-                 green = ((0,0,0),(1/2,1,1),(1,0,0)),
-                 blue = ((0,.8,.8),(1/2,1,1),(1,0,0)))
-    cmap_name = 'redblue'
-    cmap = mpl.colors.LinearSegmentedColormap(cmap_name,cdict,1024)
-    try: mpl.colormaps.register(cmap)
+    from aes import redblue
+
+    try: mpl.colormaps.register(redblue)
     except: pass
     
     # style sheet

@@ -46,7 +46,7 @@ def main(args):
     from _utils.path import find_gwas, find_gene_sumstats
     from _utils.slurm import array_submitter
     pheno = find_gwas(args.pheno, long = True)
-    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 24, timeout = 480, env = 'gentoolspy')
+    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 4, timeout = 720, env = 'gentoolspy')
 
     # scans hdf5 files
     for g, p in pheno:
@@ -71,7 +71,7 @@ def main(args):
             for h5, h5prefix in zip(h5ad,h5ad_prefix):
                 out_prefix = f'{outdir}/{p}.{h5prefix}.scdrs'
                 if os.path.isfile(f'{out_prefix}.score.txt') and os.path.isfile(f'{out_prefix}.enrichment.txt') \
-                    and not args.force: continue
+                    and os.path.isfile(f'{out_prefix}.score.png') and not args.force: continue
                 cmd = ['python', 'sc_scdrs.py', '-i', weights_file, '--h5ad', h5, '--label'] + args.label
                 if args.pval != None: cmd.append(f'-p {args.pval}')
                 cmd += ['-o', out_prefix]

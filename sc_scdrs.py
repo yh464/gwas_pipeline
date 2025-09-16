@@ -16,12 +16,18 @@ Requires following inputs:
             (for Siletti et al 2023: ROIGroup, ROIGroupCoarse, ROIGroupFine, roi, supercluster_term, cluster_id, subcluster_id, development_stage)
 '''
 
+import matplotlib as mpl
+
+
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
     import os
     import scanpy as sc
     import scdrs
     import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    from _plots.aes import redblue
     if args == None:
         from _utils.gadgets import namespace
         args = namespace(**kwargs)
@@ -33,14 +39,44 @@ def main(args = None, **kwargs):
         gene_list = weights['gene'].tolist()
         gene_weight = weights['weight'].values if 'weight' in weights.columns else None
         adata = sc.read_h5ad(args.h5ad, 'r')
-        score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
+        block_size = int(2e9/adata.shape[1])
+        if adata.shape[0] >= block_size:
+            score_df = []
+            for i in range(0, adata.shape[0], block_size):
+                # control genes are the same as the same random seed is used
+                cmin = i; cmax = min(i+block_size, adata.shape[0])
+                tempfile = f'{args.out}.score.{cmin}_{cmax}.tmp'
+                if not os.path.isfile(tempfile) or args.force:
+                    print(f'Scoring cells {cmin} - {cmax}')
+                    temp = adata[cmin:cmax,:]
+                    temp_score = scdrs.score_cell(temp, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
+                    temp_score.to_csv(tempfile, index = True, sep = '\t')
+                else: temp_score = pd.read_table(tempfile, index_col = 0)
+                score_df.append(temp_score)
+            score = pd.concat(score_df)
+        else: score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
         score.to_csv(out_score, index = True, sep = '\t')
+        adata.file.close()
     
-    # Stage 2: for each column of annotations, generate group-specific enrichments
+    # Stage 2: plot cell_specific scores
+    out_fig = f'{args.out}.score.png'
+    if not os.path.isfile(out_fig) or args.force:
+        adata = sc.read_h5ad(args.h5ad, 'r')
+        score = pd.read_table(out_score, index_col = 0)
+        temp_df = pd.DataFrame(dict(umap1 = adata.obsm['X_umap'][:,0], umap2 = adata.obsm['X_umap'][:,1], score = score['norm_score']))
+        try: mpl.colormaps.register(redblue)
+        except: pass
+        sns.set_theme(style = 'ticks')
+        _, ax = plt.subplots(figsize = (5,5))
+        sns.scatterplot(temp_df, x = 'umap1', y = 'umap2', hue = 'score', palette = 'redblue', s = 1, ax = ax, edgecolor = None, linewidth = 0)
+        plt.savefig(out_fig, dpi = 400, bbox_inches = 'tight')
+        plt.close()
+        adata.file.close()
+
+    # Stage 3: for each column of annotations, generate group-specific enrichments
     out_enrichment = f'{args.out}.enrichment.txt'
     if not os.path.isfile(out_enrichment) or args.force:
-        try: adata
-        except: adata = sc.read_h5ad(args.h5ad, 'r')
+        adata = sc.read_h5ad(args.h5ad, 'r')
         try: score
         except: score = pd.read_table(out_score, index_col = 0)
         

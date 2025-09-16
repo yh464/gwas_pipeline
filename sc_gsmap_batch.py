@@ -23,7 +23,7 @@ def main(args):
     from _utils.slurm import array_submitter
     ldsc_submitter = array_submitter('gsmap_'+'_'.join(args.pheno), timeout = 120, n_cpu = 4, env = args.gsmap)
     cauchy_submitter = array_submitter('gsmap_cauchy_'+'_'.join(args.pheno), timeout = 10, n_cpu = 4, env = args.gsmap, dependency=ldsc_submitter)
-    rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 360, n_cpu = 40, env = args.gsmap, dependency=ldsc_submitter)
+    rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 360, n_cpu = 48, env = args.gsmap, dependency=ldsc_submitter)
 
     # find ST datasets and phenotype files
     st_datasets = os.listdir(args.st)
@@ -43,8 +43,8 @@ def main(args):
             out_cauchy_ct = f'{outdir}/{s}_spatial_ldsc.cell_type.cauchy.csv.gz'
             out_cauchy_region = f'{outdir}/{s}_spatial_ldsc.region.cauchy.csv.gz'
             out_rpt = f'{outdir}/{s}_gsmap_report'
-            print(f'gsMap output to:\n  {gsmap_out_ldsc}\n  {gsmap_out_cauchy}\n  {gsmap_out_rpt}')
-            print(f'Output will be moved to:\n  {out_ldsc}\n  {out_cauchy_ct}\n  {out_cauchy_region}\n  {out_rpt}')
+            # print(f'gsMap output to:\n  {gsmap_out_ldsc}\n  {gsmap_out_cauchy}\n  {gsmap_out_rpt}')
+            # print(f'Output will be moved to:\n  {out_ldsc}\n  {out_cauchy_ct}\n  {out_cauchy_region}\n  {out_rpt}')
 
             cmds = []
 

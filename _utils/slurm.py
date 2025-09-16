@@ -13,6 +13,8 @@ import os
 import argparse
 import re
 
+from matplotlib.pylab import f
+
 class array_submitter():
     '''
     Attributes of an array submitter
@@ -86,7 +88,8 @@ class array_submitter():
         if type(dependency) not in [list, tuple]: dependency = [dependency]
         self.dep = []
         for dep in dependency:
-            if type(dep) in [int, array_submitter]: self.dep.append(dep)
+            if type(dep) == array_submitter: self.dep.append(dep)
+            else: self.dep.append(int(dep))
         if type(modules) == type('a'): modules = [modules] # single string
         self.modules = modules
         
@@ -238,6 +241,22 @@ class array_submitter():
             else:
                 self._count += 1
     
+    def _write_dep_str(self):
+        dep_str = []
+        for dep in self.dep: 
+            if type(dep) == int:
+                dep_str.append(f'afterok:{dep}')
+            elif type(dep) == array_submitter:
+                if dep._blank: continue
+                if not dep.submitted:
+                    dep.submit()
+                    print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
+                for idx in dep._slurmid:
+                    dep_str.append(f'afterok:{idx}')
+        if len(dep_str) > 0: 
+            return '--dependency '+' '.join(dep_str)
+        else: return ''
+
     def _write_wrap(self):
         # master wrapper
         self._wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'       
@@ -254,19 +273,7 @@ class array_submitter():
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
         print(f'#SBATCH --array=0-{self._nfiles}', file = wrap)
-        dep_str = ''
-        for dep in self.dep: 
-            if type(dep) == int:
-                dep_str += f':{dep}'
-            elif type(dep) == array_submitter:
-                if dep._blank: continue
-                if not dep.submitted:
-                    dep.submit()
-                    print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
-                for idx in dep._slurmid:
-                    dep_str += f':{idx}'
-        if len(dep_str) > 0: 
-            print('#SBATCH --dependency afterok'+dep_str, file = wrap)
+        print('#SBATCH '+ self._write_dep_str(), file = wrap)
         
         if self.email: print('#SBATCH --mail-type=ALL', file = wrap)
         if self.account: print(f'#SBATCH -A {self.account}', file = wrap)
@@ -293,20 +300,21 @@ class array_submitter():
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {self._wrap_name}') 
+                  f' --array=0-{self._nfiles} {self._write_dep_str()} {self._wrap_name}') 
     
     def _splash(self, jobid):
         msg = []
         msg.append('#' * 100)
         msg.append('Following job has been submitted to SLURM:')
-        msg.append(f'    Name:      {self.name}')
-        msg.append(f'    Path:      {self.tmpdir}')
-        msg.append(f'    Partition: {self.partition}')
-        msg.append(f'    Timeout:   {int(self.timeout*self._count/self.parallel)} minutes')
-        msg.append(f'    CPUs:      {self.n_cpu}')
-        msg.append(f'    # files:   {self._nfiles + 1}')
-        msg.append(f'    Parallel:  {self.parallel}')
-        msg.append(f'    Job ID:    {jobid}')
+        msg.append(f'    Name:       {self.name}')
+        msg.append(f'    Path:       {self.tmpdir}')
+        msg.append(f'    Partition:  {self.partition}')
+        msg.append(f'    Timeout:    {int(self.timeout*self._count/self.parallel)} minutes')
+        msg.append(f'    CPUs:       {self.n_cpu}')
+        msg.append(f'    # files:    {self._nfiles + 1}')
+        msg.append(f'    Parallel:   {self.parallel}')
+        msg.append(f'    Dependency: {self._write_dep_str()}')
+        msg.append(f'    Job ID:     {jobid}')
         msg.append('#' * 100)
         if not self._blank: print('\n'.join(msg))
 
@@ -329,7 +337,7 @@ class array_submitter():
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {self._wrap_name}', shell = True
+                  f' --array=0-{self._nfiles} {self._write_dep_str()} {self._wrap_name}', shell = True
                   ).decode().strip()
         jobid = int(msg.split()[-1]) # raises an error if sbatch fails
         self._splash(jobid)
