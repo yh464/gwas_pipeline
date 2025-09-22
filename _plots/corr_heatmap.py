@@ -35,7 +35,7 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
     import numpy as np
     from scipy.stats import false_discovery_control as fdr
     import warnings
-    from aes import redblue
+    from .aes import redblue
 
     try: mpl.colormaps.register(redblue)
     except: pass

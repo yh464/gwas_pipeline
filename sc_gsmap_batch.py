@@ -64,7 +64,11 @@ def main(args):
                                     f'--sumstats_file {args._in}/{g}/{p}.sumstats --w_file {args.gsmap}/gsMap_resource/LDSC_resource/weights_hm3_no_hla/weights. '+
                                     f'--num_processes 4 --chunk_range {start_chunk} {end_chunk}')
                 if all([os.path.isfile(x) for x in chunk_files]) and not os.path.isfile(gsmap_out_ldsc):
-                    pd.concat([pd.read_csv(x, index_col = False) for x in chunk_files]).to_csv(gsmap_out_ldsc, index = False)
+                    os.system(f'zcat {chunk_files[0]} > {gsmap_out_ldsc[:-3]}')
+                    for x in chunk_files[1:]:
+                        os.system(f'zcat {x} | tail -n +2 >> {gsmap_out_ldsc[:-3]}') # skip header
+                    os.system(f'gzip -f {gsmap_out_ldsc[:-3]}')
+                    # pd.concat([pd.read_csv(x, index_col = False) for x in chunk_files]).to_csv(gsmap_out_ldsc, index = False)
             mv_symlink(gsmap_out_ldsc, out_ldsc)
 
             # Cauchy combination

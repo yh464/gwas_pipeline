@@ -18,7 +18,6 @@ Requires following inputs:
 
 import matplotlib as mpl
 
-
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
     import os
@@ -27,7 +26,10 @@ def main(args = None, **kwargs):
     import pandas as pd
     import seaborn as sns
     import matplotlib.pyplot as plt
+    import matplotlib as mpl
     from _plots.aes import redblue
+    from _plots.umap_scatterplot import scatterplot_noaxis
+    import warnings
     if args == None:
         from _utils.gadgets import namespace
         args = namespace(**kwargs)
@@ -45,7 +47,7 @@ def main(args = None, **kwargs):
             for i in range(0, adata.shape[0], block_size):
                 # control genes are the same as the same random seed is used
                 cmin = i; cmax = min(i+block_size, adata.shape[0])
-                tempfile = f'{args.out}.score.{cmin}_{cmax}.tmp'
+                tempfile = f'{args.out}.score.{cmin}_{cmax}.tmp.gz'
                 if not os.path.isfile(tempfile) or args.force:
                     print(f'Scoring cells {cmin} - {cmax}')
                     temp = adata[cmin:cmax,:]
@@ -62,13 +64,23 @@ def main(args = None, **kwargs):
     out_fig = f'{args.out}.score.png'
     if not os.path.isfile(out_fig) or args.force:
         adata = sc.read_h5ad(args.h5ad, 'r')
-        score = pd.read_table(out_score, index_col = 0)
-        temp_df = pd.DataFrame(dict(umap1 = adata.obsm['X_umap'][:,0], umap2 = adata.obsm['X_umap'][:,1], score = score['norm_score']))
-        try: mpl.colormaps.register(redblue)
-        except: pass
-        sns.set_theme(style = 'ticks')
-        _, ax = plt.subplots(figsize = (5,5))
-        sns.scatterplot(temp_df, x = 'umap1', y = 'umap2', hue = 'score', palette = 'redblue', s = 1, ax = ax, edgecolor = None, linewidth = 0)
+        try: score
+        except: score = pd.read_table(out_score, index_col = 0)
+        if 'X_tsne' in adata.obsm.keys():
+            x, y = adata.obsm['X_tsne'][:,0], adata.obsm['X_tsne'][:,1]
+            rep = 'tSNE'
+        elif 'X_umap' in adata.obsm.keys():
+            x, y = adata.obsm['X_umap'][:,0], adata.obsm['X_umap'][:,1]
+            rep = 'UMAP'
+        else: raise ValueError('No tSNE or UMAP coordinates found in adata.obsm')
+        scatterplot_noaxis(x, y, score['norm_score'], palette = redblue, s = 0.1, rep = rep)
+        # sns.set_theme(style = 'ticks
+        # temp_df = pd.DataFrame(dict(tsne1 = adata.obsm['X_tsne'][:,0], tsne2 = adata.obsm['X_tsne'][:,1], score = score['norm_score']))
+        # try: mpl.colormaps.register(redblue)
+        # except: pass
+        # sns.set_theme(style = 'ticks')
+        # _, ax = plt.subplots(figsize = (5,5))
+        # sns.scatterplot(temp_df, x = 'tsne1', y = 'tsne2', hue = 'score', palette = 'redblue', s = 1, ax = ax, edgecolor = None, linewidth = 0, legend = False)
         plt.savefig(out_fig, dpi = 400, bbox_inches = 'tight')
         plt.close()
         adata.file.close()
@@ -82,7 +94,7 @@ def main(args = None, **kwargs):
         
         class_cols = [x for x in args.label if x in adata.obs.columns]
         mis_cols = [x for x in args.label if not x in adata.obs.columns]
-        if len(mis_cols) > 0: Warning('Following columns are missing from the h5ad dataset: '+' '.join(mis_cols))
+        if len(mis_cols) > 0: warnings.warn('Following columns are missing from the h5ad dataset: '+' '.join(mis_cols))
         res = scdrs.method.downstream_group_analysis(adata, score, class_cols)
         enrichments = []
         for group, df in res.items():
@@ -90,8 +102,6 @@ def main(args = None, **kwargs):
             enrichments.append(df)
         enrichments = pd.concat(enrichments)
         enrichments.to_csv(out_enrichment, index = True, sep = '\t')
-    
-    return enrichments
 
 if __name__ == '__main__':
     import argparse

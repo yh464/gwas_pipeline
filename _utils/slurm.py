@@ -12,8 +12,7 @@ CHECK LOG
 import os
 import argparse
 import re
-
-from matplotlib.pylab import f
+import warnings
 
 class array_submitter():
     '''
@@ -47,7 +46,7 @@ class array_submitter():
                  log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
-                 mode = DeprecationWarning('Use timeout instead of mode'), # deprecated, use timeout instead
+                 mode = warnings.warn(DeprecationWarning('Use timeout instead of mode')), # deprecated, use timeout instead
                  lim = -1, # number of commands per file, default -1
                  arraysize = 200, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500
                  email = True,
@@ -61,6 +60,11 @@ class array_submitter():
                  intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
         
+        # current SLURM limit: 50 jobs, 450 CPUs
+        if n_cpu < 5:
+            parallel *= int(9/n_cpu)
+            n_cpu *= int(9/n_cpu)
+
         import warnings
         if len(name) > 30:
             from hashlib import sha256
