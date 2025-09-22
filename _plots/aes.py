@@ -31,6 +31,14 @@ redwhite = mpl.colors.LinearSegmentedColormap(
   1024
 )
 
+redgrey = mpl.colors.LinearSegmentedColormap(
+  'redgrey',
+  dict(red = ((0,0.8,0.8),(1,0.8,0.8)),
+       green = ((0,0.8,0.8),(1,0,0)),
+       blue = ((0,0.8,0.8),(1,0,0))),
+  1024
+  )
+
 whiteblue = mpl.colors.LinearSegmentedColormap(
   'whiteblue',
   dict(red = ((0,0,0),(1,1,1)),

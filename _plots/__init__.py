@@ -1,2 +1,2 @@
 from .corr_heatmap import *
-from .umap_scatterplot import *
+from .colourcode_scatterplot import *

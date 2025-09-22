@@ -24,11 +24,9 @@ def main(args = None, **kwargs):
     import scanpy as sc
     import scdrs
     import pandas as pd
-    import seaborn as sns
     import matplotlib.pyplot as plt
-    import matplotlib as mpl
     from _plots.aes import redblue
-    from _plots.umap_scatterplot import scatterplot_noaxis
+    from _plots import scatterplot_noaxis
     import warnings
     if args == None:
         from _utils.gadgets import namespace

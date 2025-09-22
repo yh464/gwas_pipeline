@@ -12,11 +12,7 @@ Requires following inputs:
 
 '''
 
-from posixpath import islink
-
-
 def main(args):
-    import pandas as pd
     import os
     from _utils.path import find_gwas
     from _utils.gadgets import mv_symlink
@@ -28,7 +24,6 @@ def main(args):
     # find ST datasets and phenotype files
     st_datasets = os.listdir(args.st)
     pheno = find_gwas(args.pheno, dirname = args._in, ext = 'sumstats', long = True)
-    
 
     for g, p in pheno:
         outdir = f'{args.out}/{g}/{p}'
@@ -88,7 +83,7 @@ def main(args):
                 os.makedirs(out_rpt, exist_ok = True)
                 if not os.path.islink(gsmap_out_rpt): os.symlink(out_rpt, gsmap_out_rpt) # symlink the gsmap output directory to output filesystem
                 #if not os.path.isfile(f'{out_rpt}/{s}_{g}_{p}_gsMap_plot.html') or args.force:
-                rpt_submitter.add(f'gsmap run_report --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region '+
+                rpt_submitter.add(f'gsmap run_report --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation annotation '+
                         f'--sumstats_file {args._in}/{g}/{p}.sumstats --top_corr_genes 50')
     ldsc_submitter.submit()
     cauchy_submitter.submit()
