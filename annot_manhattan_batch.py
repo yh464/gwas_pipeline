@@ -13,6 +13,9 @@ Requires following inputs:
     SMR summary stats
 '''
 
+from gettext import find
+
+
 def main(args):
     from fnmatch import fnmatch
     force = '-f' if args.force else ''
@@ -25,20 +28,15 @@ def main(args):
         # debug = True
     )
     
-    for x in args.pheno:
+    from _utils.path import find_gwas
+    pheno = find_gwas(args.pheno, dirname = args.gwa, ext = 'fastGWA', long = True)
+    for g, p in pheno:
         # make output directory
-        if not os.path.isdir(f'{args.out}/{x}'): os.system(f'mkdir -p {args.out}/{x}')
-        
-        # scan directory for prefix
-        for y in os.listdir(f'{args.gwa}/{x}'):
-            if not fnmatch(y,'*.fastGWA'): continue
-            if fnmatch(y, '*_X.fastGWA'): continue
-            prefix=y.replace('.fastGWA','')
-         
-            submitter.add(
-                f'python annot_manhattan.py {x} --prefix {prefix} ' +
-                f'--magma {args.magma} --smr {args.smr} --ref {args.ref} -o {args.out} {force}'
-            )
+        if not os.path.isdir(f'{args.out}/{g}'): os.system(f'mkdir -p {args.out}/{g}')
+        submitter.add(
+            f'python annot_manhattan.py {g} --prefix {p} ' +
+            f'--magma {args.magma} --smr {args.smr} --ref {args.ref} -o {args.out} {force}'
+        )
     submitter.submit()
         
 if __name__ == '__main__':

@@ -13,6 +13,24 @@ Requires following inputs:
     SMR summary stats
 '''
 
+def find_top_clump_thr(data, chrom, pos, p, p_thr, ld_block_size = 1000000, top = 10):
+    data = data.loc[data[p] < p_thr,[chrom, pos, p]].dropna(subset = p).sort_values(by = [chrom, pos]).reset_index(drop = True)
+    if data.shape[0] == 0: return 1e-99
+    pval = []
+    current_clump = [data.iloc[0,:]]; current_pval = data[p].iloc[0]
+    for i in data.index[1:]:
+        if data.loc[i,chrom] == current_clump[-1].loc[chrom] and \
+           data.loc[i,pos] - current_clump[-1].loc[pos] < ld_block_size:
+            current_clump.append(data.loc[i,:])
+            current_pval = min(current_pval, data.loc[i,p])
+        else:
+            pval.append(current_pval)
+            current_clump = [data.loc[i,:]]; current_pval = data.loc[i,p]
+    pval.append(current_pval)
+    pval.sort()
+    return pval[min(top, len(pval)) - 1]
+
+
 def plot_magma(magma, ref):
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -37,9 +55,10 @@ def plot_magma(magma, ref):
                   snp = 'LABEL',
                   color = '#422E5D,#AF95A3',
                   suggestiveline = 1e-99,
-                  genomewideline = sig,
-                  is_annotate_topsnp=True, # annotate sig. SNPs
-                  sign_marker_p = max([pmin, sig]),  # Genome wide significant p-value
+                  genomewideline = sig, # FDR < 0.05
+                  # Genes to annotate
+                  is_annotate_topsnp=True,
+                  sign_marker_p = max(find_top_clump_thr(df, 'CHR','POS','P',sig), pmin),
                   sign_marker_color="r",
                   logp = True,
                   ld_block_size = 1000000,
@@ -53,6 +72,7 @@ def plot_smr(smr):
     import matplotlib.pyplot as plt
     from qmplot import manhattanplot
     from scipy.stats import false_discovery_control as fdr
+    smr = smr.dropna(subset = ['p_SMR'])
     smr['Gene'] = smr['Gene'].fillna(smr['probeID'])
     sig = 0.05/smr.shape[0]
     pmin = smr.p_SMR.min()
@@ -70,10 +90,11 @@ def plot_smr(smr):
                   pv = 'p_SMR',
                   snp = 'Gene',
                   color = '#106470,#91B9A4',
-                  is_annotate_topsnp=True, # annotate sig. genes
                   suggestiveline = 1e-99,
-                  genomewideline = sig,
-                  sign_marker_p = max([pmin,sig]),  # Genome wide significant p-value
+                  genomewideline = sig, # FDR < 0.05
+                  # Genes to annotate
+                  is_annotate_topsnp=True,
+                  sign_marker_p = max(find_top_clump_thr(smr, 'ProbeChr','Probe_bp','p_SMR',sig), pmin),
                   sign_marker_color="r",
                   logp = True,
                   ld_block_size = 1000000,
