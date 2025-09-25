@@ -16,7 +16,66 @@ Requires following inputs:
             (for Siletti et al 2023: ROIGroup, ROIGroupCoarse, ROIGroupFine, roi, supercluster_term, cluster_id, subcluster_id, development_stage)
 '''
 
-import matplotlib as mpl
+# downstream analyses
+def _stratify(df_score, adata, label):
+    import pandas as pd
+    df = adata.obs.loc[adata.obs.index.isin(df_score.index), :]
+    cells = [df.index.tolist()]; annot = ['All']; cell_type = ['All']
+    for l in label:
+        if l not in df.columns: continue
+        for group, df_group in df.groupby(l):
+            cells.append(df_group.index.tolist())
+            annot.append(l); cell_type.append(group)
+    return pd.DataFrame(dict(cell = cells), index = pd.MultiIndex.from_frame(pd.DataFrame(dict(annot = annot, cell_type = cell_type))))
+
+def _corr_pseudotime(df_score, adata, strata):
+    import pandas as pd
+    import numpy as np
+    from tqdm import tqdm
+    out_df = pd.DataFrame(columns = ['pseudotime'], index = strata.index, data = np.nan)
+
+    for i, row in tqdm(strata.iterrows(), desc = 'Correlating scDRS score with pseudotime'):
+        df_stratum = df_score.loc[row['cell'],:].join(adata.obs.loc[row['cell'], 'pseudotime'], how = 'inner').dropna()
+        if df_stratum.shape[0] == 0: continue
+        out_df.loc[i, 'pseudotime'] = df_stratum['norm_score'].corr(df_stratum['pseudotime'])
+    return out_df
+
+def _corr_genes(df_score, adata, strata, genes = [], block_size = 1000):
+    import pandas as pd
+    import numpy as np
+    from tqdm import tqdm
+    import gc
+    if len(genes) == 0:
+        if 'feature_type' in adata.var.columns:
+            genes = adata.var_names[adata.var['feature_type'] == 'protein_coding'].tolist()
+        elif 'highly_variable' in adata.var.columns:
+            genes = adata.var_names[adata.var['highly_variable']].tolist()
+        else: genes = adata.var_names.tolist()
+    out_df = pd.DataFrame(columns = genes, index = strata.index, data = np.nan)
+
+    # correlate in batches of 1000 genes (or manually specified block size)
+    for gid in tqdm(range(0, len(genes), block_size), desc = f'Correlating scDRS with gene expression, total {int(len(genes)/block_size)+1} blocks'):
+        gene_block = genes[gid:(gid+block_size)]
+        expr = pd.DataFrame(data = adata[:, gene_block].to_memory().X.toarray(), index = adata.obs_names, columns = gene_block)
+        for i, row in tqdm(strata.iterrows(), desc = f'Gene block {int(gid/block_size)+1}/{int(len(genes)/block_size)+1}'):
+            df_stratum = df_score.loc[row['cell'],:].join(expr.loc[row['cell'], :], how = 'inner').dropna()
+            if df_stratum.shape[0] == 0: continue
+            out_df.loc[i, gene_block] = df_stratum[gene_block].corrwith(df_stratum['norm_score'])
+        del expr; gc.collect()
+    out_df = out_df.T
+    med = out_df.median(axis = 1)
+    out_df['med'] = med
+    out_df = out_df.sort_values('med', ascending = False).drop(columns = 'med').T
+    return out_df
+
+def downstream_correlation(adata, df_score, label, genes = []):
+    import pandas as pd
+    strata = _stratify(df_score, adata, label)
+    out_corr = []
+    if 'pseudotime' in adata.obs.columns:
+        out_corr.append(_corr_pseudotime(df_score, adata, strata))
+    out_corr.append(_corr_genes(df_score, adata, strata, genes))
+    return pd.concat(out_corr, axis = 1)
 
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
@@ -72,13 +131,6 @@ def main(args = None, **kwargs):
             rep = 'UMAP'
         else: raise ValueError('No tSNE or UMAP coordinates found in adata.obsm')
         scatterplot_noaxis(x, y, score['norm_score'], palette = redblue, s = 0.1, rep = rep)
-        # sns.set_theme(style = 'ticks
-        # temp_df = pd.DataFrame(dict(tsne1 = adata.obsm['X_tsne'][:,0], tsne2 = adata.obsm['X_tsne'][:,1], score = score['norm_score']))
-        # try: mpl.colormaps.register(redblue)
-        # except: pass
-        # sns.set_theme(style = 'ticks')
-        # _, ax = plt.subplots(figsize = (5,5))
-        # sns.scatterplot(temp_df, x = 'tsne1', y = 'tsne2', hue = 'score', palette = 'redblue', s = 1, ax = ax, edgecolor = None, linewidth = 0, legend = False)
         plt.savefig(out_fig, dpi = 400, bbox_inches = 'tight')
         plt.close()
         adata.file.close()
@@ -100,6 +152,15 @@ def main(args = None, **kwargs):
             enrichments.append(df)
         enrichments = pd.concat(enrichments)
         enrichments.to_csv(out_enrichment, index = True, sep = '\t')
+        adata.file.close()
+    
+    out_downstream = f'{args.out}.downstream.txt'
+    if args.downstream and (not os.path.isfile(out_downstream) or args.force):
+        adata = sc.read_h5ad(args.h5ad, 'r')
+        score = pd.read_table(out_score, index_col = 0, usecols = [0, 2])
+        corr = downstream_correlation(adata, score, args.label)
+        corr.to_csv(out_downstream, index = True, sep = '\t')
+        adata.file.close()
 
 if __name__ == '__main__':
     import argparse
@@ -109,6 +170,7 @@ if __name__ == '__main__':
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+    parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output prefix, no .txt', required = True)
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()

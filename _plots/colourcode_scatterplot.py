@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-import scanpy as sc
 from .aes import register_palettes
 
 def _add_rep_axis(fig, rep = 'UMAP'):
@@ -25,7 +24,7 @@ def _add_rep_axis(fig, rep = 'UMAP'):
   repax.set_xlabel(f'{rep}1', fontsize = 8); repax.set_ylabel(f'{rep}2', fontsize = 8)
   return fig
 
-def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '', **kwargs):
+def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '', vmin = None, vmax = None, **kwargs):
   '''
   Scatterplot without axes
   Input:
@@ -50,9 +49,13 @@ def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '
       use_palette = redblue.name
   legend = 'auto' if (v.dtype.name == 'category' or v.dtype == object) else False
   if not (v.dtype.name == 'category' or v.dtype == object):
-    if (v < 0).all(): kwargs['hue_norm'] = mpl.colors.Normalize(vmin = np.min(v), vmax = 0)
-    elif (v > 0).all(): kwargs['hue_norm'] = mpl.colors.Normalize(vmin = 0, vmax = np.max(v))
-    else: kwargs['hue_norm'] = mpl.colors.Normalize(vmin = -np.max(np.abs(v)), vmax = np.max(np.abs(v)))
+    if np.nanmax(v) <= 0: vmin = max(np.nanquantile(v, 0.05)*1.5,np.nanmin(v)) if vmin == None else vmin; vmax = 0 if vmax == None else vmax
+    elif np.nanmin(v) >= 0: vmin = 0 if vmin == None else vmin; vmax = min(np.nanquantile(v,0.95),np.nanmax(v)) if vmax == None else vmax
+    else:
+      absv = np.abs(v) 
+      vmin = -max(np.nanquantile(absv, 0.95)*1.5,np.nanmax(absv)) if vmin == None else vmin
+      vmax = max(np.nanquantile(absv, 0.95)*1.5,np.nanmax(absv)) if vmax == None else vmax
+    kwargs['hue_norm'] = mpl.colors.Normalize(vmin = vmin, vmax = vmax)
 
   # main plot
   fig = plt.figure(figsize = (5.3,5))
@@ -69,7 +72,10 @@ def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '
     plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=use_palette), cax = cax)
   # legend
   else:
-    sns.move_legend(ax, "center left", bbox_to_anchor=(1, 0.5), title = 'Group', frameon = False)
+    sns.move_legend(ax, "center left", bbox_to_anchor=(1, 0.5), title = 'Group', frameon = False, ncols = np.ceil(len(v.unique())/20))
+    # increase point size in legend
+    handles = ax.get_legend().legend_handles
+    for handle in handles: handle.set_markersize(5)
   
   if rep != False: fig = _add_rep_axis(fig, rep)
   return fig

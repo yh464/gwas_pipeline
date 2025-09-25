@@ -19,7 +19,7 @@ def main(args):
     
     # array submitter
     from _utils.slurm import array_submitter
-    submitter = array_submitter(name = 'annot'+'_'.join(args.pheno),timeout = 360)
+    submitter = array_submitter(name = 'annot_magma_'+'_'.join(args.pheno),timeout = 360)
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
     # find phenotypes

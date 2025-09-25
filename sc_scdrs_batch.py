@@ -71,9 +71,11 @@ def main(args):
             for h5, h5prefix in zip(h5ad,h5ad_prefix):
                 out_prefix = f'{outdir}/{p}.{h5prefix}.scdrs'
                 if os.path.isfile(f'{out_prefix}.score.txt') and os.path.isfile(f'{out_prefix}.enrichment.txt') \
-                    and os.path.isfile(f'{out_prefix}.score.png') and not args.force: continue
+                    and os.path.isfile(f'{out_prefix}.score.png') and (not args.downstream or os.path.isfile(f'{out_prefix}.downstream.txt'))\
+                    and not args.force: continue
                 cmd = ['python', 'sc_scdrs.py', '-i', weights_file, '--h5ad', h5, '--label'] + args.label
                 if args.pval != None: cmd.append(f'-p {args.pval}')
+                if args.downstream: cmd.append('-d')
                 cmd += ['-o', out_prefix]
                 if args.force: cmd.append('-f')
                 submitter.add(' '.join(cmd))    
@@ -99,6 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+    parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()

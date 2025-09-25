@@ -15,7 +15,6 @@ Requires following inputs:
 def main(args):
     import os
     from _utils.path import find_gwas
-    from _utils.gadgets import mv_symlink
     from _utils.slurm import array_submitter
     ldsc_submitter = array_submitter('gsmap_'+'_'.join(args.pheno), timeout = 120, n_cpu = 4, env = args.gsmap)
     cauchy_submitter = array_submitter('gsmap_cauchy_'+'_'.join(args.pheno), timeout = 10, n_cpu = 4, env = args.gsmap, dependency=ldsc_submitter)
@@ -59,12 +58,12 @@ def main(args):
                                     f'--sumstats_file {args._in}/{g}/{p}.sumstats --w_file {args.gsmap}/gsMap_resource/LDSC_resource/weights_hm3_no_hla/weights. '+
                                     f'--num_processes 4 --chunk_range {start_chunk} {end_chunk}')
                 if all([os.path.isfile(x) for x in chunk_files]) and not os.path.isfile(gsmap_out_ldsc):
-                    os.system(f'zcat {chunk_files[0]} > {gsmap_out_ldsc[:-3]}')
+                    os.system(f'zcat {chunk_files[0]} > {out_ldsc[:-3]}')
                     for x in chunk_files[1:]:
-                        os.system(f'zcat {x} | tail -n +2 >> {gsmap_out_ldsc[:-3]}') # skip header
-                    os.system(f'gzip -f {gsmap_out_ldsc[:-3]}')
+                        os.system(f'zcat {x} | tail -n +2 >> {out_ldsc[:-3]}') # skip header
+                    os.system(f'gzip -f {out_ldsc[:-3]}')
                     # pd.concat([pd.read_csv(x, index_col = False) for x in chunk_files]).to_csv(gsmap_out_ldsc, index = False)
-            mv_symlink(gsmap_out_ldsc, out_ldsc)
+            if not os.path.islink(gsmap_out_ldsc): os.symlink(out_ldsc, gsmap_out_ldsc) # create a symlink for gsmap progress checking
 
             # Cauchy combination
             if not os.path.isfile(out_cauchy_region) or not os.path.isfile(out_cauchy_ct) or args.force:

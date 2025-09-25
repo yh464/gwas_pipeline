@@ -13,6 +13,7 @@ import os
 import argparse
 import re
 import warnings
+import math
 
 class array_submitter():
     '''
@@ -61,9 +62,10 @@ class array_submitter():
                  ):
         
         # current SLURM limit: 50 jobs, 450 CPUs
-        if n_cpu < 5:
-            parallel *= int(9/n_cpu)
-            n_cpu *= int(9/n_cpu)
+        cpu_avail = 9 if partition != 'desktop' else 4
+        if n_cpu < cpu_avail:
+            parallel *= int(cpu_avail/n_cpu)
+            n_cpu *= int(cpu_avail/n_cpu)
 
         import warnings
         if len(name) > 30:
@@ -101,7 +103,7 @@ class array_submitter():
         self._blank = True
         self._count = 1 # number of commands per file
         self._fileid = 0 # current file id
-        self._nfiles = -1
+        self._nfiles = 0
         self._jobid = 0
         
         # status features
@@ -166,13 +168,14 @@ class array_submitter():
             print(f'module load {mod}', file = _file)
         print(f'cd {self.wd}', file = _file) # enforce working directory
         _file.close()
+        self._nfiles += 1
     
     def _newjob(self):
         # reset cmd count and file id
         self._count = 1
         self._fileid = 0
         self._jobid += 1
-        self._nfiles = -1
+        self._nfiles = 0
         
         # reset job name and directories to avoid confusion
         self.name = re.sub(f'_{self._jobid-1}$',f'_{self._jobid}', self.name)
@@ -202,7 +205,6 @@ class array_submitter():
         if self._mode == 'long':
             # first iteration: reset files
             if self._count == 1:
-                self._nfiles += 1
                 self._newfile()
             
             # append command
@@ -226,7 +228,6 @@ class array_submitter():
         elif self._mode == 'short':
             # for 'short' jobs, submit in 15-min batches
             if self._count == 1:
-                self._nfiles += 1
                 self._newfile()
             
             fname = f'{self.tmpdir}/{self.name}_{self._fileid}.sh'
@@ -248,9 +249,9 @@ class array_submitter():
     def _write_dep_str(self):
         dep_str = []
         for dep in self.dep: 
-            if type(dep) == int:
+            if type(dep) in [int, str]:
                 dep_str.append(f'afterok:{dep}')
-            elif type(dep) == array_submitter:
+            else:
                 if dep._blank: continue
                 if not dep.submitted:
                     dep.submit()
@@ -271,12 +272,12 @@ class array_submitter():
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {self.n_cpu}', file = wrap)
-        time = int(self.timeout * self._count / self.parallel)
+        time = self.timeout * math.ceil(self._count / self.parallel)
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
-        print(f'#SBATCH --array=0-{self._nfiles}', file = wrap)
+        print(f'#SBATCH --array=0-{self._nfiles-1}', file = wrap)
         print('#SBATCH '+ self._write_dep_str(), file = wrap)
         
         if self.email: print('#SBATCH --mail-type=ALL', file = wrap)
@@ -288,7 +289,7 @@ class array_submitter():
         '''
         Prints one sample command file and the sbatch command
         '''
-        if self._nfiles < 0:
+        if self._nfiles == 0:
             print('No files to submit (!)')
             return
         
@@ -298,13 +299,13 @@ class array_submitter():
         self._write_wrap()
         
         # debug command also outputs the submit command
-        time = int(self.timeout * self._count)
+        time = self.timeout * math.ceil(self._count / self.parallel)
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {self._write_dep_str()} {self._wrap_name}') 
+                  f' --array=0-{self._nfiles-1} {self._write_dep_str()} {self._wrap_name}') 
     
     def _splash(self, jobid):
         msg = []
@@ -313,11 +314,11 @@ class array_submitter():
         msg.append(f'    Name:       {self.name}')
         msg.append(f'    Path:       {self.tmpdir}')
         msg.append(f'    Partition:  {self.partition}')
-        msg.append(f'    Timeout:    {int(self.timeout*self._count/self.parallel)} minutes')
+        msg.append(f'    Timeout:    {self.timeout * math.ceil(self._count / self.parallel)} minutes')
         msg.append(f'    CPUs:       {self.n_cpu}')
-        msg.append(f'    # files:    {self._nfiles + 1}')
+        msg.append(f'    # files:    {self._nfiles}')
         msg.append(f'    Parallel:   {self.parallel}')
-        msg.append(f'    Dependency: {self._write_dep_str()}')
+        msg.append(f'    Dependency: {self._write_dep_str().replace('--dependency ','') if self._write_dep_str() != "" else "None"}')
         msg.append(f'    Job ID:     {jobid}')
         msg.append('#' * 100)
         if not self._blank: print('\n'.join(msg))
@@ -331,8 +332,13 @@ class array_submitter():
         if self.debug: self._print(); return
         if self.intr: import os; os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
         
+        if self.parallel > 1:
+            for i in range(self._nfiles):
+                _file = open(f'{self.tmpdir}/{self.name}_{i}.sh','a')
+                print('wait', file = _file)
+                _file.close()
         self._write_wrap()
-        time = int(self.timeout) * self._count
+        time = self.timeout * math.ceil(self._count / self.parallel)
         time = min(time, 720)
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
@@ -341,7 +347,7 @@ class array_submitter():
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles} {self._write_dep_str()} {self._wrap_name}', shell = True
+                  f' --array=0-{self._nfiles-1} {self._write_dep_str()} {self._wrap_name}', shell = True
                   ).decode().strip()
         jobid = int(msg.split()[-1]) # raises an error if sbatch fails
         self._splash(jobid)

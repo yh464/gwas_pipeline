@@ -123,26 +123,19 @@ def main(args):
     print('Following QTL have been found:')
     for x in qtl_list: print(x)
     
-    for x in args.pheno:
-        if not os.path.isdir(f'{args.out}/{x}'): os.system(f'mkdir -p {args.out}/{x}')
-        
-        # scans directory for fastGWA files
-        flist = []
-        for y in os.listdir(f'{args._in}/{x}'):
-            if fnmatch(y,'*.fastGWA') and (not fnmatch(y,'*_X.fastGWA')) and (not fnmatch(y, '*_all_chrs*')):
-                flist.append(y)
-
-        for y in flist:
-            # conduct SMR for each QTL file
-            for qtl in qtl_list:
-                annot_smr(
-                    gwa = f'{args._in}/{x}/{y}',
-                    xqtl = qtl,
-                    bfile = args.bfile,
-                    out = f'{args.out}/{x}',
-                    smr = args.smr,
-                    force = args.force
-                    )
+    from _utils.path import find_gwas
+    pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
+    for g,p in pheno:
+        os.makedirs(f'{args.out}/{g}', exist_ok = True)
+        for qtl in qtl_list:
+            annot_smr(
+                gwa = f'{args._in}/{g}/{p}.fastGWA',
+                xqtl = qtl,
+                bfile = args.bfile,
+                out = f'{args.out}/{g}',
+                smr = args.smr,
+                force = args.force
+                )
     
     submitter.submit()
 

@@ -45,7 +45,8 @@ def main(args):
         df = coords.join(sldsc, how = 'inner')
         if df.shape[0] == 0: warnings.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
         df['logp'] = -np.log10(df['p'])
-        colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], redgrey, 0.1, rep = False, vname = r"$-log_{10}{(P)}$")
+        df.loc[df['logp'] < 0, 'logp'] = 0
+        colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], redgrey, 0.1, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
         plt.savefig(out_fig, dpi = 400)
         plt.close()
 
