@@ -17,9 +17,6 @@ Changelog:
     Changed the heatmap to a scatterplot-style heatmap
 '''
 
-from re import X
-
-
 def main(args):
     import os
     import pandas as pd
@@ -29,6 +26,8 @@ def main(args):
     import matplotlib.pyplot as plt
     from _plots import corr_heatmap
     from _utils.path import normaliser, find_gwas
+    from tqdm import tqdm
+    import warnings
     norm = normaliser()
     
     # find gene set files
@@ -41,11 +40,11 @@ def main(args):
     pheno_short = find_gwas(args.pheno)
 
     all_phenos = []
-    for g, p in pheno:
+    for g, p in tqdm(pheno):
         all_gsets = []
         for gset_file, gset in gsets + gscores:
             magma_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.gsa.out'
-            if not os.path.isfile(magma_output): raise Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}'); continue
+            if not os.path.isfile(magma_output): warnings.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
             df = pd.read_table(magma_output, sep = '\\s+', comment = '#')
             df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA':'beta'})
             if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE
@@ -86,8 +85,7 @@ def main(args):
     all_phenos.to_csv(f'{out_prefix}.txt', sep = '\t', index = False)
 
     # miami-like bar plot
-    for gset in all_phenos.gene_set.unique():
-      print(gset)
+    for gset in tqdm(all_phenos.gene_set.unique()):
       tmp = all_phenos.loc[all_phenos.gene_set == gset,:]
       if tmp.cell_type.unique().size < 1: continue
       tmp = tmp.assign(**{'-log(fdr)': (-np.log10(tmp.q) * (tmp['beta'] > 0))})

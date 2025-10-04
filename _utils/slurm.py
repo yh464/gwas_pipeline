@@ -130,7 +130,7 @@ class array_submitter():
         self._jobid = 0
         
         # SLURM status properties
-        self._submitted = False
+        self.submitted = False
         self._slurmid = []
     
     # change settings
@@ -255,7 +255,7 @@ class array_submitter():
             batches = []
             for i in range(0, len(cmds_to_dump), self.parallel):
                 batch = cmds_to_dump[i:min(i+self.parallel, len(cmds_to_dump))]
-                batch = ' & '.join(batch + ['wait'])
+                batch = ' & '.join(batch) + '; wait $!'
                 batches.append(batch)
             cmds_to_dump = batches; del batches
 
@@ -357,6 +357,7 @@ class slurm_parser(argparse.ArgumentParser):
         slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
         slurm.add_argument('--n_node', help = 'number of nodes needed')
         slurm.add_argument('--n_task', help = 'number of tasks per job')
+        slurm.add_argument('--arraysize', help = 'number of files per array job')
         slurm.add_argument('--timeout', help = 'timeout in minutes')
         slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
         slurm.add_argument('--parallel', help = 'number of parallel processes')

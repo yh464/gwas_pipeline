@@ -15,7 +15,7 @@ def segidx(df, n):
     import numpy as np
     nz = df['nz']/n
     ms = df['s']/n; ms[ms==0] = np.nan
-    sds = (df['sumsq']/n - ms**2) * n/(n-1)
+    sds = ((df['sumsq']/n - ms**2) * n/(n-1)) ** 0.5
     cvs = pd.Series(sds/ms)
     x1 = nz.rank()/(len(nz)+1)
     x2 = 1 - cvs.rank()/(len(cvs)+1)
@@ -51,8 +51,8 @@ def singlebatchcepo(adata, genes, celltypes, mincells = 20, exprspct:float = 0.0
     # columns = genes, rows = cells
     import pandas as pd
     import os
-    from time import perf_counter as t
-    tic = t()
+    from tqdm import tqdm
+
     os.makedirs(tempdir, exist_ok = True)
     celltypes = pd.Series(celltypes).astype('category')
     celltypes_df = pd.get_dummies(celltypes)
@@ -62,11 +62,10 @@ def singlebatchcepo(adata, genes, celltypes, mincells = 20, exprspct:float = 0.0
     if celltypes_df.shape[1] == 0: return []
 
     # first generate temporary files
-    for i, ct in enumerate(celltypes_df.columns):
+    for i, ct in tqdm(enumerate(celltypes_df.columns), desc = 'Generating temporary files', total = celltypes_df.shape[1]):
         tempfile = f'{tempdir}/cepo.{ct}.txt'
         if not os.path.isfile(tempfile):
             generate_tempfile(adata, celltypes_df[ct].values).to_csv(tempfile, sep = '\t', index = True, header = True)
-            print(f'Generated {tempfile} in {t()-tic:.2f} seconds, {i+1}/{celltypes_df.shape[1]}')
 
     # filter genes such that each gene is expressed in at least exprspct of cells in at least one cell type
     keep = pd.DataFrame(index = genes, columns = celltypes_df.columns, data = False)

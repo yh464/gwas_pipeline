@@ -153,6 +153,20 @@ write_model = function(dwls, file){
   return(T)
 }
 
+#### for GWAS, convert MAF to AF1 ####
+add_af1 = function(mgwas, ref){
+  if (! is.null(mgwas$AF1)) return(mgwas)
+  if (class(ref) == 'character' && file.exists(ref)) ref = read_delim(ref)
+  ref = ref %>% select(SNP, AF1, A1, A2)
+  ref_rev = ref; names(ref_rev) = c('SNP','AF1','A2','A1'); ref_rev$AF1 = 1 - ref_rev$AF1
+  ref = bind_rows(ref, ref_rev)
+  mgwas = mgwas %>% left_join(ref)
+  mgwas$AF1 = mgwas$AF1 %>% replace_na(mgwas$MAF)
+  mgwas$MAF = mgwas$AF1
+  mgwas = mgwas %>% select(-AF1) %>% rename(AF1 = MAF)
+  return(mgwas)
+}
+
 #### main execution block ####
 main = function(args){
   library(httr)
@@ -196,10 +210,14 @@ main = function(args){
   }
   sumstats_cache = paste0(tmpdir,'/',sha256(paste(c(p1,p2),collapse='.')),'.sumstats.rdata')
   if (args$gwas & file.exists(sumstats_cache)) load(sumstats_cache)
-  if (args$gwas & ! file.exists(sumstats_cache)) {ss = sumstats(
-    files = paste0(args$full, '/', c(args$p1, args$p2), '.fastGWA'), ref = args$ref,
-    trait.names = trait.names, OLS = metadata$ols, N = metadata$n,
-    se.logit = metadata$selogit, linprob = metadata$linprob)
+  if (args$gwas & ! file.exists(sumstats_cache)) {
+    ss = sumstats(
+      files = paste0(args$full, '/', c(args$p1, args$p2), '.fastGWA'), 
+      ref = args$ref,
+      trait.names = trait.names, 
+      OLS = metadata$ols, N = metadata$n,
+      se.logit = metadata$selogit, linprob = metadata$linprob
+      )
     save(ss, file = sumstats_cache)
   }
   cat('\nCache files are saved at', ldsc_cache,'\n')
@@ -214,11 +232,18 @@ main = function(args){
     if (length(p2) > 0) warning(paste0(args$p2[1],' is also included in common factor'))
     if (length(cov)> 0) warning('Covariates are also included in common factor') 
     dwls = commonfactor(ldscoutput, 'DWLS')
-    out = dwls$results %>% rename(beta_unstd = 'Unstandardized_Estimate',
-      se_unstd = 'Unstandardized_SE', beta = 'Standardized_Est', se = 'Standardized_SE',
-      p = 'p_value') %>% mutate(q = p.adjust(p)) %>% 
-      add_column(chi2 = dwls$modelfit$chisq, chi2_p = dwls$modelfit$p_chisq, 
-        df = dwls$modelfit$df, CFI = dwls$modelfit$CFI, SRMR = dwls$modelfit$SRMR)
+    out = dwls$results %>% 
+      rename(beta_unstd = 'Unstandardized_Estimate',
+             se_unstd = 'Unstandardized_SE', 
+             beta = 'Standardized_Est', 
+             se = 'Standardized_SE',
+             p = 'p_value') %>% 
+      mutate(q = p.adjust(p)) %>% 
+      add_column(chi2 = dwls$modelfit$chisq, 
+                 chi2_p = dwls$modelfit$p_chisq, 
+                 df = dwls$modelfit$df, 
+                 CFI = dwls$modelfit$CFI, 
+                 SRMR = dwls$modelfit$SRMR)
     write_tsv(out, file = results, quote = 'needed')
     
     #### common factor GWAS ####
@@ -227,8 +252,9 @@ main = function(args){
       if (length(args$p2) > 0) warning(paste0(args$p2[1],' is also included in common factor GWAS'))
       cgwas = commonfactorGWAS(ldscoutput, ss, cores = 16, toler = .Machine$double.xmin) %>% 
         rename(POS = 'BP', BETA = 'est', SE = 'se_c',Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
-        select(-lhs, -op, -rhs, -i) %>% add_column(N = 1)
-      save(cgwas, file = paste0(args$out,'_common.chr',args$gwas,'.rdata'))
+        select(-lhs, -op, -rhs, -i) %>% 
+        add_column(N = max(metadata$n[1:n])) %>% 
+        add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA'))
       write_tsv(cgwas, gwa)
     }
   } else if (args$common & length(trait.names_med) == 2) {
@@ -244,8 +270,11 @@ main = function(args){
       print('Compling common factor GWAS, enforcing equal weight to two indicators ...')
       mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T, toler = .Machine$double.xmin)
-      write_tsv(mgwas[[1]] %>% add_column(N = 1) %>% rename(POS = 'BP', 
-        BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate'), gwa[1])
+      mgwas[[1]] %>% 
+        add_column(N = max(metadata$n[1:n])) %>% 
+        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>%
+        add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA')) %>%
+        write_tsv(gwa[1])
     }
   }
   
@@ -255,19 +284,21 @@ main = function(args){
     print('Performing exploratory factor analysis ...')
     ldsccache_even = paste0(tmpdir,'/',sha256(paste(p1,collapse='.')),'.ldsc.even.rdata')
     ldsccache_odd = paste0(tmpdir,'/',sha256(paste(p1,collapse='.')),'.ldsc.odd.rdata')
-    if (! file.exists(ldsccache_even)) {ldscoutput_even = ldsc(
-      traits = paste0(args$input,'/',args$p1,'.sumstats'),
-      sample.prev = metadata$sample_prev[1:length(p1)],
-      population.prev = metadata$pop_prev[1:length(p1)],
-      ld = args$ld, wld = args$ld, trait.names = p1, select = 'EVEN',
-      ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
+    if (! file.exists(ldsccache_even)) {
+      ldscoutput_even = ldsc(
+        traits = paste0(args$input,'/',args$p1,'.sumstats'),
+        sample.prev = metadata$sample_prev[1:length(p1)],
+        population.prev = metadata$pop_prev[1:length(p1)],
+        ld = args$ld, wld = args$ld, trait.names = p1, select = 'EVEN',
+        ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
       save(ldscoutput_even, file = ldsccache_even)} else load(ldsccache_even)
-    if (! file.exists(ldsccache_odd)) {ldscoutput_odd = ldsc(
-      traits = paste0(args$input,'/',args$p1,'.sumstats'),
-      sample.prev = metadata$sample_prev[1:length(p1)],
-      population.prev = metadata$pop_prev[1:length(p1)],
-      ld = args$ld, wld = args$ld, trait.names = p1, select = 'ODD',
-      ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
+    if (! file.exists(ldsccache_odd)) {
+      ldscoutput_odd = ldsc(
+        traits = paste0(args$input,'/',args$p1,'.sumstats'),
+        sample.prev = metadata$sample_prev[1:length(p1)],
+        population.prev = metadata$pop_prev[1:length(p1)],
+        ld = args$ld, wld = args$ld, trait.names = p1, select = 'ODD',
+        ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
       save(ldscoutput_odd, file = ldsccache_odd)} else load(ldsccache_odd)
     if (args$efa_n == -1) n_factors = paLDSC_mod(ldscoutput_even$S, ldscoutput_even$V
       ) else n_factors = args$efa_n
@@ -305,9 +336,12 @@ main = function(args){
     if (args$gwas & (!file.exists(gwa[1]) | args$force)) {
       mgwas = userGWAS(ldscoutput, ss, 'ML', cores = 16, smooth_check = T, sub = mdl_snp,
         model = paste0(c(mdl, mdl_snp), collapse = ' \n '), std.lv = T)
-      for (i in 1:length(gwa)) mgwas[[i]] %>% add_column(N = max(metadata$n)) %>% 
+      for (i in 1:length(gwa)) mgwas[[i]] %>% 
+        add_column(N = max(metadata$n)) %>% 
         rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>%
-        select(-label) %>% write_tsv(gwa[i])
+        select(-label) %>% 
+        add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA')) %>%
+        write_tsv(gwa[i])
   }}
   
   #### exposure-outcome model ####
@@ -387,8 +421,12 @@ main = function(args){
       zero_cov = c(zero_cov, paste0(c(p1,p2),' ~~ 0*',c(p1,p2)))
       mdl = c(mdl, zero_cov) %>% paste(collapse = '\n')
       sgwas = userGWAS(ldscoutput, ss, model = mdl, cores = 16, sub = paste0(indep,' ~ SNP'))
-      sgwas[[1]] %>% add_column(N = max(metadata$n)) %>% rename(POS = 'BP', BETA = 'est', 
-        Z = 'Z_Estimate',P = 'Pval_Estimate') %>% select(-label) %>% write_tsv(gwa)
+      sgwas[[1]] %>% 
+        add_column(N = max(metadata$n)) %>% 
+        rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>% 
+        select(-label) %>% 
+        add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA')) %>% 
+        write_tsv(gwa)
     }
   }
   
@@ -408,10 +446,12 @@ main = function(args){
                      '.chr',args$gwas,'.fastGWA')
     if (!all(sapply(sub_gwa, file.exists)) | args$force){
       mgwas = userGWAS(ldscoutput, ss, model = mdl, sub = sub, cores = 16) 
-      save(mgwas,file = paste0(args$out,'.usergwas.chr',args$gwas,'.rdata'))
-      for (i in 1:length(sub)) mgwas[[i]] %>% add_column(N = max(metadata$n)) %>% 
+      for (i in 1:length(sub)) mgwas[[i]] %>% 
+        add_column(N = max(metadata$n)) %>% 
         rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>%
-        select(-label) %>% write_tsv(sub_gwa[i])
+        select(-label) %>% 
+        add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA')) %>% 
+        write_tsv(sub_gwa[i])
     }
   }
 }

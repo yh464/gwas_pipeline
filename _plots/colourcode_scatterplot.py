@@ -44,9 +44,9 @@ def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '
     if v.dtype.name == 'category' or v.dtype == object:
       use_palette = sns.color_palette('husl', n_colors = len(v.unique()))
     else:
-      from .aes import redblue
-      register_palettes(redblue)
-      use_palette = redblue.name
+      if np.nanmax(v) <= 0: from .aes import whiteblue; use_palette = whiteblue.name; register_palettes(whiteblue)
+      elif np.nanmin(v) >= 0: from .aes import redgrey_alpha; use_palette = redgrey_alpha.name; register_palettes(redgrey_alpha)
+      else: from .aes import redblue_alpha; register_palettes(redblue_alpha); use_palette = redblue_alpha.name
   legend = 'auto' if (v.dtype.name == 'category' or v.dtype == object) else False
   if not (v.dtype.name == 'category' or v.dtype == object):
     if np.nanmax(v) <= 0: vmin = max(np.nanquantile(v, 0.05)*1.5,np.nanmin(v)) if vmin == None else vmin; vmax = 0 if vmax == None else vmax

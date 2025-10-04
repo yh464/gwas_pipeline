@@ -146,7 +146,7 @@ def main(args):
     submitter = array_submitter(
         name = name, env = 'gentoolsr',
         partition = 'icelake-himem' if args.gwas else 'icelake',
-        n_cpu = 8 if args.gwas else 1, timeout = 240 if args.gwas else 15)
+        n_cpu = 16 if args.gwas else 1, timeout = 240 if args.gwas else 15)
     
     # tasks string
     tasks = []

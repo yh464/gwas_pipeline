@@ -16,22 +16,34 @@ def format_gwa(gwa, tmpgwa):
     # input file name, usually fastGWA format
     import pandas as pd
     import numpy as np
-    df = pd.read_table(gwa)
+    import os
+    with open(gwa) as f:
+        hdr = f.readline().strip().split()
     out = [0,0,0,0,0,0,0,0] # 8 columns
+    os.makedirs(os.path.dirname(tmpgwa), exist_ok = True)
     
-    for col in df.columns:
-        if col.lower() in ['snp','id','rsid']: out[0] = df[col]
-        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = df[col]
-        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = df[col]
-        if col.lower() in ['af1','freq','eaf','maf']: out[3] = df[col]
-        if col.lower() in ['beta','logor','b']: out[4] = df[col]
-        if col.lower() in ['or']: out[4] = np.log(df[col])
-        if col.lower() in ['se', 'stderr']: out[5] = df[col]
-        if col.lower() in ['p','pval']: out[6] = df[col]
-        if col.lower() in ['nobs','n']: out[7] = df[col]
+    for idx, col in enumerate(hdr):
+        if col.lower() in ['snp','id','rsid']: out[0] = idx
+        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = idx
+        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = idx
+        if col.lower() in ['af1','freq','eaf','maf']: out[3] = idx
+        if col.lower() in ['beta','logor','b']: out[4] = idx; log = False
+        if col.lower() in ['or']: out[4] = idx; log = True
+        if col.lower() in ['se', 'stderr']: out[5] = idx
+        if col.lower() in ['p','pval']: out[6] = idx
+        if col.lower() in ['nobs','n']: out[7] = idx
     
-    out = pd.concat(out, axis = 1)
-    out.to_csv(tmpgwa, sep = '\t', index = False)
+    if any([x == 0 for x in out[:3]]): raise ValueError('Missing necessary columns')
+
+    if not log:
+        print_field = ','.join([f'${x+1}' for x in out])
+        cmd = ['awk', '-v', r'OFS="\t"', '\'{print', print_field+'}\'', gwa, '>', tmpgwa]
+        print(' '.join(cmd))
+        os.system(' '.join(cmd))
+    else:
+        df = pd.read_table(gwa, usecols = out)
+        df.iloc[:,4] = np.log(df.iloc[:,4])
+        out.to_csv(tmpgwa, sep = '\t', index = False)
 
 def main(args):
     import os
@@ -48,14 +60,15 @@ def main(args):
     # annotation utility for single fastGWA and single xQTL dataset
     def annot_smr(gwa, xqtl, bfile, out, smr, force):
         # output directory
-        prefix = os.path.basename(gwa)
-        prefix = '.'.join(prefix.split('.')[:-1])
+        pheno = os.path.basename(gwa)
+        group = os.path.basename(os.path.dirname(gwa))
+        pheno = '.'.join(pheno.split('.')[:-1])
         if not os.path.isdir(out): os.system(f'mkdir -p {out}')
         
         # munge input summary statistics
-        if not os.path.isfile(f'{tmpdir}/{prefix}.txt') or force:
-            try: format_gwa(gwa, f'{tmpdir}/{prefix}.txt')
-            except: Warning(f'{prefix} missing necessary columns'); return
+        if not os.path.isfile(f'{tmpdir}/{group}/{pheno}.txt') or force:
+            try: format_gwa(gwa, f'{tmpdir}/{group}/{pheno}.txt')
+            except: Warning(f'{pheno} missing necessary columns'); return
         
         # parse input xqtl file
         from fnmatch import fnmatch
@@ -92,25 +105,25 @@ def main(args):
                 bfile_list.append(None)
         
         if os.path.isfile(f'{xqtl}.besd') and os.path.isfile(f'{bfile}.bed'):
-            if not os.path.isfile(f'{out}/{prefix}.smr') or force:
+            if not os.path.isfile(f'{out}/{pheno}.smr') or force:
                 submitter.add(
-                f'{smr} --bfile {bfile} --gwas-summary {tmpdir}/{prefix}.txt '+
-                f'--beqtl-summary {xqtl} --out {out}/{prefix}.{qtl}'
+                f'{smr} --bfile {bfile} --gwas-summary {tmpdir}/{group}/{pheno}.txt '+
+                f'--beqtl-summary {xqtl} --out {out}/{pheno}.{qtl}'
                 )
         
         else:
-            # print(f'Processing: {prefix} \n\tConducting SMR by chromosome, following files have been found:')
+            # print(f'Processing: {pheno} \n\tConducting SMR by chromosome, following files have been found:')
             # for x, b in zip(xqtl_list, bfile_list):
             #     print('\t\t'.join([str(x), str(b)]))
             
-            if not os.path.isdir(f'{out}/{prefix}.{qtl}'): os.mkdir(f'{out}/{prefix}.{qtl}')
+            if not os.path.isdir(f'{out}/{pheno}.{qtl}'): os.mkdir(f'{out}/{pheno}.{qtl}')
             
             for x, b, chrom in zip(xqtl_list, bfile_list, range(1,25)):
                 if x == None or b == None: continue
-                if not os.path.isfile(f'{out}/{prefix}.{qtl}/chr{chrom}.smr') or force:
+                if not os.path.isfile(f'{out}/{pheno}.{qtl}/chr{chrom}.smr') or force:
                     submitter.add(
-                    f'{smr} --bfile {b} --gwas-summary {tmpdir}/{prefix}.txt '+
-                    f'--beqtl-summary {x} --out {out}/{prefix}.{qtl}/chr{chrom}'
+                    f'{smr} --bfile {b} --gwas-summary {tmpdir}/{group}/{pheno}.txt '+
+                    f'--beqtl-summary {x} --out {out}/{pheno}.{qtl}/chr{chrom}'
                     )
     
     qtl_list = []

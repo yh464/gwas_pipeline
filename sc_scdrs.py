@@ -84,7 +84,7 @@ def main(args = None, **kwargs):
     import scdrs
     import pandas as pd
     import matplotlib.pyplot as plt
-    from _plots.aes import redblue
+    from _plots.aes import redblue_alpha
     from _plots import scatterplot_noaxis
     import warnings
     if args == None:
@@ -122,7 +122,7 @@ def main(args = None, **kwargs):
     if not os.path.isfile(out_fig) or args.force:
         adata = sc.read_h5ad(args.h5ad, 'r')
         try: score
-        except: score = pd.read_table(out_score, index_col = 0)
+        except: score = pd.read_table(out_score, index_col = 0, usecols = [0,2])
         if 'X_tsne' in adata.obsm.keys():
             x, y = adata.obsm['X_tsne'][:,0], adata.obsm['X_tsne'][:,1]
             rep = 'tSNE'
@@ -130,10 +130,11 @@ def main(args = None, **kwargs):
             x, y = adata.obsm['X_umap'][:,0], adata.obsm['X_umap'][:,1]
             rep = 'UMAP'
         else: raise ValueError('No tSNE or UMAP coordinates found in adata.obsm')
-        scatterplot_noaxis(x, y, score['norm_score'], palette = redblue, s = 0.1, rep = rep)
+        scatterplot_noaxis(x, y, score['norm_score'], palette = redblue_alpha, s = 0.1, rep = rep)
         plt.savefig(out_fig, dpi = 400, bbox_inches = 'tight')
         plt.close()
         adata.file.close()
+        if score.shape[1] < 3: del score
 
     # Stage 3: for each column of annotations, generate group-specific enrichments
     out_enrichment = f'{args.out}.enrichment.txt'
