@@ -255,7 +255,7 @@ class array_submitter():
             batches = []
             for i in range(0, len(cmds_to_dump), self.parallel):
                 batch = cmds_to_dump[i:min(i+self.parallel, len(cmds_to_dump))]
-                batch = ' & '.join(batch) + '; wait $!'
+                batch = ' & '.join(batch) + '; for job in $(jobs -p); do wait $job; done' # run in parallel
                 batches.append(batch)
             cmds_to_dump = batches; del batches
 

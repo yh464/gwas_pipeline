@@ -46,7 +46,7 @@ def main(args):
             magma_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.gsa.out'
             if not os.path.isfile(magma_output): warnings.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
             df = pd.read_table(magma_output, sep = '\\s+', comment = '#')
-            df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA':'beta'})
+            df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
             if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE
             df['cell_type'] = df['cell_type'].fillna(df.VARIABLE)
 

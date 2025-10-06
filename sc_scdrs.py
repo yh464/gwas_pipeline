@@ -130,7 +130,7 @@ def main(args = None, **kwargs):
             x, y = adata.obsm['X_umap'][:,0], adata.obsm['X_umap'][:,1]
             rep = 'UMAP'
         else: raise ValueError('No tSNE or UMAP coordinates found in adata.obsm')
-        scatterplot_noaxis(x, y, score['norm_score'], palette = redblue_alpha, s = 0.1, rep = rep)
+        scatterplot_noaxis(x, y, score['norm_score'], palette = redblue_alpha, s = 1, rep = rep)
         plt.savefig(out_fig, dpi = 400, bbox_inches = 'tight')
         plt.close()
         adata.file.close()

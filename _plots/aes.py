@@ -15,7 +15,7 @@ def register_palettes(*palettes):
     try: mpl.colormaps.register(p)
     except: pass
 
-redblue_alpha = mpl.colors.LinearSegmentedColormap(
+redblue = mpl.colors.LinearSegmentedColormap(
   'redblue',
   dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
       green = ((0,0,0),(1/2,1,1),(1,0,0)),
@@ -24,7 +24,7 @@ redblue_alpha = mpl.colors.LinearSegmentedColormap(
 )
 
 redblue_alpha = mpl.colors.LinearSegmentedColormap(
-  'redblue',
+  'redblue_alpha',
   dict(red = ((0,0,0),(1/2,1,1),(1,.8,.8)),
       green = ((0,0,0),(1/2,1,1),(1,0,0)),
       blue = ((0,.8,.8),(1/2,1,1),(1,0,0)),
@@ -49,7 +49,7 @@ redgrey = mpl.colors.LinearSegmentedColormap(
   )
 
 redgrey_alpha = mpl.colors.LinearSegmentedColormap(
-  'redgrey',
+  'redgrey_alpha',
   dict(red = ((0,0.8,0.8),(1,0.8,0.8)),
        green = ((0,0.8,0.8),(1,0,0)),
        blue = ((0,0.8,0.8),(1,0,0)),
@@ -62,6 +62,23 @@ whiteblue = mpl.colors.LinearSegmentedColormap(
   dict(red = ((0,0,0),(1,1,1)),
        green = ((0,0,0),(1,1,1)),
        blue = ((0,0.8,0.8),(1,1,1))),
+  1024,
+)
+
+greyblue = mpl.colors.LinearSegmentedColormap(
+  'greyblue',
+  dict(red = ((0,0,0),(1,.8,.8)),
+       green = ((0,0,0),(1,.8,.8)),
+       blue = ((0,0.8,0.8),(1,.8,.8))),
+  1024,
+)
+
+greyblue_alpha = mpl.colors.LinearSegmentedColormap(
+  'greyblue_alpha',
+  dict(red = ((0,0,0),(1,.8,.8)),
+       green = ((0,0,0),(1,.8,.8)),
+       blue = ((0,0.8,0.8),(1,.8,.8)),
+       alpha = ((0,1,1),(1,.2,.2))),
   1024,
 )
 
