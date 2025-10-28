@@ -22,23 +22,22 @@ def generate_gene_sets(gene_sumstats, args):
     from scipy.stats import false_discovery_control as fdr
 
     df = pd.read_table(gene_sumstats, sep = '\\s+').sort_values(args.pcol, ascending = True).reset_index(drop = True)
-    # n_genes = df.shape[0]
-    # nmin = args.nmin * n_genes if 0 < args.nmin < 1 else args.nmin
-    # nmin = int(max(50, nmin))
-    # nmax = args.nmax * n_genes if 0 < args.nmax < 1 else args.nmax
-    # nmax = int(min(nmax, 0.2 * n_genes))
-    # if nmax <= nmin: raise ValueError('Too few genes in dataset')
-    # if args.pval == None:
-    #     q = fdr(df[args.pcol])
-    #     nsig = sum(q < 0.05)
-    # else:
-    #     nsig = sum(df[args.pcol] < args.pval)
+    n_genes = df.shape[0]
+    nmin = args.nmin * n_genes if 0 < args.nmin < 1 else args.nmin
+    nmin = int(max(50, nmin))
+    nmax = args.nmax * n_genes if 0 < args.nmax < 1 else args.nmax
+    nmax = int(min(nmax, 0.2 * n_genes))
+    if nmax <= nmin: raise ValueError('Too few genes in dataset')
+    if args.pval == None:
+        q = fdr(df[args.pcol])
+        nsig = sum(q < 0.05)
+    else:
+        nsig = sum(df[args.pcol] < args.pval)
     # nsig = max(nsig, nmin); nsig = min(nsig, nmax)
-    nsig = 1000
-    gene_list = df[args.gcol].iloc[:nsig].tolist()
-    if args.bcol != None: gene_weight = df[args.bcol].iloc[:nsig].values
+    gene_list = df[args.gcol].tolist()
+    if args.bcol != None: gene_weight = df[args.bcol].values
     else: gene_weight = 1
-    return pd.DataFrame(dict(gene = gene_list, weight = gene_weight))
+    return pd.DataFrame(dict(gene = gene_list, weight = gene_weight)), [100, 200, 500, 1000, 2000, nsig]
 
 def main(args):
     import os
@@ -56,9 +55,8 @@ def main(args):
         if not annot: Warning(f'Missing gene-level sumstats for {g}/{p}'); continue
         # generate gene set
         weights_file = f'{args.out}/{g}/{p}.genes.txt'
-        if not os.path.isfile(weights_file) or args.force:
-            weights = generate_gene_sets(annot, args)
-            weights.to_csv(weights_file, index = False, sep = '\t')
+        weights, nsigs = generate_gene_sets(annot, args)
+        weights.to_csv(weights_file, index = False, sep = '\t')
         
         for sc in args.sc:
             h5ad_dir = f'{args.h5ad}/{sc}'
@@ -70,10 +68,19 @@ def main(args):
 
             for h5, h5prefix in zip(h5ad,h5ad_prefix):
                 out_prefix = f'{outdir}/{p}.{h5prefix}.scdrs'
+                if not os.path.isfile(f'{out_prefix}.sensitivity.txt'):
+                    submitter.add(
+                        f'python sc_scdrs_sensitivity.py -i {weights_file} --h5ad {h5} --label '+
+                        ' '.join(args.label)+
+                        f' -n {" ".join([str(x) for x in nsigs])} -o {out_prefix}'+
+                        (' -f' if args.force else '')
+                    )
                 if os.path.isfile(f'{out_prefix}.score.txt') and os.path.isfile(f'{out_prefix}.enrichment.txt') \
                     and os.path.isfile(f'{out_prefix}.score.png') and (not args.downstream or os.path.isfile(f'{out_prefix}.downstream.txt'))\
                     and not args.force: continue
-                cmd = ['python', 'sc_scdrs.py', '-i', weights_file, '--h5ad', h5, '--label'] + args.label
+                cmd = ['python', 'sc_scdrs.py', '-i', weights_file, '-n', 
+                       f'{nsigs[-1]}' if args.nsig < 0 else f'{args.nsig:.0f}',
+                       '--h5ad', h5, '--label'] + args.label
                 if args.pval != None: cmd.append(f'-p {args.pval}')
                 if args.downstream: cmd.append('-d')
                 cmd += ['-o', out_prefix]
@@ -96,6 +103,8 @@ if __name__ == '__main__':
     parser.add_argument('-p','--pval', help = 'P-value threshold for significant genes, default FDR 0.05', default = None)
     parser.add_argument('--nmin', help = 'Minimum number of significant genes, number or fraction', type = float, default = 100)
     parser.add_argument('--nmax', help = 'Maximum number of significant genes, number or fraction', type = float, default = 0.1)
+    parser.add_argument('-n','--nsig', help = 'Number of significant genes, -1 for all FDR-significant genes, default 1000', 
+        type = int, default = 1000)
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',

@@ -16,6 +16,7 @@ from fnmatch import fnmatch
 import warnings
 import re
 import pandas as pd
+from tqdm import tqdm
 
 def find_clump(group, pheno, 
                dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
@@ -258,7 +259,7 @@ class normaliser():
         df = df_in.copy().reset_index(drop = True)
         col = df_in.columns.to_frame().reset_index(drop = True)
         idx = df_in.index.to_frame().reset_index(drop = True)
-        for x in self._dict.index:
+        for x in tqdm(self._dict.index.tolist(), desc = 'Normalising dataframe'):
             y = str(self._dict.loc[x, 'after'])
             for c in df.columns:
                 if c == 'SNP': continue # NEVER change SNP IDs

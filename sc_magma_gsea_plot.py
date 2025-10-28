@@ -82,11 +82,12 @@ def main(args):
     all_phenos = pd.concat(all_phenos, axis = 0)
     out_prefix = f'{args._in}/'+'_'.join([x[0] for x in pheno_short]) + f'.{args.annot}.enrichments'
     all_phenos = norm.normalise(all_phenos)
-    all_phenos.to_csv(f'{out_prefix}.txt', sep = '\t', index = False)
+    # all_phenos.to_csv(f'{out_prefix}.txt', sep = '\t', index = False)
 
     # miami-like bar plot
     for gset in tqdm(all_phenos.gene_set.unique()):
       tmp = all_phenos.loc[all_phenos.gene_set == gset,:]
+      tmp.to_csv(f'{out_prefix}.{gset}.txt', sep = '\t', index = False)
       if tmp.cell_type.unique().size < 1: continue
       tmp = tmp.assign(**{'-log(fdr)': (-np.log10(tmp.q) * (tmp['beta'] > 0))})
       if tmp.cell_type.unique().size < 100:

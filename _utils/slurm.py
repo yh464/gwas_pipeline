@@ -226,13 +226,15 @@ class array_submitter():
         # master wrapper
         self._wrap_name = f'{self.tmpdir}/{self.name}_wrap.sh'       
         wrap = open(self._wrap_name,'w')
-        
+        if len(self._staged_cmd) < self.parallel: n_cpu = math.ceil(self.n_cpu / self.parallel * len(self._staged_cmd))
+        else: n_cpu = self.n_cpu
+
         # sbatch arguments
         print('#!/bin/bash',file = wrap)
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
-        print(f'#SBATCH -c {self.n_cpu}', file = wrap)
-        time = self.timeout * math.ceil(self._count / self.parallel)
+        print(f'#SBATCH -c {n_cpu}', file = wrap)
+        time = self.timeout * self._count
         print(f'#SBATCH -t {time}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
@@ -295,6 +297,8 @@ class array_submitter():
     
     # splash screen
     def _splash(self, jobid):
+        if len(self._staged_cmd) < self.parallel: n_cpu = math.ceil(self.n_cpu / self.parallel * len(self._staged_cmd))
+        else: n_cpu = self.n_cpu
         msg = []
         msg.append('#' * 100)
         msg.append('Following job has been submitted to SLURM:')
@@ -302,7 +306,7 @@ class array_submitter():
         msg.append(f'    Path:       {self.tmpdir}')
         msg.append(f'    Partition:  {self.partition}')
         msg.append(f'    Timeout:    {self.timeout * math.ceil(self._count / self.parallel)} minutes')
-        msg.append(f'    CPUs:       {self.n_cpu}')
+        msg.append(f'    CPUs:       {n_cpu}')
         msg.append(f'    # files:    {self._nfiles}')
         msg.append(f'    Parallel:   {self.parallel}')
         msg.append(f'    Dependency: {re.sub("^-d ","", self._write_dep_str()) if self._write_dep_str() != "" else "None"}')

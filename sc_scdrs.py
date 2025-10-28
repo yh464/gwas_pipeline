@@ -95,8 +95,8 @@ def main(args = None, **kwargs):
     out_score = f'{args.out}.score.txt'
     if not os.path.isfile(out_score) or args.force:
         weights = pd.read_table(args._in)
-        gene_list = weights['gene'].tolist()
-        gene_weight = weights['weight'].values if 'weight' in weights.columns else None
+        gene_list = weights['gene'].iloc[:args.nsig].tolist()
+        gene_weight = weights['weight'].iloc[:args.nsig].values if 'weight' in weights.columns else None
         adata = sc.read_h5ad(args.h5ad, 'r')
         block_size = int(2e9/adata.shape[1])
         if adata.shape[0] >= block_size:
@@ -105,12 +105,14 @@ def main(args = None, **kwargs):
                 # control genes are the same as the same random seed is used
                 cmin = i; cmax = min(i+block_size, adata.shape[0])
                 tempfile = f'{args.out}.score.{cmin}_{cmax}.tmp.gz'
-                if not os.path.isfile(tempfile) or args.force:
+                try: 
+                    if args.force: raise FileNotFoundError
+                    temp_score = pd.read_table(tempfile, index_col = 0)
+                except:
                     print(f'Scoring cells {cmin} - {cmax}')
                     temp = adata[cmin:cmax,:]
                     temp_score = scdrs.score_cell(temp, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
                     temp_score.to_csv(tempfile, index = True, sep = '\t')
-                else: temp_score = pd.read_table(tempfile, index_col = 0)
                 score_df.append(temp_score)
             score = pd.concat(score_df)
         else: score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
@@ -171,6 +173,8 @@ if __name__ == '__main__':
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+    parser.add_argument('-n','--nsig', help = 'Number of significant genes, default 1000', 
+        type = int, default = 1000)
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output prefix, no .txt', required = True)
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')

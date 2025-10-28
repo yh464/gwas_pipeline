@@ -11,6 +11,8 @@ Requires following inputs:
     columns containing cell classifications
 '''
 def main(args):
+    import warnings
+
     # find phenotypes
     from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, long = True)
@@ -18,7 +20,9 @@ def main(args):
 
     # find h5ad annotations
     import os
+    from _utils.gadgets import mv_symlink
     for sc in args.sc:
+        os.makedirs(f'{args._in}/plots/{sc}', exist_ok=True)
         h5ad_prefix = [x[:-5] for x in os.listdir(f'{args.h5ad}/{sc}') if x[-5:] =='.h5ad']
         out_prefix = f'{args._in}/'+'_'.join([x[0] for x in pheno_short])+f'.{sc}'
         # concatenate scDRS output
@@ -27,7 +31,10 @@ def main(args):
         for g, p in pheno:
             pheno_summary = []
             for h5prefix in h5ad_prefix:
-                try: df = pd.read_table(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.enrichment.txt').assign(dataset = h5prefix)
+                try: 
+                    df = pd.read_table(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.enrichment.txt').assign(dataset = h5prefix)
+                    mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.score.png',
+                               f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.score.png')
                 except: Warning(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
                 pheno_summary.append(df)
             if len(pheno_summary) == 0: Warning(f'Missing scDRS enrichment for {g}/{p}'); continue
@@ -50,7 +57,7 @@ def main(args):
             if 1 <= x_size.unique().size <= 500:
                 fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])
                 fig.savefig(f'{out_prefix}_{lab}_enrichment.pdf', bbox_inches = 'tight')
-            else: Warning(f'{out_prefix}_{lab} is too large to plot, check tabular output')
+            else: warnings.warn(f'{out_prefix}_{lab} is too large to plot, check tabular output')
 
 
 if __name__ == '__main__':  

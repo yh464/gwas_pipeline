@@ -28,6 +28,7 @@ Everything is processed on the basis of **groups of phenotypes**.
         1. `mr_extract_snp_batch.py`
         2. `mr_batch.py`
         3. `mr_mvmr_batch.py`
+    5. `gcorr_lava_batch.py`: Regional genetic correlation using LAVA
 4. Gene annotation pipeline
     1. `annot_magma_batch.py`: Annotate using MAGMA and H-MAGMA to aggregate SNP to gene-level summary stats
     2. `annot_smr_batch.py`: Annotate using summary data Mendelian Randomisation to combine GWAS summary stats with xQTL data
