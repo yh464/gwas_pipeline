@@ -22,10 +22,10 @@ def main(args):
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
     
     # array submitter
-    timeout = 15 if args.p < 1e-8 else 40
+    timeout = 15 if args.pval < 1e-8 else 40
     from _utils.slurm import array_submitter
     submitter = array_submitter(
-      name = f'clump_{args.pheno[0]}_{args.p:.0e}',
+      name = f'clump_{args.pheno[0]}_{args.pval:.0e}',
       timeout = timeout)
     
     from _utils.path import find_gwas
@@ -35,11 +35,11 @@ def main(args):
     for g,p in pheno:
       if not os.path.isdir(f'{args.out}/{g}'): os.system(f'mkdir -p {args.out}/{g}') # creates output folder
       print(f'{g}/{p}')
-      out_fname = f'{args.out}/{g}/{p}_{args.p:.0e}.clumped'
+      out_fname = f'{args.out}/{g}/{p}_{args.pval:.0e}.clumped'
       if os.path.isfile(out_fname) and (not args.force): continue
       submitter.add(
         f'python gwa_clump.py --in {args._in}/{g}/{p}.fastGWA -b {args.bfile} --plink {args.plink} '+
-        f'-p {args.p} -o {args.out}/{g} {force}')
+        f'-p {args.pval} -o {args.out}/{g} {force}')
     submitter.submit()
     
 if __name__ == '__main__':
@@ -56,7 +56,7 @@ if __name__ == '__main__':
       default = '../params/bed_files_ukb.txt')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output directory',
       default = '../clump/')
-    parser.add_argument('-p',help = 'p-value threshold',
+    parser.add_argument('-p', '--pval',help = 'p-value threshold',
       default = 5e-8, type = float) # or 3.1076e-11, or 1e-6
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, action = 'store_true')

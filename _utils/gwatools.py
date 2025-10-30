@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
+import warnings
 
 def validate_columns(colnames, silent = False, **kwargs):
   colnames = [c.upper() for c in colnames] # all in uppercase
@@ -281,3 +282,35 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
     print(f'Output written to {out}')
   
   return df
+
+def ensg_to_name(ensg, 
+    # ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.hg19.gtf.txt'
+    ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.hg38.gtf.txt'
+    ):
+  '''Converts ENSEMBL gene IDs to gene names'''
+  import pandas as pd
+  try: ref_df = pd.read_table(ref, low_memory = False)
+  except:
+    import requests
+    import io
+    # url = 'https://ftp.ensembl.org/pub/grch37/current/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.gtf.gz'
+    url = 'https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.115.gtf.gz'
+    response = requests.get(url)
+    ref_df = pd.read_table(io.BytesIO(response.content), 
+      compression = 'gzip', comment = '#', header = None, low_memory = False)
+    ref_df.columns = ['CHR','source','feature','START','STOP','score','strand','frame','attrib']
+    ref_df['GENE'] = ref_df['attrib'].str.extract('gene_id "([^"]+)"')[0]
+    ref_df['TRANSCRIPT'] = ref_df['attrib'].str.extract('transcript_id "([^"]+)"')[0]
+    ref_df['EXON'] = ref_df['attrib'].str.extract('exon_id "([^"]+)"')[0]
+    ref_df['PROTEIN'] = ref_df['attrib'].str.extract('protein_id "([^"]+)"')[0]
+    ref_df['LABEL'] = ref_df['attrib'].str.extract('gene_name "([^"]+)"')[0].fillna(
+      ref_df['attrib'].str.extract('transcript_name "([^"]+)"')[0]).fillna(
+      ref_df['attrib'].str.extract('exon_name "([^"]+)"')[0])
+    ref_df['source'] = ref_df['source'].str.extract('gene_source "([^"]+)"')[0]
+    ref_df['biotype'] = ref_df['attrib'].str.extract('gene_biotype "([^"]+)"')[0].fillna(
+      ref_df['attrib'].str.extract('transcript_biotype "([^"]+)"')[0])
+    ref_df.drop(['attrib'], axis = 1).to_csv(ref, sep = '\t', index = False)
+  
+  ref_df = ref_df.loc[ref_df.feature == 'gene',:].drop_duplicates(subset = ['GENE']).set_index('GENE')
+  ensg = [e.split('.')[0] for e in ensg]
+  return [ref_df.loc[e,'LABEL'] if e in ref_df.index else e for e in ensg]

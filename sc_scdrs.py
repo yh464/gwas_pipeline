@@ -77,6 +77,43 @@ def downstream_correlation(adata, df_score, label, genes = []):
     out_corr.append(_corr_genes(df_score, adata, strata, genes))
     return pd.concat(out_corr, axis = 1)
 
+def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
+    import pandas as pd
+    import gget
+    stratum = stratum.sort_values(ascending = True)
+    gene_list = stratum.index.tolist()
+    out = []
+    for db in databases:
+        for n in top:
+            enrichr_res = gget.enrichr(gene_list[:n], db)
+            out.append(pd.DataFrame(dict(
+                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = n, database = db,
+                sign = '-', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
+            enrichr_res = gget.enrichr(gene_list[-n:], db)
+            out.append(pd.DataFrame(dict(
+                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = n, database = db,
+                sign = '+', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
+    return pd.concat(out, axis = 0)
+
+def downstream_enrichr(corr_df, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
+    import pandas as pd
+    from _utils.gwatools import ensg_to_name
+    from tqdm import tqdm
+    from multiprocessing import Pool, cpu_count
+
+    # only include classes with <=100 cell types
+    strata = corr_df.index.to_frame()
+    for a in strata['annot'].unique():
+        if strata.loc[strata['annot'] == a,:].shape[0] > 100:
+            strata = strata.loc[strata['annot'] != a,:]
+    strata = pd.MultiIndex.from_frame(strata)
+    corr_df = corr_df.loc[strata, corr_df.columns != 'pseudotime']
+    corr_df.columns = ensg_to_name(corr_df.columns.tolist())
+
+    with Pool(max(cpu_count()*4, 16)) as p:
+        summary = list(tqdm(p.imap(_enrichr, [corr_df.loc[i,:] for i in strata]), total = len(strata), desc = 'Conducting Enrichr analysis'))
+    return pd.concat(summary, axis = 0)
+
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
     import os
@@ -157,13 +194,23 @@ def main(args = None, **kwargs):
         enrichments.to_csv(out_enrichment, index = True, sep = '\t')
         adata.file.close()
     
+    # Downstream analysis 1: for each cell type, correlate scDRS score with pseudotime and gene expression
     out_downstream = f'{args.out}.downstream.txt'
     if args.downstream and (not os.path.isfile(out_downstream) or args.force):
         adata = sc.read_h5ad(args.h5ad, 'r')
-        score = pd.read_table(out_score, index_col = 0, usecols = [0, 2])
+        score = pd.read_table(out_score, index_col = 0, usecols = [0,2])
         corr = downstream_correlation(adata, score, args.label)
         corr.to_csv(out_downstream, index = True, sep = '\t')
         adata.file.close()
+        del score
+
+    # Downstream analysis 2: for each cell type, conduct enrichment analysis using top correlated genes
+    out_enrichr = f'{args.out}.downstream.enrichr.txt'
+    if args.downstream and (not os.path.isfile(out_enrichr) or args.force):
+        try: corr
+        except: corr = pd.read_table(out_downstream, index_col = [0,1])
+        enrichr = downstream_enrichr(corr)
+        enrichr.to_csv(out_enrichr, index = False, sep = '\t')
 
 if __name__ == '__main__':
     import argparse

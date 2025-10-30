@@ -40,6 +40,7 @@ def main(args):
     pheno_short = find_gwas(args.pheno)
 
     all_phenos = []
+    most_sig = []
     for g, p in tqdm(pheno):
         all_gsets = []
         for gset_file, gset in gsets + gscores:
@@ -73,10 +74,20 @@ def main(args):
             q = sts.false_discovery_control(q)
             df['q']= q
             all_gsets.append(df)
+
+            df = df.sort_values('p').reset_index(drop = True)
+            # most_sig.append(df.iloc[:10,:])
+            most_sig.append(df.loc[df.q < 0.05,:])
         if len(all_gsets) == 0: continue
         all_gsets = pd.concat(all_gsets, axis = 0)
         all_gsets.to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
         all_phenos.append(all_gsets)
+
+    if len(most_sig) == 0: return
+    most_sig = pd.concat(most_sig, axis = 0)
+    most_sig.to_clipboard(sep = '\t', index = False)
+    most_sig = most_sig.sort_values('p').reset_index(drop = True)
+    print(most_sig.head())
 
     if len(all_phenos) == 0: return
     all_phenos = pd.concat(all_phenos, axis = 0)

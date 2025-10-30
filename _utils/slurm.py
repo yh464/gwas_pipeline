@@ -61,12 +61,6 @@ class array_submitter():
                  debug = False,
                  intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
-        
-        # current SLURM limit: 50 jobs, 450 CPUs
-        cpu_avail = 9 if partition != 'desktop' else 4
-        if n_cpu < cpu_avail:
-            parallel *= int(cpu_avail/n_cpu)
-            n_cpu *= int(cpu_avail/n_cpu)
 
         if len(name) > 30:
             name = sha256(name.encode()).hexdigest()[:6] # truncate to 6S characters
@@ -107,6 +101,12 @@ class array_submitter():
         # read command line args before specifying limit of commands per file
         import __main__
         if 'args' in dir(__main__): self.config(**vars(__main__.args))
+
+        # current SLURM limit: 50 jobs, 450 CPUs
+        cpu_avail = 9 if self.partition != 'desktop' else 4
+        if self.n_cpu < cpu_avail:
+            self.parallel = math.floor(self.parallel * cpu_avail/self.n_cpu)
+            self.n_cpu = cpu_avail
 
         # number of *parallel batches* of commands per file
         self.lim = int(self.wallclock/timeout)
