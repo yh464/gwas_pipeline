@@ -284,8 +284,8 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
   return df
 
 def ensg_to_name(ensg, 
-    # ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.hg19.gtf.txt'
-    ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.hg38.gtf.txt'
+    ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.hg19.genes_ref.txt'
+    # ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.hg38.gtf.txt'
     ):
   '''Converts ENSEMBL gene IDs to gene names'''
   import pandas as pd
@@ -311,6 +311,6 @@ def ensg_to_name(ensg,
       ref_df['attrib'].str.extract('transcript_biotype "([^"]+)"')[0])
     ref_df.drop(['attrib'], axis = 1).to_csv(ref, sep = '\t', index = False)
   
-  ref_df = ref_df.loc[ref_df.feature == 'gene',:].drop_duplicates(subset = ['GENE']).set_index('GENE')
+  ref_df = ref_df.loc[:,['GENE','LABEL']].drop_duplicates(subset = ['GENE']).set_index('GENE')
   ensg = [e.split('.')[0] for e in ensg]
   return [ref_df.loc[e,'LABEL'] if e in ref_df.index else e for e in ensg]

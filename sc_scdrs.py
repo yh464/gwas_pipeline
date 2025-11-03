@@ -80,22 +80,22 @@ def downstream_correlation(adata, df_score, label, genes = []):
 def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
     import pandas as pd
     import gget
-    stratum = stratum.sort_values(ascending = True)
+    stratum = stratum.dropna().sort_values(ascending = True)
     gene_list = stratum.index.tolist()
     out = []
     for db in databases:
         for n in top:
             enrichr_res = gget.enrichr(gene_list[:n], db)
             out.append(pd.DataFrame(dict(
-                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = n, database = db,
+                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
                 sign = '-', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
             enrichr_res = gget.enrichr(gene_list[-n:], db)
             out.append(pd.DataFrame(dict(
-                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = n, database = db,
+                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
                 sign = '+', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
     return pd.concat(out, axis = 0)
 
-def downstream_enrichr(corr_df, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
+def downstream_enrichr(corr_df):
     import pandas as pd
     from _utils.gwatools import ensg_to_name
     from tqdm import tqdm
