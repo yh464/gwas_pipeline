@@ -5,3 +5,4 @@ __pycache__/*
 backup/*
 /.vscode
 .Rproj.user
+/_utils/__pycache__

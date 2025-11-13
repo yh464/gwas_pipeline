@@ -66,7 +66,7 @@ if __name__ == '__main__':
     
     # path normalisation
     import os
-    for arg in ['_in','gset','magma','out']:
+    for arg in ['_in','gset','gscore','magma','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
     from _utils import cmdhistory, logger

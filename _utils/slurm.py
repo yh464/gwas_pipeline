@@ -10,6 +10,7 @@ if slurm returns 'FAILED', some steps may still run normally
 CHECK LOG
 '''
 
+from logging import warning
 import os
 import argparse
 import re
@@ -62,6 +63,7 @@ class array_submitter():
                  intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
 
+        self._full_name = name
         if len(name) > 30:
             name = sha256(name.encode()).hexdigest()[:6] # truncate to 6S characters
             warnings.warn(f'Job name too long, using random name {name}')
@@ -148,6 +150,7 @@ class array_submitter():
             if not key in valid_keys: continue
             if value == None: continue # skip None values
             if key in numeric_keys: value = int(value) # convert to int
+            if key in ['dep','dependency']: value = self.dep + value # dependencies are appended and not overridden
             setattr(self, key, value)
         if 'jobname' in kwargs.keys() and kwargs['jobname'] != None and len(self._staged_cmd) == 0: 
             setattr(self, 'name', kwargs['jobname'])
@@ -209,7 +212,9 @@ class array_submitter():
             if type(dep) in [int, str]:
                 dep_str.append(f'afterok:{dep}')
             else:
-                if dep._blank: continue
+                if dep._blank: 
+                    print(f'Warning: {dep.name} has no commands to run, skipping dependency')
+                    continue
                 if not dep.submitted:
                     dep.submit()
                     print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
@@ -282,10 +287,16 @@ class array_submitter():
             print('No files to submit (!)')
             return
         
+        print('\n' + '#' * 100 + '\n')
+
+        print(f'Job name: {self._full_name}')
+
         import os
         os.system(f'cat {self.tmpdir}/{self.name}_0.sh')
         print(f'\n\nbash {self.tmpdir}/{self.name}_0.sh\n\n')
         
+        dep_str = self._write_dep_str() # this will submit dependencies which will be printed first in debug mode
+
         # debug command also outputs the submit command
         time = self.timeout * self._count
         email = '--mail-type=ALL' if self.email else ''
@@ -293,7 +304,8 @@ class array_submitter():
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {time} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles-1} {self._write_dep_str()} {self._wrap_name}') 
+                  f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}') 
+        print('\n' + '#' * 100 + '\n')
     
     # splash screen
     def _splash(self, jobid):
@@ -302,7 +314,7 @@ class array_submitter():
         msg = []
         msg.append('#' * 100)
         msg.append('Following job has been submitted to SLURM:')
-        msg.append(f'    Name:       {self.name}')
+        msg.append(f'    Name:       {self._full_name}')
         msg.append(f'    Path:       {self.tmpdir}')
         msg.append(f'    Partition:  {self.partition}')
         msg.append(f'    Timeout:    {self.timeout * math.ceil(self._count / self.parallel)} minutes')
@@ -316,7 +328,7 @@ class array_submitter():
 
     # submits a single job array
     def _submit_single(self):
-        if self.debug: self._print(); return # debug mode -> print only
+        if self.debug: self._print(); self.submitted = True; return # debug mode -> print only
         if self.intr: os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
         time = self.timeout * math.ceil(self._count / self.parallel)
         time = min(time, 720)
@@ -340,6 +352,7 @@ class array_submitter():
         Submits all commands to the cluster (SLURM manager)
         '''
         if self._blank: return
+        if self.submitted: warnings.warn(f'Job {self.name} already submitted'); return
         self._dump()
         self._submit_single()
         self._staged_cmd = []

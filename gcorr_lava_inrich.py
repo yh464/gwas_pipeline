@@ -14,7 +14,6 @@ Outputs:
     Interval-gene-target analysis
 '''
 
-from math import exp
 import os
 import tempfile
 
@@ -51,11 +50,28 @@ def parse_lava_output(file):
         out.append((phen[0], phen[1], phen[2], phen[3], phen_dict))
     return out
 
+def format_magma_geneset(file):
+    import pandas as pd
+    out = []
+    f = open(file).read().splitlines()
+    for line in f:
+        line = line.split()
+        out.append(pd.DataFrame(dict(gene_id = line[1:], gene_set_id = line[0], gene_set_description = line[0])))
+    out = pd.concat(out, axis = 0)
+    return out
+
 def main(args):
     import pandas as pd
     lava_results = parse_lava_output(args._in)
     all_main = []; all_igt = []
     tmpdir = tempfile.mkdtemp()
+    raw_gene_sets = [x for x in os.listdir(f'{args.inrich}/gene_set') if x.endswith('.raw')]
+    for raw_gene_set in raw_gene_sets:
+        in_file = f'{args.inrich}/gene_set/{raw_gene_set}'
+        out_file = f'{args.inrich}/gene_set/{raw_gene_set[:-4]}.txt'
+        if not os.path.exists(out_file):
+            formatted = format_magma_geneset(in_file)
+            formatted.to_csv(out_file, sep = '\t', index = False)
     gene_sets = [x[:-4] for x in os.listdir(f'{args.inrich}/gene_set') if x.endswith('.txt')]
 
     for g1, p1, g2, p2, phen_dict in lava_results:

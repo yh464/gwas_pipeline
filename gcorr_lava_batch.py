@@ -39,7 +39,7 @@ def main(args):
   
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'gcorr_lava_{args.p2[0]}_{args.p1[0]}', 
+  submitter = array_submitter(name = 'gcorr_lava_'+'_'.join(args.p1)+'_'+'_'.join(args.p2), 
     env = 'gentoolsr', n_cpu = 2, timeout = 240)
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
   if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')

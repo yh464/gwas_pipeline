@@ -16,7 +16,6 @@ from fnmatch import fnmatch
 import warnings
 import re
 import pandas as pd
-from tqdm import tqdm
 
 def find_clump(group, pheno, 
                dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
@@ -104,11 +103,11 @@ def find_gwas(*pheno,
                 try: _, _ = find_clump(pdir, x.replace(f'.{ext}','').replace('.gz',''))
                 except: continue
             xlist.append(x.replace(f'.{ext}','').replace('.gz',''))
-        if no_ukb:
+        if isinstance(no_ukb, bool) and no_ukb:
             tmp = xlist.copy()
             for x in tmp:
                 if f'{x}_noUKBB' in xlist: xlist.remove(x)
-        elif no_ukb == False:
+        elif isinstance(no_ukb, bool) and not no_ukb:
             tmp = xlist.copy()
             for x in tmp:
                 if x[-7:] == '_noUKBB' and x[:-7] in xlist: xlist.remove(x)
@@ -242,36 +241,40 @@ class normaliser():
             self._dict = pd.concat((self._dict, 
                 pd.DataFrame(index = [before], columns =['after'], data = after)))
             self.save()
-    
-    def _normalise_df(self, df_in):
-        def n(series, x, y):
-            series = pd.Series(series)
-            if series.dtype in [int, float]: return series
-            if x[0] == '_':
-                series = series.str.replace(x, y, regex = True, case = False)
-            else:
-                series = series.replace(x,y).replace(x.lower(), y).replace(x.upper(),y)
-                series = '_' + series + '_'
-                series = series.str.replace(f'_{x}_',f'_{y}_', regex = True, case = False).str.replace(
-                f' {x}_',f' {y}_', regex = True, case = False).str.removeprefix('_').str.removesuffix('_')
-            return series
-        
+
+    def _normalise_list(self, input_list):
+        try:
+            if isinstance(input_list, str): input_list = [input_list]
+            series = pd.Series(input_list)
+            if series.dtype in [int, float]: return series.tolist()
+            for x in self._dict.index.tolist():
+                y = str(self._dict.loc[x, 'after'])
+                if x[0] == '_':
+                    series = series.str.replace(x, y, regex = True, case = False)
+                else:
+                    series = series.replace(x,y).replace(x.lower(), y).replace(x.upper(),y)
+                    series = '_' + series + '_'
+                    series = series.str.replace(f'_{x}_',f'_{y}_', regex = True, case = False).str.replace(
+                    f' {x}_',f' {y}_', regex = True, case = False).str.removeprefix('_').str.removesuffix('_')
+                return series.tolist()
+        except: return input_list
+
+    def _normalise_df(self, df_in, quickmap = False):
         df = df_in.copy().reset_index(drop = True)
         col = df_in.columns.to_frame().reset_index(drop = True)
         idx = df_in.index.to_frame().reset_index(drop = True)
-        for x in tqdm(self._dict.index.tolist(), desc = 'Normalising dataframe'):
-            y = str(self._dict.loc[x, 'after'])
-            for c in df.columns:
-                if c == 'SNP': continue # NEVER change SNP IDs
-                try: df.loc[:,c] = n(df[c], x, y)
-                except: pass
-            for c in col.columns:
-                try: col.loc[:,c] = n(col[c],x,y)
-                except: pass
-            for c in idx.columns:
-                try: idx.loc[:,c] = n(idx[c],x,y)
-                except: pass
-            
+        if quickmap and hasattr(self, 'quickmap'): normalise_func = lambda x: [self.quickmap(y) for y in x]
+        else: normalise_func = self._normalise_list
+        for c in df.columns:
+            # if c.upper() in ['SNP','CHR','POS','BETA','Z','SE','P']: continue
+            # only normalise phenotype_related columns
+            if not any([c.lower().find(x) > -1 for x in ['group','pheno','variable','trait']]): continue
+            df.loc[:,c] = normalise_func(df[c])
+        for c in col.columns:
+            col.loc[:,c] = normalise_func(col[c])
+        for c in idx.columns:
+            idx.loc[:,c] = normalise_func(idx[c])
+
         if col.shape[1] > 1: df.columns = pd.MultiIndex.from_frame(col)
         else: df.columns = col.iloc[:,0]
         if idx.shape[1] > 1: df.set_index(pd.MultiIndex.from_frame(idx), inplace = True)
@@ -300,7 +303,19 @@ class normaliser():
         else: df = pd.DataFrame(data)
         
         return self._normalise_df(df)
-
+    
+    def quickmap_pheno(self, pheno):
+        from itertools import chain
+        # generalises an efficient mapping of phenotype names, based on output from find_gwas
+        groups = [x[0] for x in pheno]
+        phenos = [x[1] for x in pheno]
+        phenos = list(chain.from_iterable(phenos))
+        groups_norm = self._normalise_list(groups)
+        phenos_norm = self._normalise_list(phenos)
+        out_dict = dict(zip(groups + phenos, groups_norm + phenos_norm))
+        self.quickmap = lambda x: out_dict[x] if x in out_dict else x
+        return self.quickmap
+    
 class project():
     def __init__(self,
                  _dir = '../path/', # uses relative path, so defaults to the relative path to the wd

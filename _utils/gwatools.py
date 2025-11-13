@@ -293,8 +293,8 @@ def ensg_to_name(ensg,
   except:
     import requests
     import io
-    # url = 'https://ftp.ensembl.org/pub/grch37/current/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.gtf.gz'
-    url = 'https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.115.gtf.gz'
+    url = 'https://ftp.ensembl.org/pub/grch37/current/gtf/homo_sapiens/Homo_sapiens.GRCh37.87.gtf.gz'
+    # url = 'https://ftp.ensembl.org/pub/current_gtf/homo_sapiens/Homo_sapiens.GRCh38.115.gtf.gz'
     response = requests.get(url)
     ref_df = pd.read_table(io.BytesIO(response.content), 
       compression = 'gzip', comment = '#', header = None, low_memory = False)
