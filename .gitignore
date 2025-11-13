@@ -6,3 +6,4 @@ backup/*
 /.vscode
 .Rproj.user
 /_utils/__pycache__
+/_plots/__pycache__

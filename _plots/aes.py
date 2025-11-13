@@ -8,6 +8,8 @@ Plotting aesthetics
 '''
 
 import matplotlib as mpl
+import seaborn as sns
+import math
 
 # colour palettes
 def register_palettes(*palettes):
@@ -82,3 +84,15 @@ greyblue_alpha = mpl.colors.LinearSegmentedColormap(
   1024,
 )
 
+def discrete_palette(n):
+  '''Default colour palette to use for discrete mapping'''
+  if n <= 10: return sns.color_palette('muted', n)
+  else:
+    palette = sns.color_palette('husl', n) # reorder to maximise distance between adjacent colours
+    split_half = math.ceil(n / 2)
+    out = []
+    for i in range(split_half):
+      out.append(palette[i])
+      if i + split_half < n:
+        out.append(palette[i + split_half])
+    return out

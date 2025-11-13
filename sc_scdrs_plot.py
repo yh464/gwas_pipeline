@@ -35,6 +35,8 @@ def main(args):
                     df = pd.read_table(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.enrichment.txt').assign(dataset = h5prefix)
                     mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.score.png',
                                f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.score.png')
+                    mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.pseudotime.png',
+                               f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.pseudotime.png')
                 except: warnings.warn(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
                 pheno_summary.append(df)
             if len(pheno_summary) == 0: warnings.warn(f'Missing scDRS enrichment for {g}/{p}'); continue

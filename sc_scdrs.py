@@ -122,7 +122,8 @@ def main(args = None, **kwargs):
     import pandas as pd
     import matplotlib.pyplot as plt
     from _plots.aes import redblue_alpha
-    from _plots import scatterplot_noaxis
+    from _plots import scatterplot_noaxis, temporal_regplot
+    from _utils.gadgets import mv_symlink
     import warnings
     if args == None:
         from _utils.gadgets import namespace
@@ -195,14 +196,13 @@ def main(args = None, **kwargs):
         adata.file.close()
     
     # Downstream analysis 1: for each cell type, correlate scDRS score with pseudotime and gene expression
+    score = pd.read_table(out_score, index_col = 0, usecols = [0,2])
+    adata = sc.read_h5ad(args.h5ad, 'r')
     out_downstream = f'{args.out}.downstream.txt'
     if args.downstream and (not os.path.isfile(out_downstream) or args.force):
-        adata = sc.read_h5ad(args.h5ad, 'r')
-        score = pd.read_table(out_score, index_col = 0, usecols = [0,2])
         corr = downstream_correlation(adata, score, args.label)
         corr.to_csv(out_downstream, index = True, sep = '\t')
         adata.file.close()
-        del score
 
     # Downstream analysis 2: for each cell type, conduct enrichment analysis using top correlated genes
     out_enrichr = f'{args.out}.downstream.enrichr.txt'
@@ -211,6 +211,19 @@ def main(args = None, **kwargs):
         except: corr = pd.read_table(out_downstream, index_col = [0,1])
         enrichr = downstream_enrichr(corr)
         enrichr.to_csv(out_enrichr, index = False, sep = '\t')
+
+    # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
+    out_pseudotime_fig = f'{args.out}.pseudotime.png'
+    cell_type_cols = [x for x in args.label if x.lower().find('type') > -1 or x.lower().find('annot') > -1 and x in adata.obs.columns]
+    if args.downstream and 'pseudotime' in adata.obs.columns and len(cell_type_cols) > 0 and \
+        (not os.path.isfile(out_pseudotime_fig) or args.force):
+        df = pd.concat([score['norm_score'], adata.obs[['pseudotime', cell_type_cols[0]]]], axis = 1).dropna()
+        fig = temporal_regplot(
+            df, x = 'pseudotime', y = 'norm_score', hue = cell_type_cols[0],
+            xlabel = '', ylabel = ' scDRS score', order = 2, clip_tail = 0.025
+        )
+        fig.savefig(out_pseudotime_fig, dpi = 400, bbox_inches = 'tight')
+        plt.close()
 
 if __name__ == '__main__':
     import argparse
