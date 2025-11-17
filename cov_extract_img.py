@@ -46,7 +46,7 @@ if __name__ == '__main__':
   parser = slurm_parser(description = 'Extracts imaging covariates given a list of subjects')
   parser.add_argument('-i','--in', dest = '_in', default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Imaging',
     help = 'Root directory of imaging files, contains one subfolder per subject')
-  parser.add_argument('-s','--subj', required = True, help = 'subjects list, one per line or BIM format',
+  parser.add_argument('-s','--subj', help = 'subjects list, one per line or BIM format',
     default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202002.txt')
   parser.add_argument('-o','--out', help = 'Output prefix')
   # always overwrites

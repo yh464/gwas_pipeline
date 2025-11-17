@@ -44,12 +44,12 @@ if __name__ == '__main__':
   parser = slurm_parser(description = 'Extracts summary statistics for significant loci for colocalisation analysis')
   parser.add_argument('pheno', nargs = '*', default = [], help = 'Phenotypes to colocalise')
   parser.add_argument('-i','--in', dest = '_in', help = 'Input directory of GWAS summary stats',
-    default= '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
+    default = '../gwa')
   parser.add_argument('-c','--clump', help = 'Directory of clumping output',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump')
+    default = '../clump')
   parser.add_argument('-p','--pval', type = float, default = 5e-8, help = 'P-value threshold for clumping')
   parser.add_argument('-o','--out', help = 'Output directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/')
+    default = '../coloc/')
   parser.add_argument('-f','--force', action = 'store_true', default = False, help = 'Force overwrite')
   args = parser.parse_args()
 

@@ -64,7 +64,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Extract specified loci from GWAS summary statistics')
   parser.add_argument('pheno', help='Phenotype name <group>/<phenotype>')
   parser.add_argument('-i','--in', dest = '_in', help='Input directory containing GWAS files',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
+    default = '../gwa')
   parser.add_argument('-o','--out', required = True, help='Output directory to save extracted loci')
   parser.add_argument('--loci', help='Path to a file with loci definitions or a DataFrame with CHR, START, STOP, SNPS columns')
   parser.add_argument('--chr', type=int, help='Chromosome number')

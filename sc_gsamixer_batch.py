@@ -166,13 +166,13 @@ if __name__ == '__main__':
     parser.add_argument('-p1','--p1', nargs = '+', required=True, help='Phenotype group 1')
     parser.add_argument('-p2','--p2', nargs = '*', default = [], help='Phenotype group 2 (if not specified, p2 = p1)')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory containing LDSC-munged GWAS summary statistics',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats/')
+        default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--test', help='Path to gene set file for testing',
         default = '/rds/project/rds-Nl99R8pHODQ/multiomics/gene_set/gene_set_4mixer')
     parser.add_argument('--mixer', help='Path to GSA-mixer installation directory',
         default = '/rds/project/rds-Nl99R8pHODQ/toolbox/mixer')
     parser.add_argument('-o','--out', help = 'Output directory',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/sc/gsa_mixer/')
+        default = '../sc/gsa_mixer/')
     parser.add_argument('-f','--force', action = 'store_true', help = 'Force overwrite')
     args = parser.parse_args()
 

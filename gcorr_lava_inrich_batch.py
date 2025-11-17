@@ -50,14 +50,14 @@ if __name__ == '__main__':
     parser.add_argument('-p1', nargs = '+', required = True, help = 'Exposures')
     parser.add_argument('-p2', nargs = '*', default = [], help = 'Outcomes, leave blank to run pairwise correlations across exposures')
     parser.add_argument('-i', '--in', dest = '_in', help = 'LAVA output directory',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/lava/')
+        default = '../gcorr/lava/')
     parser.add_argument('-g','--gwa', help = 'Directory containing GWAS summary statistics',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa/')
+        default = '../gwa/')
     parser.add_argument('--inrich', 
         help = 'folder of the inrich binary and resources, should contain resources/genes.txt and resources/snps.txt',
         default = '/rds/project/rds-Nl99R8pHODQ/toolbox/inrich')
     parser.add_argument('-o', '--out', help = 'output directory',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/lava_inrich/')
+        default = '../gcorr/lava_inrich/')
     parser.add_argument('-f','--force', action = 'store_true', help = 'Force overwrite')
     args = parser.parse_args()
     for key in ['_in','gwa','inrich','out']:

@@ -116,15 +116,15 @@ if __name__ == '__main__':
     help = 'Outcomes, leave blank to run pairwise correlations across exposures')
   parser.add_argument('--cov', nargs = '*', default = [], help = 'Covariates, for partial correlation')
   parser.add_argument('-i','--in', dest = '_in', help = 'GWAS summary stats directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
+    default = '../gwa')
   parser.add_argument('-o','--out', help = 'Output directory', 
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/lava/')
+    default = '../gcorr/lava/')
   parser.add_argument('--rg', help = 'LDSC genetic correlation log directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog/')
+    default = '../gcorr/rglog/')
   parser.add_argument('--clump', dest = 'clump', help = 'Clumping output directory', 
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump/')
+    default = '../clump/')
   parser.add_argument('--ref', help = 'Reference LD Blocks directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/')
+    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
   parser.add_argument('--all-loci', action = 'store_true', help = 'Analyse all loci')
