@@ -17,17 +17,79 @@ Changelog:
     Changed the heatmap to a scatterplot-style heatmap
 '''
 
+import os
+import pandas as pd
+import scipy.stats as sts
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from _plots import corr_heatmap
+from _utils.path import normaliser, find_gwas
+from tqdm import tqdm
+from multiprocessing import Pool
+import warnings
+
+def process_pheno(gsets, g, p, args):
+    all_gsets = []
+    most_sig = []
+    for gset_file, gset in gsets:
+        # process MAGMA output for main analysis
+        magma_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.gsa.out'
+        if not os.path.isfile(magma_output): warnings.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
+        df = pd.read_table(magma_output, sep = '\\s+', comment = '#')
+        df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
+        if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE
+        df['cell_type'] = df['cell_type'].fillna(df.VARIABLE)
+
+        if df['TYPE'].iloc[0] == 'SET': df.insert(0,'gene_set', value = gset)
+        else: # gene score columns are named: <method>.<annotation>.<cell_type>
+            gset_col = gset + '.' + df.cell_type.str.split('.', expand = True).iloc[:,1]
+            df.insert(0,'gene_set', value = gset_col)
+
+        # for 'clusters' and 'subclusters', map to the respective cell type term
+        if os.path.isfile(f'{gset_file}.label'):
+            labels = pd.read_table(f'{gset_file}.label', dtype = str)
+            if 'label' in df.columns: df = df.rename(columns = {'label':'_orig_label'})
+            df = df.merge(labels, how = 'left', on = 'cell_type')
+        else: df['label'] = df['gene_set']
+        df['label'] = df['label'].fillna(df['gene_set'])
+
+        if df['TYPE'].iloc[0] != 'SET':
+            df.loc[:,'cell_type'] = ['.'.join(x.split('.')[2:]) for x in df.cell_type]
+        df.insert(0,'phenotype', value = p)
+        df.insert(0,'group', value = g)
+
+        # FDR correction
+        q = df.p.values.copy()
+        q = sts.false_discovery_control(q)
+        df['q']= q
+        all_gsets.append(df)
+        df = df.sort_values('p').reset_index(drop = True)
+        most_sig.append(df.loc[df.q < 0.05,:])
+
+        # process output of conditional analysis
+        cond_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.cond.gsa.out'
+        if not os.path.isfile(cond_output): continue
+        df = pd.read_table(cond_output, sep = '\\s+', comment = '#')
+        df = df.rename(columns = {'VARIABLE':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
+        df['analysed_cell_type'] = ['.'.join(x.split('.')[2:]) for x in df['cell_type']]
+        df['conditioned_on'] = ''
+        for idx, row in df.iterrows():
+            pair = df.loc[df.MODEL == row.MODEL,'analysed_cell_type'].values
+            df.loc[idx, 'conditioned_on'] = pair[pair != row.analysed_cell_type][0]
+        df['tmp1'] = 'conditioned_on'; df['tmp2'] = 'analysed_cell_type'
+        # FDR correction with respect to each trait being conditioned on
+        fig = corr_heatmap(df[['tmp1','conditioned_on','tmp2','analysed_cell_type','beta','p']])
+        fig.savefig(f'{args._in}/{g}/{p}.{args.annot}.{gset}.cond.heatmap.pdf', bbox_inches = 'tight')
+        plt.close(fig)
+
+    most_sig = pd.concat(most_sig, axis = 0) if len(most_sig) > 0 else None
+    if len(all_gsets) == 0: return None
+    all_gsets = pd.concat(all_gsets, axis = 0)
+    all_gsets.to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
+    return all_gsets, most_sig
+
 def main(args):
-    import os
-    import pandas as pd
-    import scipy.stats as sts
-    import numpy as np
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from _plots import corr_heatmap
-    from _utils.path import normaliser, find_gwas
-    from tqdm import tqdm
-    import warnings
     norm = normaliser()
     
     # find gene set files
@@ -39,49 +101,10 @@ def main(args):
     pheno = find_gwas(args.pheno, long = True)
     pheno_short = find_gwas(args.pheno)
 
-    all_phenos = []
-    most_sig = []
-    for g, p in tqdm(pheno):
-        all_gsets = []
-        for gset_file, gset in gsets + gscores:
-            magma_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.gsa.out'
-            if not os.path.isfile(magma_output): warnings.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
-            df = pd.read_table(magma_output, sep = '\\s+', comment = '#')
-            df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
-            if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE
-            df['cell_type'] = df['cell_type'].fillna(df.VARIABLE)
-
-            if (gset_file,gset) in gsets: df.insert(0,'gene_set', value = gset)
-            else: # gene score columns are named: <method>.<annotation>.<cell_type>
-                gset_col = gset + '.' + df.cell_type.str.split('.', expand = True).iloc[:,1]
-                df.insert(0,'gene_set', value = gset_col)
-
-            # for 'clusters' and 'subclusters', map to the respective cell type term
-            if os.path.isfile(f'{gset_file}.label'):
-                labels = pd.read_table(f'{gset_file}.label', dtype = str)
-                if 'label' in df.columns: df = df.rename(columns = {'label':'_orig_label'})
-                df = df.merge(labels, how = 'left', on = 'cell_type')
-            else: df['label'] = df['gene_set']
-            df['label'] = df['label'].fillna(df['gene_set'])
-
-            if not (gset_file,gset) in gsets:
-                df.loc[:,'cell_type'] = ['.'.join(x.split('.')[2:]) for x in df.cell_type]
-            df.insert(0,'pheno', value = p)
-            df.insert(0,'group', value = g)
-
-            # FDR correction
-            q = df.p.values.copy()
-            q = sts.false_discovery_control(q)
-            df['q']= q
-            all_gsets.append(df)
-
-            df = df.sort_values('p').reset_index(drop = True)
-            # most_sig.append(df.iloc[:10,:])
-            most_sig.append(df.loc[df.q < 0.05,:])
-        if len(all_gsets) == 0: continue
-        all_gsets = pd.concat(all_gsets, axis = 0)
-        all_gsets.to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
-        all_phenos.append(all_gsets)
+    with Pool(processes = min(8, len(pheno))) as pool:
+        results = list(tqdm(pool.starmap(process_pheno, [(gsets + gscores, g, p, args) for g, p in pheno]), total = len(pheno)))
+    all_phenos = [x[0] for x in results if x is not None]
+    most_sig = [x[1] for x in results if x is not None]
 
     if len(most_sig) == 0: return
     most_sig = pd.concat(most_sig, axis = 0)

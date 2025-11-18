@@ -11,6 +11,9 @@ Requires following inputs:
     MAGMA annotation files (including H-MAGMA)
     MAGMA binary
 '''
+
+import os
+
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
     if args == None:
@@ -26,6 +29,15 @@ def main(args = None, **kwargs):
     gsets = [(f'{args.gset}/{x}', x[:-4]) for x in os.listdir(args.gset) if x[-4:] == '.txt']
     gscores = [(f'{args.gscore}/{x}', x[:-4]) for x in os.listdir(args.gscore) if x[-4:] == '.txt']
 
+    # find column names for conditional analysis
+    cond_cols = {}
+    for gscore,_ in gscores:
+        hdr = open(gscore).readline().strip().split()
+        cell_type_cols = []
+        for label in args.cell_type:
+            cell_type_cols.append([x for x in hdr if x.find(label) != -1])
+        cond_cols[gscore] = max(cell_type_cols, key = len) if len(cell_type_cols) > 0 else []
+
     # identify phenotypes
     from _utils.path import find_gwas, find_gene_sumstats
     pheno = find_gwas(args.pheno, long = True)
@@ -40,12 +52,19 @@ def main(args = None, **kwargs):
         for gset, gset_prefix in gsets:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gset_prefix}'
             if os.path.isfile(f'{out_prefix}.gsa.out') and not args.force: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --set-annot {gset} --out {out_prefix}')
+            submitter.add(f'{args.magma} --gene-results {sumstat} --set-annot {gset} --out {out_prefix} --settings abbreviate 0')
         
         for gscore, gscore_prefix in gscores:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}'
             if os.path.isfile(f'{out_prefix}.gsa.out') and not args.force: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --out {out_prefix}')
+            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --out {out_prefix} --settings abbreviate 0')
+
+        for gscore, gscore_prefix in gscores:
+            out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}.cond'
+            if (os.path.isfile(f'{out_prefix}.gsa.out') and not args.force) or len(cond_cols[gscore]) == 0: continue
+            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --model joint-pairs analyse=list,'+
+                          ','.join(cond_cols[gscore])+ f' --out {out_prefix} --settings abbreviate=0')
+
     submitter.submit()
     return submitter
 
@@ -60,6 +79,8 @@ if __name__ == '__main__':
         default = '../multiomics/gene_set')
     parser.add_argument('--gscore', help = 'Directory containing gene scores', default = '../multiomics/gene_score')
     parser.add_argument('--magma', dest = 'magma', help = 'MAGMA executable', default = '../toolbox/magma/magma')
+    parser.add_argument('--cell_type', nargs = '*', help = 'Cell type annotation used for conditional analysis',
+        default = ['supercluster_term', 'Type']) # siletti, wang
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/magma_gsea')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()

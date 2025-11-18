@@ -251,6 +251,8 @@ class normaliser():
                 y = str(self._dict.loc[x, 'after'])
                 if x[0] == '_':
                     series = series.str.replace(x, y, regex = True, case = False)
+                elif x[0] == '^': # strict mapping
+                    series = series.replace(x[1:], y).replace(x[1:].lower(), y).replace(x[1:].upper(),y)
                 else:
                     series = series.replace(x,y).replace(x.lower(), y).replace(x.upper(),y)
                     series = '_' + series + '_'

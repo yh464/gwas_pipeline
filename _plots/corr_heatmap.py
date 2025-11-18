@@ -22,10 +22,10 @@ def capitalise(series):
 def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '', p_threshold: list[float] = []):
     '''
     Required input format: long format pd.DataFrame
-        1st column: group label (x axis, as xlabel)
-        2nd column: individual label (x axis, as xticklabels)
-        3rd column: group label (y axis, as ylabel)
-        4th column: individual label (y axis, as yticklabels)
+        1st column: group label (y axis, as ylabel)
+        2nd column: individual label (y axis, as yticklabels)
+        3rd column: group label (x axis, as xlabel)
+        4th column: individual label (x axis, as xticklabels)
         5th column: correlation value
         and may contain a 'p' and 'q' column somewhere in the data frame
     '''
