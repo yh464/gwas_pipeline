@@ -1,21 +1,29 @@
 name: wd
 channels:
+  - bioconda
   - conda-forge
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
+  - alsa-lib=1.2.14=hb9d3cd8_0
+  - apptainer=1.4.4=h6ccafba_0
   - asttokens=3.0.0=pyhd8ed1ab_1
   - biopython=1.85=py313h536fd9c_1
   - blinker=1.9.0=pyhff2d567_0
   - brotli=1.1.0=hb9d3cd8_2
   - brotli-bin=1.1.0=hb9d3cd8_2
   - brotli-python=1.1.0=py313h46c70d0_2
+  - bx-python=0.14.0=py313h3ef15bb_0
   - bzip2=1.0.8=h4bc722e_7
   - ca-certificates=2025.1.31=hbcca054_0
+  - cairo=1.18.4=h3394656_0
   - certifi=2025.1.31=pyhd8ed1ab_0
   - cffi=1.17.1=py313hfab6e84_0
   - charset-normalizer=3.4.1=pyhd8ed1ab_0
   - click=8.1.8=pyh707e725_0
+  - cni=1.0.1=ha975731_1
+  - cni-plugins=1.3.0=ha8f183a_0
+  - colorama=0.4.6=pyhd8ed1ab_1
   - contourpy=1.3.1=py313h33d0bda_0
   - cpython=3.13.1=py313hd8ed1ab_105
   - cycler=0.12.1=pyhd8ed1ab_1
@@ -29,14 +37,27 @@ dependencies:
   - executing=2.1.0=pyhd8ed1ab_1
   - filelock=3.17.0=pyhd8ed1ab_0
   - flask=3.1.0=pyhff2d567_0
+  - font-ttf-dejavu-sans-mono=2.37=hab24e00_0
+  - font-ttf-inconsolata=3.000=h77eed37_0
+  - font-ttf-source-code-pro=2.038=h77eed37_0
+  - font-ttf-ubuntu=0.83=h77eed37_3
+  - fontconfig=2.15.0=h7e30c49_1
+  - fonts-conda-ecosystem=1=0
+  - fonts-conda-forge=1=0
   - fonttools=4.55.6=py313h8060acc_0
-  - freetype=2.12.1=h267a509_2
+  - freetype=2.13.3=ha770c72_1
   - fsspec=2024.12.0=pyhd8ed1ab_0
+  - fuse-overlayfs=1.15=hb9d3cd8_0
+  - giflib=5.2.2=hd590300_0
   - gmp=6.3.0=hac33072_2
   - gmpy2=2.1.5=py313h11186cd_3
+  - gocryptfs=2.6.1=ha770c72_0
+  - graphite2=1.3.14=hecca717_1
   - h2=4.1.0=pyhd8ed1ab_1
+  - harfbuzz=11.0.0=h76408a6_0
   - hpack=4.1.0=pyhd8ed1ab_0
   - hyperframe=6.1.0=pyhd8ed1ab_0
+  - icu=75.1=he02047a_0
   - idna=3.10=pyhd8ed1ab_1
   - importlib-metadata=8.6.1=pyha770c72_0
   - ipython=8.32.0=pyh907856f_0
@@ -44,41 +65,58 @@ dependencies:
   - jedi=0.19.2=pyhd8ed1ab_1
   - jinja2=3.1.5=pyhd8ed1ab_0
   - joblib=1.4.2=pyhd8ed1ab_1
+  - jq=1.5=0
+  - keyutils=1.6.1=h166bdaf_0
   - kiwisolver=1.4.7=py313h33d0bda_0
-  - lcms2=2.16=hb7c19ff_0
+  - krb5=1.21.3=h659f571_0
+  - lcms2=2.17=h717163a_0
   - ld_impl_linux-64=2.43=h712a8e2_2
   - lerc=4.0.0=h27087fc_0
   - libabseil=20240722.0=cxx17_hbbce691_4
+  - libarchive=3.8.2=gpl_h7be2006_100
   - libblas=3.9.0=26_linux64_openblas
   - libbrotlicommon=1.1.0=hb9d3cd8_2
   - libbrotlidec=1.1.0=hb9d3cd8_2
   - libbrotlienc=1.1.0=hb9d3cd8_2
   - libcblas=3.9.0=26_linux64_openblas
+  - libcups=2.3.3=hb8b1518_5
   - libdeflate=1.23=h4ddbbb0_0
+  - libedit=3.1.20250104=pl5321h7949ede_0
   - libexpat=2.6.4=h5888daf_0
   - libffi=3.4.2=h7f98852_5
+  - libfreetype=2.13.3=ha770c72_1
+  - libfreetype6=2.13.3=h48d6fc4_1
+  - libfuse=3.10.4=h1869db9_1
   - libgcc=14.2.0=h77fa898_1
   - libgcc-ng=14.2.0=h69a702a_1
   - libgfortran=14.2.0=h69a702a_1
   - libgfortran5=14.2.0=hd5240d6_1
+  - libglib=2.84.0=h2ff4ddf_0
   - libgomp=14.2.0=h77fa898_1
+  - libiconv=1.18=h4ce23a2_1
   - libjpeg-turbo=3.0.0=hd590300_1
   - liblapack=3.9.0=26_linux64_openblas
-  - liblzma=5.6.3=hb9d3cd8_1
+  - liblzma=5.8.1=hb9d3cd8_2
   - libmpdec=4.0.0=h4bc722e_0
   - libopenblas=0.3.28=pthreads_h94d23a6_1
-  - libpng=1.6.46=h943b412_0
+  - libpng=1.6.50=h421ea60_1
   - libprotobuf=5.28.3=h6128344_1
+  - libseccomp=2.4.4=hd590300_4
   - libsqlite=3.48.0=hee588c1_1
   - libstdcxx=14.2.0=hc0a3c3a_1
   - libstdcxx-ng=14.2.0=h4852527_1
   - libtiff=4.7.0=hd9ff511_3
   - libtorch=2.5.1=cpu_generic_h50b3d77_9
-  - libuuid=2.38.1=h0b41bf4_0
+  - libuuid=2.41.2=he9a06e4_0
   - libuv=1.50.0=hb9d3cd8_0
   - libwebp-base=1.5.0=h851e524_0
   - libxcb=1.17.0=h8a09558_0
+  - libxml2=2.15.1=h26afc86_0
+  - libxml2-16=2.15.1=ha9997c6_0
   - libzlib=1.3.1=hb9d3cd8_2
+  - littleutils=0.2.4=pyhd8ed1ab_1
+  - lz4-c=1.10.0=h5888daf_1
+  - lzo=2.10=h280c20c_1002
   - markupsafe=3.0.2=py313h8060acc_1
   - matplotlib-base=3.10.0=py313h129903b_0
   - matplotlib-inline=0.1.7=pyhd8ed1ab_1
@@ -91,18 +129,28 @@ dependencies:
   - networkx=3.4.2=pyh267e887_2
   - nomkl=1.0=h5ca1d4c_0
   - numpy=2.2.2=py313h17eae1a_0
+  - openjdk=23.0.2=h53dfc1b_2
   - openjpeg=2.5.3=h5fbd93e_0
-  - openssl=3.4.1=h7b32b05_0
+  - openssl=3.5.4=h26f9b46_0
+  - oras=1.2.3=ha770c72_0
+  - outdated=0.2.2=pyhd8ed1ab_2
   - packaging=24.2=pyhd8ed1ab_2
   - pandas=2.2.3=py313ha87cce1_1
+  - pandas-flavor=0.7.0=pyhd8ed1ab_0
+  - parallel=20170422=pl5.22.0_0
   - parso=0.8.4=pyhd8ed1ab_1
   - patsy=1.0.1=pyhd8ed1ab_1
+  - pcre2=10.44=hc749103_2
+  - perl=5.22.0.1=0
   - pexpect=4.9.0=pyhd8ed1ab_1
   - pickleshare=0.7.5=pyhd8ed1ab_1004
   - pillow=11.1.0=py313h8db990d_0
+  - pingouin=0.5.5=pyhd8ed1ab_1
   - pip=24.3.1=pyh145f28c_2
+  - pixman=0.46.4=h54a6638_1
   - plotly=5.24.1=pyhd8ed1ab_1
   - prompt-toolkit=3.0.50=pyha770c72_0
+  - psutil=7.1.3=py313h54dd161_0
   - pthread-stubs=0.4=hb9d3cd8_1002
   - ptyprocess=0.7.0=pyhd8ed1ab_1
   - pure_eval=0.2.3=pyhd8ed1ab_1
@@ -127,25 +175,41 @@ dependencies:
   - setuptools=75.8.0=pyhff2d567_0
   - six=1.17.0=pyhd8ed1ab_0
   - sleef=3.7=h1b44611_2
+  - squashfs-tools=4.6.1=hc12fc2f_2
+  - squashfuse=0.6.1=hc12fc2f_0
   - stack_data=0.6.3=pyhd8ed1ab_1
   - statsmodels=0.14.4=py313ha014f3b_0
   - sympy=1.13.3=pyh2585a3b_105
+  - tabulate=0.9.0=pyhd8ed1ab_2
   - tenacity=9.0.0=pyhd8ed1ab_1
   - threadpoolctl=3.5.0=pyhc1e730c_0
   - tk=8.6.13=noxft_h4845f30_101
+  - tqdm=4.67.1=pyhd8ed1ab_1
   - traitlets=5.14.3=pyhd8ed1ab_1
   - typing_extensions=4.12.2=pyha770c72_1
   - tzdata=2025a=h78e105d_0
   - urllib3=2.3.0=pyhd8ed1ab_0
   - wcwidth=0.2.13=pyhd8ed1ab_1
   - werkzeug=3.1.3=pyhd8ed1ab_1
+  - xarray=2025.4.0=pyhd8ed1ab_0
+  - xorg-libice=1.1.2=hb9d3cd8_0
+  - xorg-libsm=1.2.6=he73a12e_0
+  - xorg-libx11=1.8.12=h4f16b4b_0
   - xorg-libxau=1.0.12=hb9d3cd8_0
   - xorg-libxdmcp=1.1.5=hb9d3cd8_0
+  - xorg-libxext=1.3.6=hb9d3cd8_0
+  - xorg-libxfixes=6.0.1=hb9d3cd8_0
+  - xorg-libxi=1.8.2=hb9d3cd8_0
+  - xorg-libxrandr=1.5.4=hb9d3cd8_0
+  - xorg-libxrender=0.9.12=hb9d3cd8_0
+  - xorg-libxt=1.3.1=hb9d3cd8_0
+  - xorg-libxtst=1.2.5=hb9d3cd8_3
   - zipp=3.21.0=pyhd8ed1ab_1
-  - zstandard=0.23.0=py313h80202fe_1
-  - zstd=1.5.6=ha6fb4c9_0
+  - zstandard=0.25.0=py313h54dd161_0
+  - zstd=1.5.7=hb8e6e7a_2
   - pip:
     - bctpy==0.6.1
     - qmplot==0.3.3
+    - synapseclient==4.9.0
 
 prefix: "/home/yh464/miniconda3/envs/wd"
