@@ -47,6 +47,7 @@ def main(args):
     else:
         gwa = find_gwas(*args.pheno, dirname = args._in, long = True)
     print(f'Found {len(gwa)} GWAS summary statistics files.')
+    print(gwa)
     
     # identify blocks of fine-mapping segments
     from logparser import parse_clump

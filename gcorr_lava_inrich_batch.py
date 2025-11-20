@@ -22,7 +22,7 @@ from matplotlib.pylab import f
 def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_lava_inrich_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        n_cpu = 1, timeout = 60)
+        n_cpu = 1, timeout = 60, partition = 'sapphire')
     
     from _utils.path import find_gwas, pair_gwas
     exposures = find_gwas(args.p1, dirname = args.gwa, ext = 'fastGWA', clump = True)

@@ -17,7 +17,7 @@ import os, warnings
 def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_gnova_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        n_cpu = 32, timeout = 180, env = args.gnova)
+        n_cpu = 4, timeout = 30, env = args.gnova)
     
     # find and pair GWAS files
     from _utils.path import find_gwas, pair_gwas
@@ -44,7 +44,7 @@ def main(args):
         for gene_set in gene_sets:
             out_prefix = f'{outdir}/{g1}_{p1}.{g2}_{p2}.{gene_set}.gnova'
             ld_file = f'{args.gene_set}/{gene_set}.gnova.ldscore'
-            if (not args.force) and os.path.isfile(f'{out_prefix}.txt'): continue
+            if (not args.force) and os.path.isfile(f'{out_prefix}'): continue
             cmd = ['python',f'{args.gnova}/GNOVA/gnova.py', '--bfile', args.bfile,
                     '--annot', f'{args.gene_set}/{gene_set}/@.gnova',
                     '--use-ld' if os.path.isfile(f'{ld_file}.csv.gz') else '--save-ld', ld_file,

@@ -23,21 +23,38 @@ def main(args):
   
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10)
+  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10, env = args.ldsc, partition = 'sapphire')
   
-  for x in args.pheno:
-    os.chdir(args._in)
-    os.chdir(x)
-    if not os.path.isdir(f'{args.out}/{x}'): os.mkdir(f'{args.out}/{x}')
+  from _utils.path import find_gwas
+  pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
+
+  for g, p in pheno:
+    os.makedirs(f'{args.out}/{g}/', exist_ok = True)
+    out_prefix = f'{args.out}/{g}/{p}'
+
+    cmds = []
+    sumstats_file = f'{args._in}/{g}/{p}.fastGWA'
+    munged_file = f'{out_prefix}.sumstats'
+    h2_log = f'{out_prefix}.h2.log'
+
+    if args.force or (not os.path.isfile(munged_file)):
+        hdr = open(sumstats_file).readline().strip().split()
+        if 'OR' in hdr: ss = 'OR,1'
+        elif 'BETA' in hdr: ss = 'BETA,0'
+        elif 'Z' in hdr: ss = 'Z,0'
+        else: raise ValueError('No valid summary statistics found in the input file')
+
+        cmds.append(f'python {args.ldsc}/munge_sumstats.py --sumstats {sumstats_file} '+ \
+                    f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt '+
+                    f'--signed-sumstats {ss} '+
+                    f'--out {out_prefix} --chunksize 50000')
     
-    for y in os.listdir():
-      if not fnmatch(y, '*.fastGWA'): continue
-      if fnmatch(y, '*X.fastGWA'):
-          continue                               # autosomes
-      prefix = y.replace('.fastGWA','')
-      h2, _ = parse_h2_log(f'{args.out}/{x}/{prefix}.h2.log')
-      if np.isnan(h2) or args.force: submitter.add('python '+
-          f'heri_by_trait.py -i {args._in}/{x}/{y} -o {args.out}/{x}/ --ldsc {args.ldsc} {force}')
+    if args.force or (not os.path.isfile(h2_log)):
+        cmds.append(f'python {args.ldsc}/ldsc.py '+
+          f'--ref-ld-chr {args.ldsc}/baseline/ --w-ld-chr {args.ldsc}/baseline/ '+
+          f'--h2 {munged_file} '+
+          f'--out {out_prefix}.h2')
+    if len(cmds) > 0: submitter.add(*cmds)
   submitter.submit()
 
 if __name__ == '__main__':

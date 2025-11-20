@@ -7,9 +7,8 @@ Version 1: 2024-11-25
 This is a general utility to print splash screens with input command-line
 arguments and output a log file
 '''
-import os
+import os, sys
 def splash(args, silent = False):
-    import sys
     msg = []
     msg.append('=' * 100)
     msg.append('Calling script:')
@@ -37,7 +36,7 @@ def splash(args, silent = False):
     return '\n'.join(msg)
 
 class logger():
-    def __init__(self, fname = os.devnull, **kwargs):
+    def __init__(self, fname = sys.stdout, **kwargs):
         self.file = open(fname, 'w')
         if 'silent' in kwargs.keys(): self.silent = kwargs['silent']
         else: self.silent = False

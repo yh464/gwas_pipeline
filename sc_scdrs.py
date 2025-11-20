@@ -16,9 +16,21 @@ Requires following inputs:
             (for Siletti et al 2023: ROIGroup, ROIGroupCoarse, ROIGroupFine, roi, supercluster_term, cluster_id, subcluster_id, development_stage)
 '''
 
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+import scanpy as sc
+import scdrs, gget, gc, warnings, os, argparse
+from _utils.genetools import ensg_to_name
+from multiprocessing import Pool, cpu_count
+from _utils.gadgets import namespace
+import matplotlib.pyplot as plt
+from _plots.aes import redblue_alpha
+from _plots import scatterplot_noaxis, temporal_regplot
+from _utils.gadgets import mv_symlink
+
 # downstream analyses
 def _stratify(df_score, adata, label):
-    import pandas as pd
     df = adata.obs.loc[adata.obs.index.isin(df_score.index), :]
     cells = [df.index.tolist()]; annot = ['All']; cell_type = ['All']
     for l in label:
@@ -29,9 +41,6 @@ def _stratify(df_score, adata, label):
     return pd.DataFrame(dict(cell = cells), index = pd.MultiIndex.from_frame(pd.DataFrame(dict(annot = annot, cell_type = cell_type))))
 
 def _corr_pseudotime(df_score, adata, strata):
-    import pandas as pd
-    import numpy as np
-    from tqdm import tqdm
     out_df = pd.DataFrame(columns = ['pseudotime'], index = strata.index, data = np.nan)
 
     for i, row in tqdm(strata.iterrows(), desc = 'Correlating scDRS score with pseudotime'):
@@ -41,10 +50,6 @@ def _corr_pseudotime(df_score, adata, strata):
     return out_df
 
 def _corr_genes(df_score, adata, strata, genes = [], block_size = 1000):
-    import pandas as pd
-    import numpy as np
-    from tqdm import tqdm
-    import gc
     if len(genes) == 0:
         if 'feature_type' in adata.var.columns:
             genes = adata.var_names[adata.var['feature_type'] == 'protein_coding'].tolist()
@@ -69,7 +74,6 @@ def _corr_genes(df_score, adata, strata, genes = [], block_size = 1000):
     return out_df
 
 def downstream_correlation(adata, df_score, label, genes = []):
-    import pandas as pd
     strata = _stratify(df_score, adata, label)
     out_corr = []
     if 'pseudotime' in adata.obs.columns:
@@ -78,8 +82,6 @@ def downstream_correlation(adata, df_score, label, genes = []):
     return pd.concat(out_corr, axis = 1)
 
 def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
-    import pandas as pd
-    import gget
     stratum = stratum.dropna().sort_values(ascending = True)
     gene_list = stratum.index.tolist()
     out = []
@@ -96,11 +98,6 @@ def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], t
     return pd.concat(out, axis = 0)
 
 def downstream_enrichr(corr_df):
-    import pandas as pd
-    from _utils.gwatools import ensg_to_name
-    from tqdm import tqdm
-    from multiprocessing import Pool, cpu_count
-
     # only include classes with <=100 cell types
     strata = corr_df.index.to_frame()
     for a in strata['annot'].unique():
@@ -110,24 +107,24 @@ def downstream_enrichr(corr_df):
     corr_df = corr_df.loc[strata, corr_df.columns != 'pseudotime']
     corr_df.columns = ensg_to_name(corr_df.columns.tolist())
 
-    with Pool(max(cpu_count()*4, 16)) as p:
+    with Pool(min(cpu_count()*4, len(strata))) as p:
         summary = list(tqdm(p.imap(_enrichr, [corr_df.loc[i,:] for i in strata]), total = len(strata), desc = 'Conducting Enrichr analysis'))
-    return pd.concat(summary, axis = 0)
+    enrichr_summary = pd.concat(summary, axis = 0)
+    
+    from sc_enrichr import enrichr_to_revigo
+    revigo_summary = enrichr_to_revigo(
+        [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
+        name_col = 'process', pval_col = 'p'
+    )
+    for idx, (group, _) in enumerate(enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])):
+        revigo_summary[idx] = revigo_summary[idx].assign(
+            annot = group[0], cell_type = group[1], n_genes = group[2], top = group[3], sign = group[4]
+        )
+    revigo_summary = pd.concat(revigo_summary, axis = 0)
+    return enrichr_summary, revigo_summary
 
 def main(args = None, **kwargs):
-    from _utils.gadgets import namespace
-    import os
-    import scanpy as sc
-    import scdrs
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    from _plots.aes import redblue_alpha
-    from _plots import scatterplot_noaxis, temporal_regplot
-    from _utils.gadgets import mv_symlink
-    import warnings
-    if args == None:
-        from _utils.gadgets import namespace
-        args = namespace(**kwargs)
+    if args == None: args = namespace(**kwargs)
 
     # Stage 1: generate cell-specific scores
     out_score = f'{args.out}.score.txt'
@@ -206,11 +203,13 @@ def main(args = None, **kwargs):
 
     # Downstream analysis 2: for each cell type, conduct enrichment analysis using top correlated genes
     out_enrichr = f'{args.out}.downstream.enrichr.txt'
-    if args.downstream and (not os.path.isfile(out_enrichr) or args.force):
+    out_revigo = f'{args.out}.downstream.revigo.txt'
+    if args.downstream and (not os.path.isfile(out_enrichr) or not os.path.isfile(out_revigo) or args.force):
         try: corr
         except: corr = pd.read_table(out_downstream, index_col = [0,1])
-        enrichr = downstream_enrichr(corr)
+        enrichr, revigo = downstream_enrichr(corr)
         enrichr.to_csv(out_enrichr, index = False, sep = '\t')
+        revigo.to_csv(out_revigo, index = False, sep = '\t')
 
     # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
     out_pseudotime_fig = f'{args.out}.pseudotime.png'

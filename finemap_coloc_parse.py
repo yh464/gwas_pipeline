@@ -47,7 +47,9 @@ def main(args):
     import pandas as pd
     from fnmatch import fnmatch
     from _utils.path import normaliser, find_gwas
-    
+    from _utils.genetools import locus_to_name
+    from sc_enrichr import enrichr_list, enrichr_to_revigo
+
     pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
     pheno_str = '_'.join([g for g,_ in pheno])
     in_dir = f'{args._in}/{pheno_str}'  
@@ -86,10 +88,24 @@ def main(args):
     summary.index.name = 'SNP'
     clusters.index.name = 'SNP'
     
+    # enrichr and revigo analysis
+    enrichr_res = []
+    revigo_res = [] 
+    for phen_group, group_df in orig.groupby('traits'):
+        gene_list = locus_to_name(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
+        enrichr_result = enrichr_list(gene_list)
+        enrichr_res.append(enrichr_result.assign(traits = phen_group))
+        revigo_result = enrichr_to_revigo([enrichr_result])
+        revigo_res.append(revigo_result[0].assign(traits = phen_group))
+    enrichr_res = pd.concat(enrichr_res)
+    revigo_res = pd.concat(revigo_res)
+
     norm = normaliser()
     norm.normalise(orig).to_csv(f'{args.out}/{pheno_str}_coloc_raw.txt', sep = '\t', index = True)
     norm.normalise(summary).to_csv(f'{args.out}/{pheno_str}_coloc_summary.txt', sep = '\t', index = True)
     norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
+    norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = True)
+    norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = True)
     return
 
 if __name__ == '__main__':

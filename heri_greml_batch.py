@@ -62,10 +62,10 @@ def main(args):
      
       scripts_path = os.path.realpath(__file__)
       scripts_path = os.path.dirname(scripts_path)
-      submitter.add('bash '+
-        f'{scripts_path}/heri_greml_by_trait.sh {args.gcta}'+
-        f' {args.grm} {args._in}/{f} {mpheno} {args.cov} {args.qcov}'+
-        f' {out_fname}.greml --threads 5')
+      submitter.add(f'{args.gcta} --reml --reml-est-fix --reml-pred-rand --grm-cutoff 0.05 '+
+        f'--grm {args.grm} --pheno {args._in}/{f} --mpheno {mpheno} '+
+        f'--qcovar {args.qcov} --covar {args.cov} --out {out_fname} '+
+        f'--threads 8')
     
     submitter.submit()
     # submitter.debug()

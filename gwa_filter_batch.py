@@ -16,9 +16,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'gwa_filter',
-        timeout = 10)
-    scripts_path = os.path.realpath(__file__)
-    scripts_path = os.path.dirname(scripts_path)
+        timeout = 10, partition = 'sapphire')
     
     for x in pheno:
       out_dir = f'{args._in}/{x}_{args.freq}/'
@@ -30,16 +28,14 @@ def main(args):
       for y in os.listdir():
         if fnmatch(y,'*.fastGWA'):
           out_fname = y.replace('_raw','')
-          submitter.add(f'bash {scripts_path}/pymaster.sh '+
-            f'gwa_filter.py -i {args._in}/{x}_raw/{y} -o {out_dir}/{out_fname} --freq {args.freq}')
+          submitter.add(f'python gwa_filter.py -i {args._in}/{x}_raw/{y} -o {out_dir}/{out_fname} --freq {args.freq}')
     submitter.submit()
     
 if __name__ == '__main__':
-    import argparse
-    from _utils.slurm import parser_config
+    from _utils.slurm import slurm_parser
 
     # argument input
-    parser = argparse.ArgumentParser(description=
+    parser = slurm_parser(description=
       'This programme filters the GRM to different thresholds')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('--freq', dest = 'freq', help = 'Minor allele frequency threshold',

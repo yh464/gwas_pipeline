@@ -63,6 +63,16 @@ class array_submitter():
                  intr = False # tries to run interactively in series (CAUTION WITH THIS OPTION)
                  ):
 
+        # current SLURM limit: 50 jobs, 450 CPUs; adjust for busy cluster
+        cpu_avail = {
+            'desktop': 4,
+            'sapphire': 1,
+            'icelake-himem': 1,
+            'icelake': 1,
+            'cclake': 1,
+            'cclake-himem': 1
+        }
+
         self._full_name = name
         if len(name) > 30:
             name = sha256(name.encode()).hexdigest()[:6] # truncate to 6S characters
@@ -104,11 +114,10 @@ class array_submitter():
         import __main__
         if 'args' in dir(__main__): self.config(**vars(__main__.args))
 
-        # current SLURM limit: 50 jobs, 450 CPUs
-        cpu_avail = 9 if self.partition != 'desktop' else 4
-        if self.n_cpu < cpu_avail:
-            self.parallel = math.floor(self.parallel * cpu_avail/self.n_cpu)
-            self.n_cpu = cpu_avail
+        # adjust parallel processes based on available CPUs
+        if self.n_cpu < cpu_avail[self.partition]:
+            self.parallel = math.floor(self.parallel * cpu_avail[self.partition]/self.n_cpu)
+            self.n_cpu = cpu_avail[self.partition]
 
         # number of *parallel batches* of commands per file
         self.lim = int(self.wallclock/timeout)
@@ -240,7 +249,7 @@ class array_submitter():
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {n_cpu}', file = wrap)
         time = self.timeout * self._count
-        print(f'#SBATCH -t {time}', file = wrap)
+        print(f'#SBATCH -t {int(time)}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
         print(f'#SBATCH -o {self.logdir}/{self.name}_%a.log', file = wrap)
         print(f'#SBATCH -e {self.logdir}/{self.name}_%a.err', file = wrap)
@@ -302,7 +311,7 @@ class array_submitter():
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
         print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
-                  f'-t {time} -p {self.partition} {email} {account} '+
+                  f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}') 
         print('\n' + '#' * 100 + '\n')
@@ -337,7 +346,7 @@ class array_submitter():
         
         from subprocess import check_output
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
-                  f'-t {time} -p {self.partition} {email} {account} '+
+                  f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles-1} {self._write_dep_str()} {self._wrap_name}', shell = True
                   ).decode().strip()

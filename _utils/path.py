@@ -85,7 +85,9 @@ def find_gwas(*pheno,
     for p in sorted(pheno):
         xlist = []
         pdir = p.split('/')[0]
-        ppat = '*' if p.find('/') < 0 else '*' + p.split('/')[1] + '*'
+        if p.find('/') < 0: ppat = '*'
+        elif p.find('^') >= 0: ppat = p.split('/')[1].replace('^','') # strict matching
+        else: ppat = '*' + p.split('/')[1] + '*'
         for x in sorted(os.listdir(f'{dirname}/{pdir}')):
             if not fnmatch(x.replace('.gz',''), f'{ppat}.{ext}') or fnmatch(x,f'{ppat}_X.{ext}'): continue
             exc = False

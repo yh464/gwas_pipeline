@@ -8,7 +8,7 @@ Parser functions for genetic logs (IMPORTANT)
 This script is specific to the GWAS pipeline and will not be migrated to _utils
 '''
 
-import os
+import os, warnings
 from fnmatch import fnmatch
 import pandas as pd
 import numpy as np
@@ -105,11 +105,6 @@ def crosscorr_parse(gwa1, gwa2 = [],
     gwa1 and gwa2 are lists of (group, pheno_list) tuples or (group, pheno) tuples, compatible with long/short
     leave gwa2 blank to estimate auto-correlations of gwa1
     '''
-    import os
-    import numpy as np
-    import pandas as pd
-    import scipy.stats as sts
-    import warnings
     summary = []
     
     from _utils.path import pair_gwas
