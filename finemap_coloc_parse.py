@@ -49,6 +49,7 @@ def main(args):
     from ._utils.path import normaliser, find_gwas
     from ._utils.genetools import locus_to_name
     from ._plugins.enrichr import enrichr_list, enrichr_to_revigo
+    from ._plugins.inrich import inrich
 
     pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
     pheno_str = '_'.join([g for g,_ in pheno])
@@ -89,16 +90,22 @@ def main(args):
     clusters.index.name = 'SNP'
     
     # enrichr and revigo analysis
-    enrichr_res = []
-    revigo_res = [] 
+    enrichr_res = []; revigo_res = [] 
+    inrich_main = []; inrich_igt = []
     for phen_group, group_df in orig.groupby('traits'):
         gene_list = locus_to_name(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
         enrichr_result = enrichr_list(gene_list)
         enrichr_res.append(enrichr_result.assign(traits = phen_group))
         revigo_result = enrichr_to_revigo([enrichr_result])
         revigo_res.append(revigo_result[0].assign(traits = phen_group))
+
+        inrich_main_result, inrich_igt_result = inrich(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end', niter = 10000)
+        inrich_main.append(inrich_main_result.assign(traits = phen_group))
+        inrich_igt.append(inrich_igt_result.assign(traits = phen_group))
     enrichr_res = pd.concat(enrichr_res)
     revigo_res = pd.concat(revigo_res)
+    inrich_main = pd.concat(inrich_main)
+    inrich_igt = pd.concat(inrich_igt)
 
     norm = normaliser()
     norm.normalise(orig).to_csv(f'{args.out}/{pheno_str}_coloc_raw.txt', sep = '\t', index = True)
@@ -106,6 +113,8 @@ def main(args):
     norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
     norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = True)
     norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = True)
+    norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = True)
+    norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = True)
     return
 
 if __name__ == '__main__':
