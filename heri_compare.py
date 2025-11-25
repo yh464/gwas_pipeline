@@ -12,7 +12,7 @@ def main(args):
     from fnmatch import fnmatch
     import numpy as np
     import scipy.stats as sts
-    from _plugins.logparser import parse_h2_log, parse_greml_h2_log
+    from _utils.plugins.logparser import parse_h2_log, parse_greml_h2_log
     
     summary = []
     for p in args.pheno:

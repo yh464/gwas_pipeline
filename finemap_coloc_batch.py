@@ -24,7 +24,7 @@ def main(args):
 
     # scans directory for fastGWA files
     from _utils.path import find_gwas
-    from _plugins.logparser import crosscorr_parse
+    from _utils.plugins.logparser import crosscorr_parse
     gwa = []
     if len(args.pheno) > 1 and len(args.filter) > 0:
         if any([not x in args.pheno for x in args.filter]):
@@ -50,7 +50,7 @@ def main(args):
     print(gwa)
     
     # identify blocks of fine-mapping segments
-    from _plugins.logparser import parse_clump
+    from _utils.plugins.logparser import parse_clump
     _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
     loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
     loci['START'] -= 5e5; loci['STOP'] += 5e5

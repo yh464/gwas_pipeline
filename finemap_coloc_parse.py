@@ -19,8 +19,8 @@ from tqdm import tqdm
 from fnmatch import fnmatch
 from _utils.path import normaliser, find_gwas
 from _utils.genetools import locus_to_name
-from _plugins.enrichr import enrichr_list, enrichr_to_revigo
-from _plugins.inrich import inrich
+from _utils.plugins.enrichr import enrichr_list, enrichr_to_revigo
+from _utils.plugins.inrich import inrich
 from multiprocessing import Pool, cpu_count
 
 def parse_hyprcoloc_tabular(file):

@@ -31,7 +31,7 @@ def lava_cmd(out, exp, cov, overlap, clump, task, outfile,
 
 def main(args):
   from _utils.path import find_gwas, find_clump, pair_gwas
-  from _plugins.logparser import crosscorr_parse
+  from _utils.plugins.logparser import crosscorr_parse
   import os
   from statsmodels.stats.moment_helpers import cov2corr
   import pandas as pd

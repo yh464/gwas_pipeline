@@ -9,7 +9,7 @@ A flexible framework to run enrichr based on tabular data
 import gget, io, time, warnings
 from matplotlib.pylab import f
 import pandas as pd
-from .._utils.gadgets import force_gc
+from ..gadgets import force_gc
 
 def get_genes_list(df, top = -1, by = None, top_negative = True, 
     ref = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
@@ -183,7 +183,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
     return out_dfs
 
 def main(args):
-    from .._utils.path import find_gwas
+    from ..path import find_gwas
     import os
     pheno = find_gwas(args.pheno, long = True)
 

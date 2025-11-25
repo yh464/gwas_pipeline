@@ -111,7 +111,7 @@ def downstream_enrichr(corr_df):
         summary = list(tqdm(p.imap(_enrichr, [corr_df.loc[i,:] for i in strata]), total = len(strata), desc = 'Conducting Enrichr analysis'))
     enrichr_summary = pd.concat(summary, axis = 0)
     
-    from _plugins.enrichr import enrichr_to_revigo
+    from _utils.plugins.enrichr import enrichr_to_revigo
     revigo_summary = enrichr_to_revigo(
         [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
         name_col = 'process', pval_col = 'p'

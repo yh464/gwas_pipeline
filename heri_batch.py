@@ -16,7 +16,7 @@ Requires following inputs:
 def main(args):
   import os
   from fnmatch import fnmatch
-  from _plugins.logparser import parse_h2_log
+  from _utils.plugins.logparser import parse_h2_log
   import numpy as np
   
   force = '-f' if args.force else ''

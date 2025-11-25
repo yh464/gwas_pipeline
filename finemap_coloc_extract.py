@@ -17,7 +17,7 @@ def main(args = None, **kwargs):
   
   # find clumped loci
   from _utils.path import find_gwas
-  from _plugins.logparser import parse_clump
+  from _utils.plugins.logparser import parse_clump
   pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', clump = True, long = True)
   _, loci = parse_clump(pheno, clump_dir = args.clump, pval = args.pval)
   loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]

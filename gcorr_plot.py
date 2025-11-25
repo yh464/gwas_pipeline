@@ -21,7 +21,7 @@ def main(args):
     from _utils.path import normaliser, find_gwas
     import pandas as pd
     from fnmatch import fnmatch
-    from _plugins.logparser import crosscorr_parse
+    from _utils.plugins.logparser import crosscorr_parse
     
     # scans directories to include sumstats
     gwa1 = find_gwas(*args.p1, dirname = args.sumstats, ext = 'sumstats')

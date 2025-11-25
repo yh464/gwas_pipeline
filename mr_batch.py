@@ -19,9 +19,9 @@ def qc(file):
 
 def main(args):
     import os
-    from _plugins.logparser import parse_h2_log
+    from _utils.plugins.logparser import parse_h2_log
     from _utils.path import find_clump, find_gwas
-    from _plugins.logparser import crosscorr_parse
+    from _utils.plugins.logparser import crosscorr_parse
     
     # array submitter
     from mr_extract_snp_batch import api

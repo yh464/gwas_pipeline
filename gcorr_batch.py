@@ -15,7 +15,7 @@ Outputs:
 
 
 def main(args):
-    from _plugins.logparser import parse_rg_log
+    from _utils.plugins.logparser import parse_rg_log
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     from subprocess import check_output
     
