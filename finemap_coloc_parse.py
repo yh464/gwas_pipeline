@@ -65,7 +65,7 @@ def main(args):
     # identify blocks of fine-mapping segments
     gwa = find_gwas(*args.pheno, dirname = args.gwa, long = True)
     from _utils.plugins.logparser import parse_clump
-    _, loci = parse_clump(gwa, pval = args.pval)
+    _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
     loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
     loci['START'] -= 5e5; loci['STOP'] += 5e5
     loci = loci.dropna().reset_index(drop=True)
@@ -139,6 +139,9 @@ if __name__ == '__main__':
       default = '../coloc/')
     parser.add_argument('-g','--gwa', dest = 'gwa', help = 'Directory containing all summary stats (for phenotype names only)',
       default = '../gwa/')
+    parser.add_argument('-c','--clump', dest = 'clump', help = 'Directory containing all clump outputs',
+      default = '../clump/')
+    parser.add_argument('-p', '--pval', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
