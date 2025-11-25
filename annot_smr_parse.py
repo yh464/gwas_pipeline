@@ -22,7 +22,7 @@ def main(args):
     import numpy as np
     import pandas as pd
     from scipy.stats import false_discovery_control as fdr
-    from _utils.path import normaliser, find_gwas
+    from ._utils.path import normaliser, find_gwas
     norm = normaliser()
     os.chdir(args._in)
     
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     for arg in ['_in','qtl','gwa']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, logger
+    from ._utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

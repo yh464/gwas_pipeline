@@ -13,9 +13,9 @@ Requires following inputs:
 
 def main(args):
     import os
-    from _utils.path import find_gwas
-    from _plots import colourcode_scatterplot
-    from _plots.aes import redgrey
+    from ._utils.path import find_gwas
+    from ._plots import colourcode_scatterplot
+    from ._plots.aes import redgrey
     import matplotlib.pyplot as plt
     import scanpy as sc
     import pandas as pd
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     for arg in ['gwa','st','_in']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from _utils import logger, cmdhistory
+    from ._utils import logger, cmdhistory
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

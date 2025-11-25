@@ -132,6 +132,6 @@ if __name__ == '__main__':
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   if args.extract != None: args.extract = os.path.realpath(args.extract)
 
-  from _utils import cmdhistory, logger
+  from ._utils import cmdhistory, logger
   logger.splash(args)
   main(args)

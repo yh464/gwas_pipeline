@@ -12,7 +12,7 @@ Requires following inputs:
 '''
 
 def main(args):
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(name = 'sc_score', n_cpu = 16, timeout = 480, env = 'gentoolspy')
 
     # finds h5ad files
@@ -33,7 +33,7 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script generates gene scores for MAGMA gene covariate analysis')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/cepo') # intentionally absolute
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     import os
     args._in = os.path.realpath(args._in); args.out = os.path.realpath(args.out)
 
-    from _utils import logger, cmdhistory
+    from ._utils import logger, cmdhistory
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

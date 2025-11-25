@@ -23,8 +23,8 @@ import scipy.stats as sts
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from _plots import corr_heatmap
-from _utils.path import normaliser, find_gwas
+from ._plots import corr_heatmap
+from ._utils.path import normaliser, find_gwas
 from tqdm import tqdm
 from multiprocessing import Pool
 import warnings
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     for arg in ['_in','gset', 'gscore']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path
+    from ._utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_var('%gset',r'.+','gene set')

@@ -15,21 +15,21 @@ Outputs:
 
 
 def main(args):
-    from logparser import parse_rg_log
+    from ._plugins.logparser import parse_rg_log
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     from subprocess import check_output
     
     scripts_path = os.path.dirname(os.path.realpath(__file__))
     
     # scans directories to include sumstats
-    from _utils.path import find_gwas, pair_gwas
+    from ._utils.path import find_gwas, pair_gwas
     gwa1 = find_gwas(*args.p1, dirname = args._in, ext = 'sumstats', long = False)
     gwa2 = find_gwas(*args.p2, dirname = args._in, ext = 'sumstats', long = False)
     pairwise = pair_gwas(gwa1, gwa2)
     
     # array submitter
     timeout = int(max([len(x) for _,x in (gwa1+gwa2)]+[45])/12) # each phenotype takes ~5 seconds
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(name = f'gcorr_{args.p1[0]}',timeout = timeout, wd = args._in)
     
     for g1, p1s, g2, p2s in pairwise:
@@ -87,7 +87,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script estimates genetic cross-correlations')
     parser.add_argument('-p1', help = 'First group of phenotypes to correlate', 
                         nargs = '*', default = [])
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','ldsc']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

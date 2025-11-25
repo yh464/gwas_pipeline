@@ -16,8 +16,8 @@ def main(args):
     import pandas as pd
     import numpy as np
     import scipy.stats as sts
-    from _utils.path import normaliser
-    from _plots import corr_heatmap
+    from ._utils.path import normaliser
+    from ._plots import corr_heatmap
     
     os.chdir(args._in)
     
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     args.pheno.sort()
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

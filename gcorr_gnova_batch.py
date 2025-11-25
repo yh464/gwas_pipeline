@@ -15,12 +15,12 @@ Outputs:
 import os, warnings
 
 def main(args):
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_gnova_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         n_cpu = 4, timeout = 30, env = args.gnova)
     
     # find and pair GWAS files
-    from _utils.path import find_gwas, pair_gwas
+    from ._utils.path import find_gwas, pair_gwas
     exposures = find_gwas(args.p1, dirname = args._in, ext = 'sumstats', long = True)
     outcomes = find_gwas(args.p2, dirname = args._in, ext = 'sumstats', long = True)
     pairwise = pair_gwas(exposures, outcomes)
@@ -56,7 +56,7 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 'A wrapper script to conduct GNOVA correlation analysis')
     parser.add_argument('-p1', '--p1', nargs = '+', help = 'Phenotype group 1')
     parser.add_argument('-p2', '--p2', nargs = '*', default = [], help = 'Phenotype group 2 (if not specified, estimate pairwise correlation of p1)')
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','gnova','gene_set']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, logger
+    from ._utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

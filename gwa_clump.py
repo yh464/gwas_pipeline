@@ -29,7 +29,7 @@ for arg in ['_in','out','bfile']:
     setattr(args, arg, os.path.realpath(getattr(args, arg)))
 if type(args.out) == type(None): args.out = args._in
 
-from _utils import logger
+from ._utils import logger
 logger.splash(args)
 
 def main(args):

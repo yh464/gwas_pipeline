@@ -19,16 +19,16 @@ def qc(file):
 
 def main(args):
     import os
-    from logparser import parse_h2_log
-    from _utils.path import find_clump, find_gwas
-    from logparser import crosscorr_parse
+    from ._plugins.logparser import parse_h2_log
+    from ._utils.path import find_clump, find_gwas
+    from ._plugins.logparser import crosscorr_parse
     
     # array submitter
     from mr_extract_snp_batch import api
     print('Try running following command to force re-extraction of instruments')
     print(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
     snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter)
     submitter_lcv = array_submitter(name = 'mr_lcv_'+'_'.join(args.p2), env = 'gentoolsr', n_cpu = 2, timeout = 30)
@@ -142,7 +142,7 @@ def main(args):
     submitter_cause.submit()
     
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This script batch runs MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     for arg in ['gwa','out','inst','clump', 'h2','rg']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

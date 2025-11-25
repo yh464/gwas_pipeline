@@ -13,12 +13,12 @@ def main(args):
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/prs_temp'
   if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
   
-  from _utils.path import find_gwas, find_bed
+  from ._utils.path import find_gwas, find_bed
   pheno = find_gwas(args.pheno, long = True)
   bed_list = find_bed(args.bed)
 
   # array submitter
-  from _utils.slurm import array_submitter
+  from ._utils.slurm import array_submitter
   submitter = array_submitter(
     name = 'prs_from_gwa_'+pheno[0][0], n_cpu = 2,
     env = 'gentoolspy', timeout = 120)
@@ -69,7 +69,7 @@ def main(args):
   submitter.submit()
         
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This script generates PRS by continuous shrinkage from external sumstats')
     parser.add_argument('pheno', help = 'Phenotype groups to generate PRS',
@@ -95,7 +95,7 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     args.pheno.sort()
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

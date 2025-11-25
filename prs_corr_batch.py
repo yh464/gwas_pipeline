@@ -9,7 +9,7 @@ def main(args):
     # from sklearn.linear_model import LinearRegression
     
     # array submitter
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'prs_corr_{args.pheno[0]}', n_cpu = 1,
         timeout = 30,
@@ -44,7 +44,7 @@ def main(args):
     submitter.submit()
 
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description='Computes correlational plots between IDPs and PGS (batch)')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotype files to process')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     args.pheno.sort()
     args.prs.sort()
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

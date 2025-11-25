@@ -13,7 +13,7 @@ Required workflow:
 def main(args):
     import os
     import pandas as pd
-    from _utils.path import normaliser
+    from ._utils.path import normaliser
     norm = normaliser()
 
     out_fname = f'{args.out}/prscorr_'+'_'.join(args.pheno)
@@ -28,7 +28,7 @@ def main(args):
     
     summary = norm.normalise(summary)
     summary.to_csv(f'{out_fname}.txt', sep = '\t', index =False)
-    from _plots import corr_heatmap
+    from ._plots import corr_heatmap
     fig = corr_heatmap(summary)
     fig.savefig(f'{out_fname}.pdf', bbox_inches = 'tight')
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     else: args.out = os.path.realpath(args.out)
     args.pheno.sort()
         
-    from _utils import cmdhistory, logger
+    from ._utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

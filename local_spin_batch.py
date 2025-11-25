@@ -12,7 +12,7 @@ def main(args):
     from fnmatch import fnmatch
     
     # array submitter
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'local_spin', n_cpu = 1,
         timeout = 30, env = 'rwd',
@@ -37,7 +37,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(
         description = 'This programme batch runs spin permutations')
     parser.add_argument('-i','--in', dest = '_in', help = 'input files, can have wildcards, nargs=*',
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         default = False, action = 'store_true')
     args = parser.parse_args()
     
-    from _utils import cmdhistory
+    from ._utils import cmdhistory
     cmdhistory.log()
     try: main(args)
     except: cmdhistory.errlog()

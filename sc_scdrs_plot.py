@@ -14,13 +14,13 @@ def main(args):
     import warnings
 
     # find phenotypes
-    from _utils.path import find_gwas
+    from ._utils.path import find_gwas
     pheno = find_gwas(args.pheno, long = True)
     pheno_short = find_gwas(args.pheno); 
 
     # find h5ad annotations
     import os
-    from _utils.gadgets import mv_symlink
+    from ._utils.gadgets import mv_symlink
     for sc in args.sc:
         os.makedirs(f'{args._in}/plots/{sc}', exist_ok=True)
         h5ad_prefix = [x[:-5] for x in os.listdir(f'{args.h5ad}/{sc}') if x[-5:] =='.h5ad']
@@ -51,7 +51,7 @@ def main(args):
         # plot heatmap
         if len(summary) == 0: warnings.warn(f'No scDRS enrichment found for {sc}'); continue
         summary = pd.concat(summary)
-        from _plots.corr_heatmap import corr_heatmap
+        from ._plots.corr_heatmap import corr_heatmap
         for lab in summary.annotation.unique():
             tmp = summary.loc[summary.annotation == lab,:]
             tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     for arg in ['_in','h5ad']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from _utils import logger, cmdhistory
+    from ._utils import logger, cmdhistory
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

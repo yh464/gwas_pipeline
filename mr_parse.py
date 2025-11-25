@@ -92,7 +92,7 @@ def main(args):
     import warnings
     from fnmatch import fnmatch
     import pandas as pd
-    from _utils.path import normaliser, find_gwas, pair_gwas
+    from ._utils.path import normaliser, find_gwas, pair_gwas
     
     norm = normaliser()
     exposures = find_gwas(args.p1, ext = args.ext1, se = True)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     for arg in ['gwa','_in']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

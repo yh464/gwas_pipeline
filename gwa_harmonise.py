@@ -65,7 +65,7 @@ def main(args):
     from fnmatch import fnmatch
     from multiprocessing import Pool
     from functools import partial
-    from _utils.path import find_gwas
+    from ._utils.path import find_gwas
     
     # reference SNP info: CHR, SNP, POS, A1, A2, AF1
     fields = ['CHR','SNP','POS','A1','A2','AF1']
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     import os
     args._in = os.path.realpath(args._in)
     
-    from _utils import cmdhistory, logger
+    from ._utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

@@ -12,7 +12,7 @@ def main(args):
     from fnmatch import fnmatch
     import numpy as np
     import scipy.stats as sts
-    from logparser import parse_h2_log, parse_greml_h2_log
+    from ._plugins.logparser import parse_h2_log, parse_greml_h2_log
     
     summary = []
     for p in args.pheno:
@@ -32,7 +32,7 @@ def main(args):
     summary = pd.concat(summary)
     summary.insert(loc = 5, column = 'ldsc_q', value = sts.false_discovery_control(summary.ldsc_p))
     summary['greml_q'] = sts.false_discovery_control(summary.greml_p)
-    from _utils.path import normaliser
+    from ._utils.path import normaliser
     norm = normaliser()
     norm.normalise(summary).to_csv(f'{args.out}/h2_se_'+'_'.join(args.pheno) + '.txt', sep = '\t', index = False)
 if __name__ == '__main__':
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     for arg in ['greml','ldsc','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, logger
+    from ._utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

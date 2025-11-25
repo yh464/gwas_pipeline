@@ -42,7 +42,7 @@ def main(args):
   covs.to_csv(f'{args.out}.txt', sep = '\t', index = False, header = True)
 
 if __name__ == '__main__':
-  from _utils.slurm import slurm_parser
+  from ._utils.slurm import slurm_parser
   parser = slurm_parser(description = 'Extracts imaging covariates given a list of subjects')
   parser.add_argument('-i','--in', dest = '_in', default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Imaging',
     help = 'Root directory of imaging files, contains one subfolder per subject')
@@ -53,7 +53,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
   import os
   args._in = os.path.abspath(args._in); args.out = os.path.abspath(args.out)
-  from _utils import cmdhistory, logger
+  from ._utils import cmdhistory, logger
   logger.splash(args)
   cmdhistory.log()
   try: main(args)

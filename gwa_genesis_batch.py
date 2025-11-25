@@ -14,7 +14,7 @@ Requires following inputs:
 
 def main(args):
   # array submitter
-  from _utils.slurm import array_submitter
+  from ._utils.slurm import array_submitter
   grm_submitter = array_submitter(name = f'grm_pcrelate_{args.pheno}', timeout = 360, n_cpu = 4, env = 'gentoolsr')
   submitter = array_submitter(name = f'gwa_genesis_{args.pheno}', timeout = 240, n_cpu = int(args.n_threads/3), 
     env = 'gentoolsr', dependency = [grm_submitter])
@@ -60,7 +60,7 @@ def main(args):
   return submitter
 
 if __name__ == '__main__':
-  from _utils.slurm import slurm_parser
+  from ._utils.slurm import slurm_parser
   parser = slurm_parser(description = 'This script batch runs GWAS by GENESIS')
   parser.add_argument('pheno', help = 'Phenotype group file name, format FID IID ***', nargs = '*')
   parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory', default = '../pheno/abcd/')
@@ -84,7 +84,7 @@ if __name__ == '__main__':
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   if args.extract != None: args.extract = os.path.realpath(args.extract)
   
-  from _utils import cmdhistory, path, logger
+  from ._utils import cmdhistory, path, logger
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()

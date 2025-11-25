@@ -12,7 +12,7 @@ def main(args):
     import pandas as pd
     import numpy as np
     from fnmatch import fnmatch
-    from _utils.path import normaliser
+    from ._utils.path import normaliser
     norm = normaliser()
     
     dflist = []
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if type(args.out) == type(None): args.out = args._in
     
-    from _utils import cmdhistory, path
+    from ._utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng/%pheno_%maf.finemap.summary',__file__)

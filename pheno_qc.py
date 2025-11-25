@@ -62,7 +62,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','subjs']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory
+    from ._utils import cmdhistory
     cmdhistory.log()
     try: main(args)
     except: cmdhistory.errlog()

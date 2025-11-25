@@ -6,7 +6,7 @@ generates manhattan plots for all fastGWA files in a directory
 def main(args):
     import os
     from fnmatch import fnmatch
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     
     f = f'-p {args.pval}'
     if args.force: f += ' -f'
@@ -45,7 +45,7 @@ def main(args):
     # submitter.debug()
         
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This programme compiles Manhattan plots for all fastGWA output files for a single phenotype file')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     for arg in ['_in','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path
+    from ._utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in, __file__)

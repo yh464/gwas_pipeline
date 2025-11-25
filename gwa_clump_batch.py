@@ -23,12 +23,12 @@ def main(args):
     
     # array submitter
     timeout = 15 if args.pval < 1e-8 else 40
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(
       name = f'clump_{args.pheno[0]}_{args.pval:.0e}',
       timeout = timeout)
     
-    from _utils.path import find_gwas
+    from ._utils.path import find_gwas
     pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
 
     # directory management
@@ -43,7 +43,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description='This programme uses PLINK1.9'+
       ' to clump the GWAS output, identifying independent SNPs')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','bfile']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

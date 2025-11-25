@@ -24,7 +24,7 @@ def extract_loci(gwa, loci, out):
   '''
   import pandas as pd
   import os
-  from _utils.gwatools import format_gwas
+  from ._utils.gwatools import format_gwas
   if not os.path.isdir(out): os.system(f'mkdir -p {out}')
   df = format_gwas(gwa, 'BETA','OR','CHR','SNP','POS','A1','A2','AF1','N','SE','P', silent = True)
   prefix = os.path.basename(gwa).replace('.fastGWA', '')
@@ -48,7 +48,7 @@ def extract_loci(gwa, loci, out):
 def main(args = None, **kwargs):
   # only accepts one GWAS file; call array_submitter elsewhere and refer to this script
   import os
-  from _utils.gadgets import namespace
+  from ._utils.gadgets import namespace
   if args == None: args = namespace(**kwargs)
   gwa = f'{args._in}/{args.pheno}.fastGWA'
   out = f'{args.out}/{os.path.dirname(args.pheno)}'
@@ -77,7 +77,7 @@ if __name__ == '__main__':
   args._in = os.path.realpath(args._in); args.out = os.path.realpath(args.out)
   if args.loci != None: args.loci = os.path.realpath(args.loci)
 
-  from _utils import cmdhistory, logger
+  from ._utils import cmdhistory, logger
   logger.splash(args); cmdhistory.log()
   try: main(args)
   except: cmdhistory.errlog()

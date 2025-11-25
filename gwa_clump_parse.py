@@ -38,10 +38,10 @@ def main(args = None, **kwargs):
     import os
     import pandas as pd
     from fnmatch import fnmatch
-    from _utils.path import normaliser
+    from ._utils.path import normaliser
     
     if args == None:
-        from _utils.gadgets import namespace
+        from ._utils.gadgets import namespace
         args = namespace(**kwargs)
 
     norm = normaliser()
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     args._in = os.path.realpath(args._in)
     args.pheno.sort()
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

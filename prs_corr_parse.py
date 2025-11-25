@@ -5,7 +5,7 @@ def main(args):
     import pandas as pd
     import scipy.stats as sts
     import numpy as np
-    from _utils.path import normaliser
+    from ._utils.path import normaliser
     norm = normaliser()
     
     summary = []
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     if type(args.out) == type(None): args.out = args._in
     args.pheno.sort()
     
-    from _utils import cmdhistory, path
+    from ._utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheno_.*.csv', __file__)

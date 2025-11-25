@@ -79,6 +79,6 @@ if __name__ == '__main__':
     args.gwa = [os.path.realpath(x) for x in args.gwa]
     args.gwa.sort()
 
-    from _utils import logger
+    from ._utils import logger
     logger.splash(args)
     main(args)

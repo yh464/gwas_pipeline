@@ -177,7 +177,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
     return out_dfs
 
 def main(args):
-    from _utils.path import find_gwas
+    from .._utils.path import find_gwas
     import os
     pheno = find_gwas(args.pheno, long = True)
 

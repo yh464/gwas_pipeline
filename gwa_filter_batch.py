@@ -13,7 +13,7 @@ def main(args):
       pheno = args.pheno
     
     # array submitter
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'gwa_filter',
         timeout = 10, partition = 'sapphire')
@@ -32,7 +32,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
 
     # argument input
     parser = slurm_parser(description=
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     import os
     args._in = os.path.realpath(args._in)
     
-    from _utils import cmdhistory, path
+    from ._utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_var('%pheng',r'.+', 'phenotype group')

@@ -36,7 +36,7 @@ def main(args):
     tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsa_mixer'; os.makedirs(tmpdir, exist_ok = True)
 
     # find GWAS sumstats
-    from _utils.path import find_gwas, pair_gwas
+    from ._utils.path import find_gwas, pair_gwas
     exposures = find_gwas(args.p1, dirname = args._in, ext = 'sumstats', long = True)
     outcomes = find_gwas(args.p2, dirname = args._in, ext = 'sumstats', long = True)
     pheno = find_gwas(args.p1 + args.p2, dirname = args._in, ext = 'sumstats', long = True)
@@ -46,7 +46,7 @@ def main(args):
     gene_sets = [x[:-4] for x in os.listdir(args.test) if x[-4:] == '.txt']
 
     # array submitter
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     fit1_submitter = array_submitter(name = 'sc_gsamixer_fit1_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         env = args.mixer, n_cpu = 8, timeout = 720)
     fit2_submitter = array_submitter(name = 'sc_gsamixer_fit2_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
@@ -161,7 +161,7 @@ def main(args):
     test2_submitter.submit()
     
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script conducts GSA-mixer analysis between given pairs of phenotypes')
     parser.add_argument('-p1','--p1', nargs = '+', required=True, help='Phenotype group 1')
     parser.add_argument('-p2','--p2', nargs = '*', default = [], help='Phenotype group 2 (if not specified, p2 = p1)')
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','test']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from _utils import cmdhistory, logger
+    from ._utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

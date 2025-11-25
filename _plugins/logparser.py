@@ -107,7 +107,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
     '''
     summary = []
     
-    from _utils.path import pair_gwas
+    from ._utils.path import pair_gwas
     pairwise = pair_gwas(gwa1, gwa2)
     
     for g1, p1s, g2, p2s in pairwise:
@@ -220,7 +220,7 @@ def parse_clump(pheno, clump_dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data
     # long format list of phenotypes
     if isinstance(pheno[0][1], list): pheno = [(g,p) for g, ps in pheno for p in ps]
     
-    from _utils.path import find_clump
+    from ._utils.path import find_clump
     clumps = []
     for g, p in pheno:
         try:

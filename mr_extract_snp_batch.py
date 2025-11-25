@@ -10,10 +10,10 @@ A tool to extract instruments for MR analysis before mr_batch and mr_mvmr_batch
 def main(args):
     import os
     import pandas as pd
-    from _utils.path import find_gwas, find_clump
+    from ._utils.path import find_gwas, find_clump
     
     # array submitter
-    from _utils.slurm import array_submitter
+    from ._utils.slurm import array_submitter
     submitter = array_submitter(name = f'mr_instruments_'+'.'.join((args.p1+args.p2)[:2]),
         n_cpu = 1, timeout = 60)
     
@@ -67,7 +67,7 @@ def api(**kwargs):
     return submitter
 
 if __name__ == '__main__':
-    from _utils.slurm import slurm_parser
+    from ._utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This script batch extracts instruments for MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','clump']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path, logger
+    from ._utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
