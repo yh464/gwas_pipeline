@@ -7,28 +7,9 @@ A flexible framework to run enrichr based on tabular data
 '''
 
 import gget, io, time, warnings
+from matplotlib.pylab import f
 import pandas as pd
-
-# revigo settings
-from clr_loader import get_coreclr
-from pythonnet import set_runtime
-revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'
-set_runtime(get_coreclr(runtime_config = f'{revigo_dir}/PythonRuntimeConfig.json'))
-import clr
-clr.AddReference(f'{revigo_dir}/RevigoCore')
-clr.AddReference('mscorlib')
-from IRB.Revigo.Core.Worker import RevigoWorker, ValueTypeEnum, RequestSourceEnum # type: ignore
-from IRB.Revigo.Core import SemanticSimilarityTypeEnum, RevigoTerm, RevigoTermCollection, Utilities # type: ignore
-from IRB.Revigo.Core.Databases import GeneOntology, SpeciesAnnotationList # type: ignore
-from System import TimeSpan # type: ignore
-from System.IO import StreamWriter # type: ignore
-dCutoff = 0.7
-eValueType = ValueTypeEnum.PValue
-iSpeciesTaxon = 0
-eMeasure = SemanticSimilarityTypeEnum.SIMREL
-bRemoveObsolete = True
-oOntology = GeneOntology.Deserialize(f'{revigo_dir}/GeneOntology.xml.gz')
-oAnnot = SpeciesAnnotationList.Deserialize(f'{revigo_dir}/SpeciesAnnotations.xml.gz').GetByID(iSpeciesTaxon)
+from .._utils.gadgets import force_gc
 
 def get_genes_list(df, top = -1, by = None, top_negative = True, 
     ref = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
@@ -130,7 +111,29 @@ def enrichr_continuous(df, top = -1, by = None, top_negative = True, databases =
         print(out[1].head(20))
     return out
 
+@force_gc
 def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
+    # revigo settings
+    from clr_loader import get_coreclr
+    from pythonnet import set_runtime
+    revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'
+    set_runtime(get_coreclr(runtime_config = f'{revigo_dir}/PythonRuntimeConfig.json'))
+    import clr
+    clr.AddReference(f'{revigo_dir}/RevigoCore')
+    clr.AddReference('mscorlib')
+    from IRB.Revigo.Core.Worker import RevigoWorker, ValueTypeEnum, RequestSourceEnum # type: ignore
+    from IRB.Revigo.Core import SemanticSimilarityTypeEnum, RevigoTerm, RevigoTermCollection, Utilities # type: ignore
+    from IRB.Revigo.Core.Databases import GeneOntology, SpeciesAnnotationList # type: ignore
+    from System import TimeSpan # type: ignore
+    from System.IO import StreamWriter # type: ignore
+    dCutoff = 0.7
+    eValueType = ValueTypeEnum.PValue
+    iSpeciesTaxon = 0
+    eMeasure = SemanticSimilarityTypeEnum.SIMREL
+    bRemoveObsolete = True
+    oOntology = GeneOntology.Deserialize(f'{revigo_dir}/GeneOntology.xml.gz')
+    oAnnot = SpeciesAnnotationList.Deserialize(f'{revigo_dir}/SpeciesAnnotations.xml.gz').GetByID(iSpeciesTaxon)
+
     # prepare input
     revigo_inputs = []
     for enrichr_df in enrichr_dfs:

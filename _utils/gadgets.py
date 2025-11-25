@@ -1,3 +1,4 @@
+import os, shutil, gc
 class namespace():
     """
     A simple namespace class to hold attributes as properties.
@@ -11,9 +12,6 @@ class namespace():
     
 def mv_symlink(src, dst):
     '''If src is a file, move it to src and create a symlink from src to dst'''
-    import os
-    import shutil
-
     # check if src is a file not a symlink
     if os.path.isfile(src) and not os.path.islink(src):
         try:
@@ -22,3 +20,13 @@ def mv_symlink(src, dst):
             os.symlink(dst, src)
         except: return False
     return True
+
+def force_gc(func):
+    """
+    A decorator to force garbage collection after function execution.
+    """
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        gc.collect()
+        return result
+    return wrapper

@@ -12,8 +12,18 @@ Required input:
     hyprcoloc tabular output
 '''
 
+import os
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from fnmatch import fnmatch
+from _utils.path import normaliser, find_gwas
+from _utils.genetools import locus_to_name
+from _plugins.enrichr import enrichr_list, enrichr_to_revigo
+from _plugins.inrich import inrich
+from multiprocessing import Pool, cpu_count
+
 def parse_hyprcoloc_tabular(file):
-    import pandas as pd
     df = pd.read_table(file).drop(['iteration','dropped_trait'], axis=1) # valid clusters are now devoid of NA
     df.dropna(inplace = True)
     df = df.loc[df['regional_prob']>0.6, :] # filter by regional probability at 0.6 as in Nat Gen 2023
@@ -24,9 +34,6 @@ def parse_hyprcoloc_cluster(entry, pheno):
     entry: pandas DataFrame single row, with following columns: 'traits', 'candidate_snp';
     groups: a list output from _utils.path.find_gwas(long = False)
     '''
-    import pandas as pd
-    import numpy as np
-    
     # initialise output
     snp = entry['candidate_snp']
     clusters = pd.DataFrame(data = np.nan, index = [snp], columns = [f'{g}_{p}' for g, ps in pheno for p in ps])
@@ -40,17 +47,12 @@ def parse_hyprcoloc_cluster(entry, pheno):
     summary.insert(loc = 0, column = 'regional_prob', value = entry['regional_prob'])
     summary.insert(loc = 1, column = 'prob_explained_by_snp', value = entry['posterior_explained_by_snp'])
     return clusters, summary
-    
-    
-def main(args):
-    import os
-    import pandas as pd
-    from fnmatch import fnmatch
-    from _utils.path import normaliser, find_gwas
-    from _utils.genetools import locus_to_name
-    from _plugins.enrichr import enrichr_list, enrichr_to_revigo
-    from _plugins.inrich import inrich
 
+def _inrich(df, traits):
+    main, igt = inrich(df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end', niter = 10000)
+    return main.assign(traits = traits), igt.assign(traits = traits)
+
+def main(args):
     pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
     pheno_str = '_'.join([g for g,_ in pheno])
     in_dir = f'{args._in}/{pheno_str}'  
@@ -91,7 +93,6 @@ def main(args):
     
     # enrichr and revigo analysis
     enrichr_res = []; revigo_res = [] 
-    inrich_main = []; inrich_igt = []
     for phen_group, group_df in orig.groupby('traits'):
         gene_list = locus_to_name(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
         enrichr_result = enrichr_list(gene_list)
@@ -99,9 +100,11 @@ def main(args):
         revigo_result = enrichr_to_revigo([enrichr_result])
         revigo_res.append(revigo_result[0].assign(traits = phen_group))
 
-        inrich_main_result, inrich_igt_result = inrich(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end', niter = 10000)
-        inrich_main.append(inrich_main_result.assign(traits = phen_group))
-        inrich_igt.append(inrich_igt_result.assign(traits = phen_group))
+    with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
+        inrich_res = list(tqdm(pool.imap(_inrich, 
+            [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
+            total = orig.traits.unique().size))
+    inrich_main = [x[0] for x in inrich_res]; inrich_igt = [x[1] for x in inrich_res]
     enrichr_res = pd.concat(enrichr_res)
     revigo_res = pd.concat(revigo_res)
     inrich_main = pd.concat(inrich_main)
