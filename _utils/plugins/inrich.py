@@ -38,9 +38,11 @@ def parse_inrich_output(file):
         if line.startswith('_O1'): main_analysis.append('\t'.join(line.split('\t')[1:]))
         if line.startswith('_O2'): igt_analysis.append('\t'.join(line.split('\t')[1:]))
     main_analysis = pd.read_table(io.StringIO('\n'.join(main_analysis)))
-    main_analysis['TARGET'] = main_analysis.TARGET.str.split(' ', expand = True)[0]
+    try: main_analysis['TARGET'] = main_analysis.TARGET.str.split(' ', expand = True)[0]
+    except: pass
     igt_analysis = pd.read_table(io.StringIO('\n'.join(igt_analysis)))
-    igt_analysis['TARGET'] = igt_analysis.TARGET.str.split(' ', expand = True)[0]
+    try: igt_analysis['TARGET'] = igt_analysis.TARGET.str.split(' ', expand = True)[0]
+    except: pass
     return main_analysis, igt_analysis
 
 def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop', 
