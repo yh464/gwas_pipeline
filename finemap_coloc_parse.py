@@ -102,13 +102,10 @@ def main(args):
         enrichr_res = list(tqdm(pool.starmap(_enrichr, 
             [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
             total = orig.traits.unique().size))
-    revigo_result = enrichr_to_revigo(enrichr_res, keepcols = ['traits'])
-    revigo_res.append(revigo_result[0].assign(traits = phen_group))
-
-    with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
         inrich_res = list(tqdm(pool.starmap(_inrich, 
             [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
             total = orig.traits.unique().size))
+    revigo_res = enrichr_to_revigo(enrichr_res, keepcols = ['traits'])
     inrich_main = [x[0] for x in inrich_res]; inrich_igt = [x[1] for x in inrich_res]
     enrichr_res = pd.concat(enrichr_res)
     revigo_res = pd.concat(revigo_res)
