@@ -48,6 +48,11 @@ def parse_hyprcoloc_cluster(entry, pheno):
     summary.insert(loc = 1, column = 'prob_explained_by_snp', value = entry['posterior_explained_by_snp'])
     return clusters, summary
 
+def _enrichr(df, traits):
+    gene_list = locus_to_name(df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
+    enrichr_result = enrichr_list(gene_list)
+    return enrichr_result.assign(traits = traits)
+
 def _inrich(df, traits):
     main, igt = inrich(df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end', niter = 10000)
     return main.assign(traits = traits), igt.assign(traits = traits)
@@ -93,12 +98,12 @@ def main(args):
     
     # enrichr and revigo analysis
     enrichr_res = []; revigo_res = [] 
-    for phen_group, group_df in orig.groupby('traits'):
-        gene_list = locus_to_name(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
-        enrichr_result = enrichr_list(gene_list)
-        enrichr_res.append(enrichr_result.assign(traits = phen_group))
-        revigo_result = enrichr_to_revigo([enrichr_result])
-        revigo_res.append(revigo_result[0].assign(traits = phen_group))
+    with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
+        enrichr_res = list(tqdm(pool.starmap(_enrichr, 
+            [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
+            total = orig.traits.unique().size))
+    revigo_result = enrichr_to_revigo(enrichr_res, keepcols = ['traits'])
+    revigo_res.append(revigo_result[0].assign(traits = phen_group))
 
     with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
         inrich_res = list(tqdm(pool.starmap(_inrich, 

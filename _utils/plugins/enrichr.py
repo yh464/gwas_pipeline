@@ -111,16 +111,20 @@ def enrichr_continuous(df, top = -1, by = None, top_negative = True, databases =
         print(out[1].head(20))
     return out
 
-@force_gc
-def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
+def revigo_setup(revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'):
     # revigo settings
     from clr_loader import get_coreclr
     from pythonnet import set_runtime
-    revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'
     set_runtime(get_coreclr(runtime_config = f'{revigo_dir}/PythonRuntimeConfig.json'))
     import clr
     clr.AddReference(f'{revigo_dir}/RevigoCore')
     clr.AddReference('mscorlib')
+
+@force_gc
+def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val', keepcols = [],
+    revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'):
+    try: from IRB.Revigo.Core.Worker import RevigoWorker # type: ignore
+    except: revigo_setup(revigo_dir = revigo_dir)
     from IRB.Revigo.Core.Worker import RevigoWorker, ValueTypeEnum, RequestSourceEnum # type: ignore
     from IRB.Revigo.Core import SemanticSimilarityTypeEnum, RevigoTerm, RevigoTermCollection, Utilities # type: ignore
     from IRB.Revigo.Core.Databases import GeneOntology, SpeciesAnnotationList # type: ignore
@@ -136,6 +140,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
 
     # prepare input
     revigo_inputs = []
+    keepdict = []
     for enrichr_df in enrichr_dfs:
         temp_df = enrichr_df.loc[:,[name_col, pval_col]].copy()
         temp_df['go_id'] = temp_df[name_col].str.extract(r'(GO:\d+)')
@@ -144,6 +149,13 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
         revigo_inputs.append(buffer.getvalue())
         del buffer
 
+        tmpdict = {}
+        for col in keepcols:
+            if not col in enrichr_df.columns or enrichr_df[col].unique().size > 1: continue
+            tmpdict[col] = enrichr_df[col].iloc[0]
+        keepdict.append(tmpdict)
+    del keepcols
+    
     revigo_workers = []
     for idx, revigo_input in enumerate(revigo_inputs):
         revigo_worker = RevigoWorker(idx, 
@@ -154,7 +166,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
     while any([not w.IsFinished for w in revigo_workers]): time.sleep(0.1)
 
     out_dfs = []
-    for revigo_worker in revigo_workers:
+    for revigo_worker, keepcols in zip(revigo_workers, keepdict):
         hdr = ['go_id','path_name','value','logsize','frequency','uniqueness','dispensability','pc_1','pc_2','representative']
         if revigo_worker.BPVisualizer.IsEmpty:
             warnings.warn('No significant GO terms found for Revigo analysis')
@@ -178,7 +190,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val'):
             output_buffer.write('\t'.join(line) + '\n')
             i += 1
         output_buffer.seek(0)
-        output_df = pd.read_table(output_buffer, header = None, names = hdr)
+        output_df = pd.read_table(output_buffer, header = None, names = hdr).assign(**keepcols)
         out_dfs.append(output_df)
     return out_dfs
 
