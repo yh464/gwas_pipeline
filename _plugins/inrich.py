@@ -56,7 +56,7 @@ def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop',
 
     # prepare temp files
     tmpdir = tempfile.mkdtemp()
-    interval_file = f'{tmpdir}/{sha256(repr(df)).hexdigest()}.txt'
+    interval_file = f'{tmpdir}/{sha256(repr(df).encode()).hexdigest()}.txt'
     tmp = df[[chrom_col, start_col, stop_col]].copy()
     tmp.columns = ['chr', 'start_bp', 'stop_bp']
     tmp.to_csv(interval_file, sep = '\t', index = False, header = True)
@@ -65,7 +65,7 @@ def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop',
 
     all_main = []; all_igt = []
     for gene_set in gene_sets:
-        out_prefix = f'{tmpdir}/{sha256(repr((df, gene_set))).hexdigest()}'
+        out_prefix = f'{tmpdir}/{sha256(repr((df, gene_set)).encode()).hexdigest()}'
         cmd = f'{inrich_dir}/inrich -a {interval_file} -g {inrich_dir}/resources/genes.txt -m {inrich_dir}/resources/snps.txt ' + \
             f'-t {inrich_dir}/gene_set/{gene_set}.txt -o {out_prefix} -2 -r {niter} -q 5000'
         os.system(cmd)
