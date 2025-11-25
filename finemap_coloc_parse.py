@@ -63,7 +63,7 @@ def main(args):
     in_dir = f'{args._in}/{pheno_str}'  
 
     # identify blocks of fine-mapping segments
-    gwa = find_gwas(*args.pheno, dirname = args._in, long = True)
+    gwa = find_gwas(*args.pheno, dirname = args.gwa, long = True)
     from _utils.plugins.logparser import parse_clump
     _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
     loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
