@@ -21,7 +21,7 @@ def main(args):
     from fnmatch import fnmatch
     import pandas as pd
     import scipy.stats as sts
-    from ._utils.path import normaliser
+    from _utils.path import normaliser
     norm = normaliser()
     
     # reference gene labelling
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     args._in = os.path.realpath(args._in)
     args.ref = os.path.realpath(args.ref)
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng/%pheno_%maf.%gset.gsa.out',__file__)

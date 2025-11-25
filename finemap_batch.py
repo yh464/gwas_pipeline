@@ -16,11 +16,11 @@ def main(args):
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(name = f'finemap_{args.pheno[0]}', n_cpu = 2,
         env = '/rds/project/rds-Nl99R8pHODQ/toolbox/polyfun', timeout = 120)
     
-    from ._utils.path import find_gwas, find_clump
+    from _utils.path import find_gwas, find_clump
     pheno = find_gwas(args.pheno, dirname = args._in, clump = True, long = True)
     for g, p in pheno:
         try: clump,_ = find_clump(g, p, dirname = args.clump, pval = args.p)
@@ -40,7 +40,7 @@ def main(args):
     return submitter
     
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(
       description = 'This programme batch runs the fine-map pipeline')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','clump','bfile']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import path, cmdhistory, logger
+    from _utils import path, cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

@@ -18,10 +18,10 @@ Changelog:
 
 def main(args):
     import os
-    from ._utils.path import normaliser, find_gwas
+    from _utils.path import normaliser, find_gwas
     import pandas as pd
     from fnmatch import fnmatch
-    from ._plugins.logparser import crosscorr_parse
+    from _plugins.logparser import crosscorr_parse
     
     # scans directories to include sumstats
     gwa1 = find_gwas(*args.p1, dirname = args.sumstats, ext = 'sumstats')
@@ -55,7 +55,7 @@ def main(args):
         summary.to_csv(f'{fout}.txt', index = False, sep = '\t')
     
     # plot figure
-    from ._plots import corr_heatmap
+    from _plots import corr_heatmap
     fig = corr_heatmap(summary, annot = 'Heritability')
     fig.savefig(f'{fout}.pdf', bbox_inches = 'tight')
     
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     args.sumstats = os.path.realpath(args.sumstats)
     if type(args.out) == type(None): args.out = os.path.realpath(f'{args._in}/../')
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheno.%pheno.rg.log', __file__)

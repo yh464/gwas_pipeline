@@ -14,8 +14,8 @@ Requires following inputs:
 
 def main(args):
     import os
-    from ._utils.path import find_gwas
-    from ._utils.slurm import array_submitter
+    from _utils.path import find_gwas
+    from _utils.slurm import array_submitter
     ldsc_submitter = array_submitter('gsmap_'+'_'.join(args.pheno), timeout = 120, n_cpu = 4, env = args.gsmap)
     cauchy_submitter = array_submitter('gsmap_cauchy_'+'_'.join(args.pheno), timeout = 10, n_cpu = 4, env = args.gsmap, dependency=ldsc_submitter)
     rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 360, n_cpu = 48, env = args.gsmap, dependency=ldsc_submitter)
@@ -90,7 +90,7 @@ def main(args):
     return rpt_submitter
 
 if __name__ == '__main__':  
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing LDSC summary statistics',
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     for arg in ['_in','st','gsmap','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from ._utils import logger, cmdhistory
+    from _utils import logger, cmdhistory
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

@@ -30,7 +30,7 @@ parser.add_argument('-o','--out', dest = 'out', help = 'output directory')
 # always overwrites
 args = parser.parse_args()
 
-from ._utils import logger, path
+from _utils import logger, path
 logger.splash(args)
 norm = path.normaliser()
 

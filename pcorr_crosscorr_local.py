@@ -40,7 +40,7 @@ def compatible_roi(a, b):
 def main(args):
     import pandas as pd
     import scipy.stats as sts
-    from ._utils.path import normaliser
+    from _utils.path import normaliser
     norm = normaliser()
     
     for g2 in args.p2:
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     for arg in ['_in','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/*',__file__)

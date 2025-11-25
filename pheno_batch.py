@@ -11,7 +11,7 @@ def main(args):
   else: fs = ''
   
   # array submitter
-  from ._utils.slurm import array_submitter
+  from _utils.slurm import array_submitter
   submitter = array_submitter(
     name = 'pheno',
     partition = 'icelake',
@@ -28,7 +28,7 @@ def main(args):
     
 if __name__ == '__main__':
     # input argument processing
-    from ._utils.slurm import slurm_parser   
+    from _utils.slurm import slurm_parser   
     parser = slurm_parser(description='This programme processes the connectome '+
                                ' for one single individual for imaging derived phenotypes')
     parser.add_argument('-i','--in',dest = '_in', help =
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','subjs']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
         
-    from ._utils import cmdhistory, path, logger
+    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

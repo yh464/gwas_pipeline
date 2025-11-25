@@ -21,14 +21,14 @@ def main(args):
     force = '-f' if args.force else ''
     
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'annot_manhattan_{args.pheno[0]}',
         timeout = 60,
         # debug = True
     )
     
-    from ._utils.path import find_gwas
+    from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, dirname = args.gwa, ext = 'fastGWA', long = True)
     for g, p in pheno:
         # make output directory
@@ -40,7 +40,7 @@ def main(args):
     submitter.submit()
         
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'Plots Manhattan plots for gene-level statistics')
     parser.add_argument('pheno', help = 'Phenotype group', nargs = '*')
     parser.add_argument('--gwa', help = 'Directory to GWAS sumstats, for directory scanning',
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     for arg in ['gwa','magma','smr','ref','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
         
-    from ._utils import cmdhistory, path, logger
+    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

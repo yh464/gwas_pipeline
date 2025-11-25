@@ -21,13 +21,13 @@ import numpy as np
 from tqdm import tqdm
 import scanpy as sc
 import scdrs, gget, gc, warnings, os, argparse
-from ._utils.genetools import ensg_to_name
+from _utils.genetools import ensg_to_name
 from multiprocessing import Pool, cpu_count
-from ._utils.gadgets import namespace
+from _utils.gadgets import namespace
 import matplotlib.pyplot as plt
-from ._plots.aes import redblue_alpha
-from ._plots import scatterplot_noaxis, temporal_regplot
-from ._utils.gadgets import mv_symlink
+from _plots.aes import redblue_alpha
+from _plots import scatterplot_noaxis, temporal_regplot
+from _utils.gadgets import mv_symlink
 
 # downstream analyses
 def _stratify(df_score, adata, label):
@@ -111,7 +111,7 @@ def downstream_enrichr(corr_df):
         summary = list(tqdm(p.imap(_enrichr, [corr_df.loc[i,:] for i in strata]), total = len(strata), desc = 'Conducting Enrichr analysis'))
     enrichr_summary = pd.concat(summary, axis = 0)
     
-    from ._plugins.enrichr import enrichr_to_revigo
+    from _plugins.enrichr import enrichr_to_revigo
     revigo_summary = enrichr_to_revigo(
         [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
         name_col = 'process', pval_col = 'p'
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     for arg in ['_in','h5ad','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from ._utils import cmdhistory
+    from _utils import cmdhistory
     cmdhistory.log()
     try: main(args)
     except: cmdhistory.errlog()

@@ -92,7 +92,7 @@ def main(args):
     h2_all = all_summary.pivot_table(values = 'h2', index = 'roi', columns = 'pheno')
     h2_all.index.name = 'label'
     
-    from ._utils.path import normaliser
+    from _utils.path import normaliser
     norm = normaliser()
     norm.normalise(all_summary).to_csv(f'{args.out}/local_h2_summary.txt', sep = '\t', index = False)
     norm.normalise(h2_all).to_csv(f'{args.out}/local_h2_summary.wide.txt', sep = '\t', index = False)
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     args._in = os.path.realpath(args._in)
     args.out = os.path.realpath(args.out)
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng/%reg_%maf.h2.log', __file__)

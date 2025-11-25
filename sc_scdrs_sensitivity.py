@@ -17,14 +17,14 @@ Requires following inputs:
 '''
 
 def main(args = None, **kwargs):
-    from ._utils.gadgets import namespace
+    from _utils.gadgets import namespace
     import os
     import scanpy as sc
     import scdrs
     import pandas as pd
     from tqdm import tqdm
     if args == None:
-        from ._utils.gadgets import namespace
+        from _utils.gadgets import namespace
         args = namespace(**kwargs)
 
     out_score = f'{args.out}.sensitivity.txt'
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     args.nsig = sorted(list(set(args.nsig))) # only unique elements
 
-    from ._utils import cmdhistory
+    from _utils import cmdhistory
     cmdhistory.log()
     try: main(args)
     except: cmdhistory.errlog()

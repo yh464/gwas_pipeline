@@ -20,11 +20,11 @@ import warnings
 from matplotlib.pylab import f
 
 def main(args):
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_lava_inrich_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         n_cpu = 1, timeout = 60, partition = 'sapphire')
     
-    from ._utils.path import find_gwas, pair_gwas
+    from _utils.path import find_gwas, pair_gwas
     exposures = find_gwas(args.p1, dirname = args.gwa, ext = 'fastGWA', clump = True)
     outcomes = find_gwas(args.p2, dirname = args.gwa, ext = 'fastGWA', clump = True)
     pair = pair_gwas(exposures, outcomes)
@@ -45,7 +45,7 @@ def main(args):
     submitter.submit()
 
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This scripts investigates interval-based enrichments for LAVA-identified genomic regions')
     parser.add_argument('-p1', nargs = '+', required = True, help = 'Exposures')
     parser.add_argument('-p2', nargs = '*', default = [], help = 'Outcomes, leave blank to run pairwise correlations across exposures')
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     for key in ['_in','gwa','inrich','out']:
         setattr(args, key, os.path.realpath(getattr(args, key)))
     
-    from ._utils import cmdhistory, logger
+    from _utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

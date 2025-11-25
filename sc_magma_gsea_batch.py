@@ -15,12 +15,12 @@ Requires following inputs:
 import os
 
 def main(args = None, **kwargs):
-    from ._utils.gadgets import namespace
+    from _utils.gadgets import namespace
     if args == None:
-        from ._utils.gadgets import namespace
+        from _utils.gadgets import namespace
         args = namespace(**kwargs)
 
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter('sc_magma_gsea_'+'_'.join(args.pheno),
         n_cpu = 1, timeout = 20, parallel = 4, modules = ['gcc/11'], env = 'base')
 
@@ -39,7 +39,7 @@ def main(args = None, **kwargs):
         cond_cols[gscore] = max(cell_type_cols, key = len) if len(cell_type_cols) > 0 else []
 
     # identify phenotypes
-    from ._utils.path import find_gwas, find_gene_sumstats
+    from _utils.path import find_gwas, find_gene_sumstats
     pheno = find_gwas(args.pheno, long = True)
 
     for g, p in pheno:
@@ -69,7 +69,7 @@ def main(args = None, **kwargs):
     return submitter
 
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs cell-type/pathway enrichments using MAGMA GSEA')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing gene-level summary statistics',
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     for arg in ['_in','gset','gscore','magma','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from ._utils import cmdhistory, logger
+    from _utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

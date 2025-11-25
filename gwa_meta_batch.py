@@ -17,7 +17,7 @@ def main(args):
   from fnmatch import fnmatch
   
   # array submitter
-  from ._utils.slurm import array_submitter
+  from _utils.slurm import array_submitter
   submitter = array_submitter(name = 'gwa_meta_'+'_'.join(args.dsets),timeout = 10)
   
   force = ' -f' if args.force else ''
@@ -53,7 +53,7 @@ def main(args):
   submitter.submit()
     
 if __name__ == '__main__':
-  from ._utils.slurm import slurm_parser
+  from _utils.slurm import slurm_parser
   parser = slurm_parser(description = 
     'This programme creates genetic correlation matrices for global phenotypes')
   parser.add_argument('dsets', nargs = '*',
@@ -74,7 +74,7 @@ if __name__ == '__main__':
   for arg in ['_in','metal']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
-  from ._utils import cmdhistory, path, logger
+  from _utils import cmdhistory, path, logger
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()

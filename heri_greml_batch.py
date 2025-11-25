@@ -15,7 +15,7 @@ def main(args):
     if len(flist) != 1: raise ValueError('Please give only ONE phenotype file')
     
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'greml_{args.pheno}', n_cpu = 32,
         timeout = 360, lim = 1)
@@ -72,7 +72,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    from ._utils.slurm import parser_config
+    from _utils.slurm import parser_config
 
     parser = argparse.ArgumentParser(description=
       'This programme runs GREML for any phenotype given as the 1st positional argument')
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','gcta','cov','qcov','grm','mb']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/%pheng.txt', __file__)

@@ -12,8 +12,8 @@ Requires following inputs:
 
 def main(args):
     import pandas as pd
-    from ._utils import path
-    from ._plots import corr_heatmap
+    from _utils import path
+    from _plots import corr_heatmap
     import scipy.stats as sts
     
     prefix = f'{args.out}/pcorr_'+'_'.join(args.p1)+'.'+ '_'.join(args.p2) 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     for arg in ['_in','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in+'/*',__file__)

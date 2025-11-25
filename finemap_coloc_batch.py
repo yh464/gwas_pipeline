@@ -23,8 +23,8 @@ def main(args):
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
 
     # scans directory for fastGWA files
-    from ._utils.path import find_gwas
-    from ._plugins.logparser import crosscorr_parse
+    from _utils.path import find_gwas
+    from _plugins.logparser import crosscorr_parse
     gwa = []
     if len(args.pheno) > 1 and len(args.filter) > 0:
         if any([not x in args.pheno for x in args.filter]):
@@ -50,7 +50,7 @@ def main(args):
     print(gwa)
     
     # identify blocks of fine-mapping segments
-    from ._plugins.logparser import parse_clump
+    from _plugins.logparser import parse_clump
     _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
     loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
     loci['START'] -= 5e5; loci['STOP'] += 5e5
@@ -71,7 +71,7 @@ def main(args):
     else: dependency = []
 
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'coloc_'+'_'.join(args.pheno),
         env = 'gentoolsr', n_cpu = 1,
@@ -110,7 +110,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(
       description = 'This programme batch runs the fine-map pipeline')
     parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         args.hyprcoloc = True
     args.pheno.sort()
 
-    from ._utils import path, cmdhistory, logger
+    from _utils import path, cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

@@ -42,8 +42,8 @@ def generate_gene_sets(gene_sumstats, args):
 def main(args):
     import os
     import pandas as pd
-    from ._utils.path import find_gwas, find_gene_sumstats
-    from ._utils.slurm import array_submitter
+    from _utils.path import find_gwas, find_gene_sumstats
+    from _utils.slurm import array_submitter
     pheno = find_gwas(args.pheno, long = True)
     submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 4, timeout = 720, env = 'gentoolspy')
 
@@ -92,7 +92,7 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':  
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025'])
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     for arg in ['_in','h5ad','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from ._utils import logger, cmdhistory
+    from _utils import logger, cmdhistory
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

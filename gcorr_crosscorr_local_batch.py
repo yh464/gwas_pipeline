@@ -18,7 +18,7 @@ def main(args):
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'gcorr_{args.p1[0]}_{args.p2[0]}',
         timeout = 10, mode = 'long',
@@ -82,7 +82,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This programme estimates genetic cross-correlation for regional phenotypes')
     parser.add_argument('-p1', nargs = '*', help = 'regional phenotypes',
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','ldsc']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path, logger
+    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

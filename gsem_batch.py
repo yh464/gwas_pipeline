@@ -123,7 +123,7 @@ def main(args):
     import hashlib
 
     # find GWAS summary stats
-    from ._utils.path import find_gwas
+    from _utils.path import find_gwas
     if not args.gwas:
         exposures = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude, long=True)
         exposures_short = find_gwas(args.p1, dirname=args._in, ext='sumstats', exclude = args.exclude)
@@ -139,7 +139,7 @@ def main(args):
         mediators = find_gwas(args.med, dirname=args.full, ext='fastGWA', exclude = args.exclude, long=True, se = True)
         covariates = find_gwas(args.cov, dirname=args.full, ext='fastGWA', exclude = args.exclude, long=True, se = True)
 
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     name = '_'.join(['gsem', args.p1[0]]+ args.p2 + ['cov'] + args.med + args.cov
         ) 
     if len(args.manual) > 0: name += os.path.basename(args.manual).replace('.mdl','')
@@ -166,7 +166,7 @@ def main(args):
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
 
     # if modelling exposure-outcome effects, use only correlated traits
-    from ._plugins.logparser import crosscorr_parse
+    from _plugins.logparser import crosscorr_parse
     if len(outcomes) > 0: exp_corr_out = crosscorr_parse(exposures_short, outcomes_short, logdir=args.rg)
     manual_kwd = {'heywood': True} if args.gwas else {}
     manual_kwd['silent'] = (len(outcomes) > 0)
@@ -260,7 +260,7 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'A flexible framework to estimate genomic SEM models')
     path = parser.add_argument_group('Path specifications')
     path.add_argument('-i','--in', dest = '_in', help = 'MUNGED GWAS summary statistics',
@@ -303,7 +303,7 @@ if __name__ == '__main__':
     for arg in ['_in', 'out', 'full', 'ref', 'ld', 'rg']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from ._utils import cmdhistory, path, logger
+    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

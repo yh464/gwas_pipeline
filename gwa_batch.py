@@ -15,7 +15,7 @@ Requires following inputs:
 
 def main(args):
   # array submitter
-  from ._utils.slurm import array_submitter
+  from _utils.slurm import array_submitter
   submitter = array_submitter(name = f'gwa_{args.pheno}',timeout = 90)
   
   # locate phenotype file
@@ -84,7 +84,7 @@ def main(args):
 
 if __name__ == '__main__':
   import argparse
-  from ._utils.slurm import parser_config
+  from _utils.slurm import parser_config
   # argument input
   parser = argparse.ArgumentParser(description=
     'This programme runs GWA for any phenotype given as the 1st positional argument')
@@ -127,7 +127,7 @@ if __name__ == '__main__':
   for arg in ['_in','out','gcta','dcov','qcov','grm','bed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
-  from ._utils import cmdhistory, path, logger
+  from _utils import cmdhistory, path, logger
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()

@@ -30,15 +30,15 @@ def lava_cmd(out, exp, cov, overlap, clump, task, outfile,
   return ' '.join(cmd)
 
 def main(args):
-  from ._utils.path import find_gwas, find_clump, pair_gwas
-  from ._plugins.logparser import crosscorr_parse
+  from _utils.path import find_gwas, find_clump, pair_gwas
+  from _plugins.logparser import crosscorr_parse
   import os
   from statsmodels.stats.moment_helpers import cov2corr
   import pandas as pd
   
   
   # array submitter
-  from ._utils.slurm import array_submitter
+  from _utils.slurm import array_submitter
   submitter = array_submitter(name = 'gcorr_lava_'+'_'.join(args.p1)+'_'+'_'.join(args.p2), 
     env = 'gentoolsr', n_cpu = 2, timeout = 240)
   tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
@@ -109,7 +109,7 @@ def main(args):
   submitter.submit()
 
 if __name__ == '__main__':
-  from ._utils.slurm import slurm_parser
+  from _utils.slurm import slurm_parser
   parser = slurm_parser(description = 'This script runs LAVA for local genetic correlation')
   parser.add_argument('-p1', nargs = '+', required = True, help = 'Exposures')
   parser.add_argument('-p2', nargs = '*', default = [],
@@ -137,7 +137,7 @@ if __name__ == '__main__':
   for arg in ['_in','out','rg','clump', 'ref']:
     setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
-  from ._utils import cmdhistory, path, logger
+  from _utils import cmdhistory, path, logger
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()

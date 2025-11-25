@@ -11,13 +11,13 @@ Requires following inputs:
 '''
 def main(args = None, **kwargs):
   import os
-  from ._utils.gadgets import namespace
+  from _utils.gadgets import namespace
   from hashlib import sha256
   if args == None: args = namespace(**kwargs) # used for API
   
   # find clumped loci
-  from ._utils.path import find_gwas
-  from ._plugins.logparser import parse_clump
+  from _utils.path import find_gwas
+  from _plugins.logparser import parse_clump
   pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', clump = True, long = True)
   _, loci = parse_clump(pheno, clump_dir = args.clump, pval = args.pval)
   loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
@@ -27,7 +27,7 @@ def main(args = None, **kwargs):
   tempfile = f'{tmpdir}/{sha256(repr(pheno).encode()).hexdigest()}.txt'
   loci.to_csv(tempfile, sep = '\t')
 
-  from ._utils.slurm import array_submitter
+  from _utils.slurm import array_submitter
   submitter = array_submitter(name = f'finemap_extract_locus_{args.pheno[0]}', n_cpu = 2, timeout = loci.shape[0]/3)
   for g, p in pheno:
     out_file = f'{args.out}/{g}/{p}_chr{loci.CHR.iloc[-1]}_{loci.START.iloc[-1]:.0f}_{loci.STOP.iloc[-1]:.0f}.txt'
@@ -40,7 +40,7 @@ def main(args = None, **kwargs):
 
 
 if __name__ == '__main__':
-  from ._utils.slurm import slurm_parser
+  from _utils.slurm import slurm_parser
   parser = slurm_parser(description = 'Extracts summary statistics for significant loci for colocalisation analysis')
   parser.add_argument('pheno', nargs = '*', default = [], help = 'Phenotypes to colocalise')
   parser.add_argument('-i','--in', dest = '_in', help = 'Input directory of GWAS summary stats',
@@ -57,7 +57,7 @@ if __name__ == '__main__':
   for arg in ['_in','out','clump']:
     setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
-  from ._utils import cmdhistory, logger
+  from _utils import cmdhistory, logger
   logger.splash(args)
   cmdhistory.log()
   try: main(args)

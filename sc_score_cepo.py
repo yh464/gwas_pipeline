@@ -140,7 +140,7 @@ if __name__ == '__main__':
     import os
     args._in = os.path.realpath(args._in); args.out = os.path.realpath(args.out)
 
-    from ._utils import logger, cmdhistory
+    from _utils import logger, cmdhistory
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

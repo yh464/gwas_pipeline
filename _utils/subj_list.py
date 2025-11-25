@@ -53,7 +53,7 @@ if __name__ == '__main__':
         default = False, help = 'force overwrite')
     args = parser.parse_args()
     
-    from ._utils import cmdhistory
+    from _utils import cmdhistory
     cmdhistory.log()
     try: main(args)
     except: cmdhistory.errlog()

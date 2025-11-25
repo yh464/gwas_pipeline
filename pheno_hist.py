@@ -34,7 +34,7 @@ if __name__ == '__main__':
   import os
   args._in = os.path.realpath(args._in)
   
-  from ._utils import cmdhistory, path
+  from _utils import cmdhistory, path
   cmdhistory.log()
   proj = path.project()
   proj.add_input(args._in, __file__)

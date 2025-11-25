@@ -64,7 +64,7 @@ if __name__ == '__main__':
     args._in = os.path.realpath(args._in)
     if type(args.out) == type(None): args.out = f'{args._in}/qc/'
     
-    from ._utils import cmdhistory
+    from _utils import cmdhistory
     cmdhistory.log()
     try: main(args)
     except: cmdhistory.errlog()

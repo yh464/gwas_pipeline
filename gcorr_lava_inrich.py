@@ -37,7 +37,7 @@ def parse_lava_output(file):
 
 def main(args):
     import pandas as pd
-    from ._plugins.inrich import inrich
+    from _plugins.inrich import inrich
     lava_results = parse_lava_output(args._in)
     all_main = []; all_igt = []
 

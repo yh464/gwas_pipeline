@@ -22,7 +22,7 @@ def parse_hyprcoloc_tabular(file):
 def parse_hyprcoloc_cluster(entry, pheno):
     '''
     entry: pandas DataFrame single row, with following columns: 'traits', 'candidate_snp';
-    groups: a list output from ._utils.path.find_gwas(long = False)
+    groups: a list output from _utils.path.find_gwas(long = False)
     '''
     import pandas as pd
     import numpy as np
@@ -46,10 +46,10 @@ def main(args):
     import os
     import pandas as pd
     from fnmatch import fnmatch
-    from ._utils.path import normaliser, find_gwas
-    from ._utils.genetools import locus_to_name
-    from ._plugins.enrichr import enrichr_list, enrichr_to_revigo
-    from ._plugins.inrich import inrich
+    from _utils.path import normaliser, find_gwas
+    from _utils.genetools import locus_to_name
+    from _plugins.enrichr import enrichr_list, enrichr_to_revigo
+    from _plugins.inrich import inrich
 
     pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
     pheno_str = '_'.join([g for g,_ in pheno])
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     else: args.out = os.path.realpath(args.out)
     args.gwa = os.path.realpath(args.gwa)
     
-    from ._utils import path, cmdhistory, logger
+    from _utils import path, cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

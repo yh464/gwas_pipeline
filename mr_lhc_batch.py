@@ -17,7 +17,7 @@ def main(args):
     import pandas as pd
     
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'mr_lhc_'+'_'.join(args.p2), env = 'gentoolsr',
         timeout = 240, n_cpu = 2,
@@ -95,7 +95,7 @@ def main(args):
     submitter.submit()
     
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This script batch runs MR for groups of phenotypes')
     
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     try: args.n2 = int(args.n2)
     except: args.n2 = os.path.realpath(args.n2)
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(f'{args._in}/{args.p1}/*.{args.ext1}', __file__)

@@ -41,8 +41,8 @@ def main(args):
       if o != 0: raise Exception(f'ERROR for {args._in} at step 2: extract snpvar')
 
     import pandas as pd
-    from ._plugins.logparser import parse_clump_file, overlap_clumps
-    from ._utils.path import find_bed
+    from _plugins.logparser import parse_clump_file, overlap_clumps
+    from _utils.path import find_bed
     # identify SNPs that need to be clumped
     clumps = parse_clump_file(args.clump).sort_values(['CHR','POS']).reset_index(drop=True)
     clumps['group'] = prefix; clumps['pheno'] = os.path.basename(os.path.dirname(args._in))
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     for arg in ['_in','clump','out','bfile']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from ._utils import logger
+    from _utils import logger
     logger.splash(args)
 
     main(args)

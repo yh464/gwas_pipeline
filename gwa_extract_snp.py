@@ -75,7 +75,7 @@ def search_snp(x, tmpdir, args):
 def main(args):
     import os
     import pandas as pd
-    from ._utils.path import normaliser
+    from _utils.path import normaliser
     
     norm = normaliser()
     all_files = []
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     if args.out != None: args.out = os.path.realpath(args.out)
     args.pheno.sort()
     
-    from ._utils import cmdhistory, logger
+    from _utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

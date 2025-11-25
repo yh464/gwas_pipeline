@@ -167,7 +167,7 @@ if __name__ == '__main__':
     for arg in ['magma','smr','ref','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
         
-    from ._utils import cmdhistory, logger
+    from _utils import cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     try: main(args)

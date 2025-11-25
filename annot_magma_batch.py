@@ -18,12 +18,12 @@ def main(args):
     from fnmatch import fnmatch
     
     # array submitter
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'annot_magma_'+'_'.join(args.pheno),timeout = 360)
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
     # find phenotypes
-    from ._utils.path import find_gwas
+    from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, long = True)
 
     # find annotations
@@ -42,7 +42,7 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(
       description = 'This file batch runs the MAGMA pipeline for all IDPs')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     for arg in ['_in','annot','bfile','out','magma']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path, logger
+    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

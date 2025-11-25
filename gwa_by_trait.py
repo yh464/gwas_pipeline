@@ -113,7 +113,7 @@ if __name__ == '__main__':
   for arg in ['_in','out','gcta','dcov','qcov','grm','bed','xbed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
-  from ._utils import logger
+  from _utils import logger
   logger.splash(args)
   
   main(args)

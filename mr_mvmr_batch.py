@@ -9,8 +9,8 @@ Scans the entire directory for GWAS summary stats of the same data extension.
 '''
 
 def main(args):
-    from ._plugins.logparser import crosscorr_parse
-    from ._utils.path import find_gwas
+    from _plugins.logparser import crosscorr_parse
+    from _utils.path import find_gwas
     import warnings
     
     # extract SNPs
@@ -26,7 +26,7 @@ def main(args):
     
     # array submitter
     timeout = min(sum([len(x[1]) for x in exposures])*5,720)
-    from ._utils.slurm import array_submitter
+    from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'mvmr_{args.p1[0]}.'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 1, 
@@ -85,7 +85,7 @@ def main(args):
     return submitter
 
 if __name__ == '__main__':
-    from ._utils.slurm import slurm_parser
+    from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 
       'This script batch runs Multivariable MR for groups of phenotypes')
     path_spec = parser.add_argument_group('Path specifications')
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','clump', 'gwa','rg']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path, logger
+    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

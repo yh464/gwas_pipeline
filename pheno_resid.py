@@ -73,7 +73,7 @@ if __name__ == '__main__':
     for arg in ['_in','out','cov','qcov']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from ._utils import cmdhistory, path
+    from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
     proj.add_input(args._in, __file__)
