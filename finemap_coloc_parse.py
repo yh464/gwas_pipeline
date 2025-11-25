@@ -101,7 +101,7 @@ def main(args):
         revigo_res.append(revigo_result[0].assign(traits = phen_group))
 
     with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
-        inrich_res = list(tqdm(pool.imap(_inrich, 
+        inrich_res = list(tqdm(pool.starmap(_inrich, 
             [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
             total = orig.traits.unique().size))
     inrich_main = [x[0] for x in inrich_res]; inrich_igt = [x[1] for x in inrich_res]
@@ -114,10 +114,10 @@ def main(args):
     norm.normalise(orig).to_csv(f'{args.out}/{pheno_str}_coloc_raw.txt', sep = '\t', index = True)
     norm.normalise(summary).to_csv(f'{args.out}/{pheno_str}_coloc_summary.txt', sep = '\t', index = True)
     norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
-    norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = True)
-    norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = True)
-    norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = True)
-    norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = True)
+    norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = False)
+    norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = False)
+    norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = False)
+    norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = False)
     return
 
 if __name__ == '__main__':
