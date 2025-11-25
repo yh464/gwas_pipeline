@@ -61,15 +61,23 @@ def main(args):
     pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
     pheno_str = '_'.join([g for g,_ in pheno])
     in_dir = f'{args._in}/{pheno_str}'  
-    
+
+    # identify blocks of fine-mapping segments
+    gwa = find_gwas(*args.pheno, dirname = args._in, long = True)
+    from _utils.plugins.logparser import parse_clump
+    _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
+    loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
+    loci['START'] -= 5e5; loci['STOP'] += 5e5
+    loci = loci.dropna().reset_index(drop=True)
+
     orig = []
     summary = []
     clusters = []
-    for x in sorted(os.listdir(in_dir)):
-        if not fnmatch(x, '*hyprcoloc.txt'): continue
-        # parse chromosomal position
-        tmp = x.split('_')
-        chrom = int(tmp[0][3:]); start = int(tmp[1]); end = int(tmp[2])
+
+    for _, row in loci.iterrows():
+        chrom = int(row['CHR']); start = int(row['START']); end = int(row['STOP'])
+        x = f'chr{chrom}_{start:.0f}_{end:.0f}_hyprcoloc.txt'
+        if not os.path.isfile(f'{in_dir}/{x}'): continue
         
         df = parse_hyprcoloc_tabular(f'{in_dir}/{x}')
         for i in range(df.shape[0]):

@@ -13,18 +13,14 @@ Required input:
     clump output (sentinel variants)
 '''
 
-def main(args):
-    import pandas as pd
-    from hashlib import sha256
-    from time import perf_counter as t
-    tic = t()
-    force = '-f' if args.force else ''
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
-    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+import pandas as pd
+from hashlib import sha256
+from time import perf_counter as t
+from _utils.path import find_gwas
+from _utils.plugins.logparser import crosscorr_parse
 
+def find_loci(args):
     # scans directory for fastGWA files
-    from _utils.path import find_gwas
-    from _utils.plugins.logparser import crosscorr_parse
     gwa = []
     if len(args.pheno) > 1 and len(args.filter) > 0:
         if any([not x in args.pheno for x in args.filter]):
@@ -46,16 +42,24 @@ def main(args):
             gwa.append((x,y))
     else:
         gwa = find_gwas(*args.pheno, dirname = args._in, long = True)
-    print(f'Found {len(gwa)} GWAS summary statistics files.')
-    print(gwa)
-    
+
     # identify blocks of fine-mapping segments
     from _utils.plugins.logparser import parse_clump
     _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
     loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
     loci['START'] -= 5e5; loci['STOP'] += 5e5
     loci = loci.dropna().reset_index(drop=True)
+    return gwa, loci
+
+def main(args):
+    tic = t()
+    force = '-f' if args.force else ''
+    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
+    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+    gwa, loci = find_loci(args)
     toc = t()-tic
+    print(f'Found {len(gwa)} GWAS summary statistics files.')
+    print(gwa)
     print(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
     
     # check cache
