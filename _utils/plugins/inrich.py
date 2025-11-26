@@ -52,9 +52,9 @@ def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop',
     Perform interval-based enrichment analysis using INRICH based on a dataframe
     '''
     df.columns = df.columns.str.lower().str.replace('_bp','')
-    chrom_col = chrom_col.lower()
-    start_col = start_col.lower()
-    stop_col = stop_col.lower()
+    chrom_col = chrom_col.lower().replace('_bp','')
+    start_col = start_col.lower().replace('_bp','')
+    stop_col = stop_col.lower().replace('_bp','')
 
     # prepare temp files
     tmpdir = tempfile.mkdtemp()
