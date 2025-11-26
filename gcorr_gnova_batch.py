@@ -42,7 +42,7 @@ def main(args):
         outdir = f'{args.out}/{g1}.{g2}'
         os.makedirs(outdir, exist_ok = True)
         for gene_set in gene_sets:
-            out_prefix = f'{outdir}/{g1}_{p1}.{g2}_{p2}.{gene_set}.gnova'
+            out_prefix = f'{outdir}/{g1}_{p1}.{g2}_{p2}.{gene_set}.gnova.txt'
             ld_file = f'{args.gene_set}/{gene_set}.gnova.ldscore'
             if (not args.force) and os.path.isfile(f'{out_prefix}'): continue
             cmd = ['python',f'{args.gnova}/GNOVA/gnova.py', '--bfile', args.bfile,
