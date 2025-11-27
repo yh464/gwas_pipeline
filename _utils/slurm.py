@@ -47,6 +47,7 @@ class array_submitter():
                  n_node = 1,
                  n_task = 1,
                  n_cpu = 1,
+                 n_gpu = 0,
                  log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
@@ -89,6 +90,7 @@ class array_submitter():
         self.n_task = n_task
         self.n_cpu = n_cpu
         if n_cpu < 20: arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 500
+        self.n_gpu = n_gpu
         self.arraysize = arraysize # the default array job size limit is 2000 for SLURM
         self.email = '--mail-type=ALL' if email else ''
         self.account = account
@@ -113,6 +115,9 @@ class array_submitter():
         # read command line args before specifying limit of commands per file
         import __main__
         if 'args' in dir(__main__): self.config(**vars(__main__.args))
+
+        # if GPU > 0, adjust the partition
+        if self.n_gpu > 0: self.partition = 'ampere'
 
         # adjust parallel processes based on available CPUs
         if self.n_cpu < cpu_avail[self.partition]:
@@ -147,11 +152,11 @@ class array_submitter():
     # change settings
     def config(self, **kwargs):
         valid_keys = [
-            'name', 'debug','partition', 'timeout','wallclock','n_node', 'n_task','n_cpu',
+            'name', 'debug','partition', 'timeout','wallclock','n_node', 'n_task','n_cpu', 'n_gpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
             'tmpdir','lim','intr','dependency', 'parallel'
             ]
-        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'timeout', 'arraysize', 'lim', 'wallclock','parallel']
+        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'n_gpu', 'timeout', 'arraysize', 'lim', 'wallclock','parallel']
         for key, value in kwargs.items():
             if key in numeric_keys and value != None and value.startswith('x'):
                 # if the value starts with 'x', it is a multiplier
@@ -248,6 +253,8 @@ class array_submitter():
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {n_cpu}', file = wrap)
+        if self.n_gpu > 0:
+            print(f'#SBATCH --gres=gpu:{self.n_gpu}', file = wrap)
         time = self.timeout * self._count
         print(f'#SBATCH -t {int(time)}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
@@ -305,6 +312,7 @@ class array_submitter():
         print(f'\n\nbash {self.tmpdir}/{self.name}_0.sh\n\n')
         
         dep_str = self._write_dep_str() # this will submit dependencies which will be printed first in debug mode
+        if self.n_gpu > 0: dep_str += f' --gres=gpu:{self.n_gpu}'
 
         # debug command also outputs the submit command
         time = self.timeout * self._count
@@ -328,6 +336,8 @@ class array_submitter():
         msg.append(f'    Partition:  {self.partition}')
         msg.append(f'    Timeout:    {self.timeout * math.ceil(self._count / self.parallel)} minutes')
         msg.append(f'    CPUs:       {n_cpu}')
+        if self.n_gpu > 0:
+            msg.append(f'    GPUs:       {self.n_gpu}')
         msg.append(f'    # files:    {self._nfiles}')
         msg.append(f'    Parallel:   {self.parallel}')
         msg.append(f'    Dependency: {re.sub("^-d ","", self._write_dep_str()) if self._write_dep_str() != "" else "None"}')
@@ -345,10 +355,13 @@ class array_submitter():
         account = f'-A {self.account}' if self.account else ''
         
         from subprocess import check_output
+        dep_str = self._write_dep_str()
+        if self.n_gpu > 0: dep_str += f' --gres=gpu:{self.n_gpu}'
+
         msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
                   f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles-1} {self._write_dep_str()} {self._wrap_name}', shell = True
+                  f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}', shell = True
                   ).decode().strip()
         jobid = int(msg.split()[-1]) # raises an error if sbatch fails
         self._splash(jobid)
@@ -381,6 +394,7 @@ class slurm_parser(argparse.ArgumentParser):
         slurm.add_argument('--partition', help = 'partition')
         slurm.add_argument('--account', help = 'account to charge')
         slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
+        slurm.add_argument('--n_gpu', help = 'number of GPUs per task')
         slurm.add_argument('--n_node', help = 'number of nodes needed')
         slurm.add_argument('--n_task', help = 'number of tasks per job')
         slurm.add_argument('--arraysize', help = 'number of files per array job')
