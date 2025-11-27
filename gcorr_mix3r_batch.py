@@ -30,41 +30,41 @@ def main(args = None, **kwargs):
     os.makedirs(tmpdir, exist_ok = True)
     config = f'{tmpdir}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.config.json'
     with open(config, 'w') as f:
-        print('{', file = f)
-        print(f'    "sumstats: [', file = f)
-        for g, p in pheno:
-            print(f'        "{args._in}/{g}/{p}.sumstats",', file = f)
-        print(f'    ],', file = f)
-        print(
-'''
+        print(f'''
+{{
+    "sumstats": [
+        "{args._in}/{pheno[0][0]}/{pheno[0][1]}.sumstats",
+        "{args._in}/{pheno[1][0]}/{pheno[1][1]}.sumstats",
+        "{args._in}/{pheno[2][0]}/{pheno[2][1]}.sumstats"
+    ],
     "template_dir": "/cluster/projects/p33/users/alexeas/x3mix/data/template/ukb",
     "nbin_het_hist": 64,
 
-    "out": "''' + out_file + '''",
+    "out": "{out_file}",
 
-    "snp_filters": {
+    "snp_filters": {{
         "chromosomes": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],
         "maf_thresh": 0.05,
         "info_thresh": 0.8,
         "z_thresh": 32,
         "exclude_regions": ["6:25000000-34000000"]
-    },
+    }},
 
-    "pruning": {
+    "pruning": {{
         "do_pruning": true,
         "r2_prune_thresh": 0.8,
         "n_random": 300000,
         "rand_prune_seed": 1
-    },
+    }},
 
-    "optimization": {
+    "optimization": {{
         "maxiter_1d_glob": 128,
         "maxiter_1d_loc": 200,
         "maxiter_2d_glob": 128,
         "maxiter_2d_loc": 200,
         "maxiter_3d": 16
-    }
-}
+    }}
+}}
 ''', file = f)
     
     cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
