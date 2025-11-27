@@ -71,7 +71,8 @@ class array_submitter():
             'icelake-himem': 1,
             'icelake': 1,
             'cclake': 1,
-            'cclake-himem': 1
+            'cclake-himem': 1,
+            'ampere': 1
         }
 
         self._full_name = name
