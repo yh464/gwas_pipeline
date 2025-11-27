@@ -35,36 +35,37 @@ def main(args = None, **kwargs):
         for g, p in pheno:
             print(f'        "{args._in}/{g}/{p}.sumstats",', file = f)
         print(f'    ],', file = f)
-        print('''
-                "template_dir": "/cluster/projects/p33/users/alexeas/x3mix/data/template/ukb",
-                "nbin_het_hist": 64,
+        print(
+'''
+    "template_dir": "/cluster/projects/p33/users/alexeas/x3mix/data/template/ukb",
+    "nbin_het_hist": 64,
 
-                "out": "''' + out_file + '''",
+    "out": "''' + out_file + '''",
 
-                "snp_filters": {
-                    "chromosomes": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],
-                    "maf_thresh": 0.05,
-                    "info_thresh": 0.8,
-                    "z_thresh": 32,
-                    "exclude_regions": ["6:25000000-34000000"]
-                },
+    "snp_filters": {
+        "chromosomes": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],
+        "maf_thresh": 0.05,
+        "info_thresh": 0.8,
+        "z_thresh": 32,
+        "exclude_regions": ["6:25000000-34000000"]
+    },
 
-                "pruning": {
-                    "do_pruning": true,
-                    "r2_prune_thresh": 0.8,
-                    "n_random": 300000,
-                    "rand_prune_seed": 1
-                },
+    "pruning": {
+        "do_pruning": true,
+        "r2_prune_thresh": 0.8,
+        "n_random": 300000,
+        "rand_prune_seed": 1
+    },
 
-                "optimization": {
-                    "maxiter_1d_glob": 128,
-                    "maxiter_1d_loc": 200,
-                    "maxiter_2d_glob": 128,
-                    "maxiter_2d_loc": 200,
-                    "maxiter_3d": 16
-                }
-            }
-            ''', file = f)
+    "optimization": {
+        "maxiter_1d_glob": 128,
+        "maxiter_1d_loc": 200,
+        "maxiter_2d_glob": 128,
+        "maxiter_2d_loc": 200,
+        "maxiter_3d": 16
+    }
+}
+''', file = f)
     
     cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
     submitter = array_submitter('mix3r', partition = 'sapphire', n_cpu = 6, timeout = 720,
