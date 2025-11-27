@@ -69,7 +69,7 @@ def main(args = None, **kwargs):
     
     cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
     submitter = array_submitter('mix3r', partition = 'ampere', n_cpu = 6, timeout = 720,
-        env = args.mix3r)
+        env = args.mix3r, n_gpu = 1)
     submitter.add(cmd)
     submitter.submit()
 
