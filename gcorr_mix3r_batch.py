@@ -37,7 +37,7 @@ def main(args = None, **kwargs):
         "{args._in}/{pheno[1][0]}/{pheno[1][1]}.sumstats",
         "{args._in}/{pheno[2][0]}/{pheno[2][1]}.sumstats"
     ],
-    "template_dir": "/cluster/projects/p33/users/alexeas/x3mix/data/template/ukb",
+    "template_dir": "{args.mix3r}/template",
     "nbin_het_hist": 64,
 
     "out": "{out_file}",
