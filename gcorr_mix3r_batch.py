@@ -74,7 +74,7 @@ def main(args = None, **kwargs):
 
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
-    parser = slurm_parser('This script runs mix3r on 3 GWAS summary statistics')
+    parser = slurm_parser(description = 'This script runs mix3r on 3 GWAS summary statistics')
     parser.add_argument('pheno', type = str, nargs = '*', help = 'Phenotypes, exactly 3 traits')
     parser.add_argument('-i', '--in', dest = '_in', type = str, help = 'Input directory',
         default = '/rds/project/rds-Q6dKROTNf6s/Data_Users/yh464/gcorr/ldsc_sumstats')
