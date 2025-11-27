@@ -18,7 +18,7 @@ from _utils.slurm import array_submitter
 def main(args = None, **kwargs):
     if args == None: args = namespace(**kwargs)
 
-    pheno = find_gwas(args.pheno, dirname = args._in, long = True)
+    pheno = find_gwas(args.pheno, dirname = args._in, long = True, ext = 'sumstats')
     if len(pheno) != 3:
         raise ValueError(f'Expecting 3 GWAS files for mix3r, found {len(pheno)}')
     os.makedirs(args.out, exist_ok = True)
