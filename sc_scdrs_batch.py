@@ -95,7 +95,7 @@ if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
-    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025'])
+    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025','keefe_2025'])
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing gene-level summary statistics',
         default = '../annot/magma')
     parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG')
@@ -109,9 +109,11 @@ if __name__ == '__main__':
         type = int, default = 1000)
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
-    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
-        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
+        'subcluster_identity_broad','subcluster_identity', # keefe
+        ])
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')

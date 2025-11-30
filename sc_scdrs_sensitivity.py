@@ -66,9 +66,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('This script runs cell-type enrichments using scDRS')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input gene list and weights', required = True)
     parser.add_argument('--h5ad', help = 'Input h5ad single-cell multiomics dataset', required = True)
-    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
-        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
+        'subcluster_identity_broad','subcluster_identity', # keefe
+        ])
     parser.add_argument('-n','--nsig', help = 'Number of significant genes', nargs = '*', type = int,
         default = [100, 200, 500, 1000, 2000])
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
