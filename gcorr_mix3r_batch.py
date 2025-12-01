@@ -24,6 +24,7 @@ def main(args = None, **kwargs):
 
     for i in range(0, len(args.pheno), 3):
         pheno = find_gwas(args.pheno[i:i+3], dirname = args._in, long = True, ext = 'sumstats')
+        print(pheno)
         out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
 
         if os.path.isfile(out_file) and not args.force: return
