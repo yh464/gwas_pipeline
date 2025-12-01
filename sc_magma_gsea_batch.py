@@ -52,12 +52,12 @@ def main(args = None, **kwargs):
         for gset, gset_prefix in gsets:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gset_prefix}'
             if os.path.isfile(f'{out_prefix}.gsa.out') and not args.force: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --set-annot {gset} --out {out_prefix} --settings abbreviate 0')
+            submitter.add(f'{args.magma} --gene-results {sumstat} --set-annot {gset} --out {out_prefix} --settings abbreviate=0')
         
         for gscore, gscore_prefix in gscores:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}'
             if os.path.isfile(f'{out_prefix}.gsa.out') and not args.force: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --out {out_prefix} --settings abbreviate 0')
+            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --out {out_prefix} --settings abbreviate=0')
 
         for gscore, gscore_prefix in gscores:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}.cond'
