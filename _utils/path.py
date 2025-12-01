@@ -260,7 +260,7 @@ class normaliser():
                     series = '_' + series + '_'
                     series = series.str.replace(f'_{x}_',f'_{y}_', regex = True, case = False).str.replace(
                     f' {x}_',f' {y}_', regex = True, case = False).str.removeprefix('_').str.removesuffix('_')
-                return series.tolist()
+            return series.tolist()
         except: return input_list
 
     def _normalise_df(self, df_in, quickmap = False):
