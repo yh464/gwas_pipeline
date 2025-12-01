@@ -145,7 +145,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val', k
         temp_df = enrichr_df.loc[:,[name_col, pval_col]].copy()
         temp_df['go_id'] = temp_df[name_col].str.extract(r'(GO:\d+)')
         buffer = io.StringIO()
-        temp_df.loc[:,['go_id', pval_col]].to_csv(buffer, index = False, header = False, sep = '\t')
+        temp_df.loc[temp_df[pval_col] < 0.05,['go_id', pval_col]].to_csv(buffer, index = False, header = False, sep = '\t')
         revigo_inputs.append(buffer.getvalue())
         del buffer
 
