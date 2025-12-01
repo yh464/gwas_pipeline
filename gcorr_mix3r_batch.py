@@ -18,13 +18,12 @@ from _utils.slurm import array_submitter
 def main(args = None, **kwargs):
     if args == None: args = namespace(**kwargs)
 
-    pheno_groups = find_gwas(args.pheno, dirname = args._in, long = True, ext = 'sumstats')
-    if len(pheno_groups) % 3 != 0:
-        raise ValueError(f'Expecting 3 GWAS files per group for mix3r, found {len(pheno_groups)}')
+    if len(args.pheno) % 3 != 0:
+        raise ValueError(f'Expecting 3 GWAS files per group for mix3r, found {len(args.pheno)}')
     os.makedirs(args.out, exist_ok = True)
 
-    for i in range(0, len(pheno_groups), 3):
-        pheno = [pheno_groups[i], pheno_groups[i+1], pheno_groups[i+2]]
+    for i in range(0, len(args.pheno), 3):
+        pheno = find_gwas(args.pheno[i:i+3], dirname = args._in, long = True, ext = 'sumstats')
         out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
 
         if os.path.isfile(out_file) and not args.force: return
