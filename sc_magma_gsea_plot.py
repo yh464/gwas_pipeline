@@ -86,7 +86,7 @@ def process_pheno(gsets, g, p, args):
     most_sig = pd.concat(most_sig, axis = 0) if len(most_sig) > 0 else None
     if len(all_gsets) == 0: return None
     all_gsets = pd.concat(all_gsets, axis = 0)
-    all_gsets.to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
+    normaliser().normalise(all_gsets).to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
     return all_gsets, most_sig
 
 def main(args):
