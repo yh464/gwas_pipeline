@@ -18,59 +18,62 @@ from _utils.slurm import array_submitter
 def main(args = None, **kwargs):
     if args == None: args = namespace(**kwargs)
 
-    pheno = find_gwas(args.pheno, dirname = args._in, long = True, ext = 'sumstats')
-    if len(pheno) != 3:
-        raise ValueError(f'Expecting 3 GWAS files for mix3r, found {len(pheno)}')
+    pheno_groups = find_gwas(args.pheno, dirname = args._in, long = True, ext = 'sumstats')
+    if len(pheno_groups) % 3 != 0:
+        raise ValueError(f'Expecting 3 GWAS files per group for mix3r, found {len(pheno_groups)}')
     os.makedirs(args.out, exist_ok = True)
-    out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
 
-    if os.path.isfile(out_file) and not args.force: return
+    for i in range(0, len(pheno_groups), 3):
+        pheno = [pheno_groups[i], pheno_groups[i+1], pheno_groups[i+2]]
+        out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
 
-    tmpdir = '/rds/user/yh464/hpc-work/tmp/mix3r'
-    os.makedirs(tmpdir, exist_ok = True)
-    config = f'{tmpdir}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.config.json'
-    with open(config, 'w') as f:
-        print(f'''
-{{
-    "sumstats": [
-        "{args._in}/{pheno[0][0]}/{pheno[0][1]}.sumstats",
-        "{args._in}/{pheno[1][0]}/{pheno[1][1]}.sumstats",
-        "{args._in}/{pheno[2][0]}/{pheno[2][1]}.sumstats"
-    ],
-    "template_dir": "{args.mix3r}/template",
-    "nbin_het_hist": 64,
+        if os.path.isfile(out_file) and not args.force: return
 
-    "out": "{out_file}",
+        tmpdir = '/rds/user/yh464/hpc-work/tmp/mix3r'
+        os.makedirs(tmpdir, exist_ok = True)
+        config = f'{tmpdir}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.config.json'
+        with open(config, 'w') as f:
+            print(f'''
+    {{
+        "sumstats": [
+            "{args._in}/{pheno[0][0]}/{pheno[0][1]}.sumstats",
+            "{args._in}/{pheno[1][0]}/{pheno[1][1]}.sumstats",
+            "{args._in}/{pheno[2][0]}/{pheno[2][1]}.sumstats"
+        ],
+        "template_dir": "{args.mix3r}/template",
+        "nbin_het_hist": 64,
 
-    "snp_filters": {{
-        "chromosomes": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],
-        "maf_thresh": 0.05,
-        "info_thresh": 0.8,
-        "z_thresh": 32,
-        "exclude_regions": ["6:25000000-34000000"]
-    }},
+        "out": "{out_file}",
 
-    "pruning": {{
-        "do_pruning": true,
-        "r2_prune_thresh": 0.8,
-        "n_random": 300000,
-        "rand_prune_seed": 1
-    }},
+        "snp_filters": {{
+            "chromosomes": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],
+            "maf_thresh": 0.05,
+            "info_thresh": 0.8,
+            "z_thresh": 32,
+            "exclude_regions": ["6:25000000-34000000"]
+        }},
 
-    "optimization": {{
-        "maxiter_1d_glob": 128,
-        "maxiter_1d_loc": 200,
-        "maxiter_2d_glob": 128,
-        "maxiter_2d_loc": 200,
-        "maxiter_3d": 16
+        "pruning": {{
+            "do_pruning": true,
+            "r2_prune_thresh": 0.8,
+            "n_random": 300000,
+            "rand_prune_seed": 1
+        }},
+
+        "optimization": {{
+            "maxiter_1d_glob": 128,
+            "maxiter_1d_loc": 200,
+            "maxiter_2d_glob": 128,
+            "maxiter_2d_loc": 200,
+            "maxiter_3d": 16
+        }}
     }}
-}}
-''', file = f)
-    
-    cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
-    submitter = array_submitter('mix3r', partition = 'ampere', n_cpu = 6, timeout = 720,
-        env = args.mix3r, n_gpu = 1)
-    submitter.add(cmd)
+    ''', file = f)
+        
+        cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
+        submitter = array_submitter('mix3r', partition = 'ampere', n_cpu = 6, timeout = 720,
+            env = args.mix3r, n_gpu = 1)
+        submitter.add(cmd)
     submitter.submit()
 
 if __name__ == '__main__':
