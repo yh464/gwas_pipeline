@@ -321,7 +321,7 @@ class array_submitter():
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
         gpu_str = f' --gres=gpu:{self.n_gpu}' if self.n_gpu > 0 else ''
-        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} {gpu_str}'+
+        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} {gpu_str} '+
                   f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}') 
@@ -361,7 +361,7 @@ class array_submitter():
         from subprocess import check_output
         dep_str = self._write_dep_str()
 
-        msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} {gpu_str}'+
+        msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} {gpu_str} '+
                   f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}', shell = True
