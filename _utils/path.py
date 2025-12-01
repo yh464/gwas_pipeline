@@ -270,9 +270,9 @@ class normaliser():
         if quickmap and hasattr(self, 'quickmap'): normalise_func = lambda x: [self.quickmap(y) for y in x]
         else: normalise_func = self._normalise_list
         for c in df.columns:
-            # if c.upper() in ['SNP','CHR','POS','BETA','Z','SE','P']: continue
+            if c.upper() in ['SNP','CHR','POS','BETA','Z','SE','P', 'CELL_TYPE']: continue
             # only normalise phenotype_related columns
-            if not any([c.lower().find(x) > -1 for x in ['group','pheno','variable','trait']]): continue
+            # if not any([c.lower().find(x) > -1 for x in ['group','pheno','variable','trait']]): continue
             df.loc[:,c] = normalise_func(df[c])
         for c in col.columns:
             col.loc[:,c] = normalise_func(col[c])
