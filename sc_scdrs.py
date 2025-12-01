@@ -90,11 +90,11 @@ def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], t
             enrichr_res = gget.enrichr(gene_list[:n], db)
             out.append(pd.DataFrame(dict(
                 annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
-                sign = '-', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
+                sign = '-', process = enrichr_res['path_name'], p = enrichr_res['p_val'])))
             enrichr_res = gget.enrichr(gene_list[-n:], db)
             out.append(pd.DataFrame(dict(
                 annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
-                sign = '+', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
+                sign = '+', process = enrichr_res['path_name'], p = enrichr_res['p_val'])))
     return pd.concat(out, axis = 0)
 
 def downstream_enrichr(corr_df):
