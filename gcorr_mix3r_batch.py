@@ -21,10 +21,12 @@ def main(args = None, **kwargs):
     if len(args.pheno) % 3 != 0:
         raise ValueError(f'Expecting 3 GWAS files per group for mix3r, found {len(args.pheno)}')
     os.makedirs(args.out, exist_ok = True)
+    submitter = array_submitter('mix3r', partition = 'ampere', n_cpu = 6, timeout = 720,
+        env = args.mix3r, n_gpu = 1, account='WARRIER-SL3-GPU')
 
     for i in range(0, len(args.pheno), 3):
         pheno = find_gwas(args.pheno[i:i+3], dirname = args._in, long = True, ext = 'sumstats')
-        print(pheno)
+        print(', '.join([f'{p[0]}/{p[1]}' for p in pheno]))
         out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
 
         if os.path.isfile(out_file) and not args.force: return
@@ -71,8 +73,6 @@ def main(args = None, **kwargs):
     ''', file = f)
         
         cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
-        submitter = array_submitter('mix3r', partition = 'ampere', n_cpu = 6, timeout = 720,
-            env = args.mix3r, n_gpu = 1)
         submitter.add(cmd)
     submitter.submit()
 

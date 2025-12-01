@@ -120,7 +120,7 @@ class array_submitter():
         # if GPU > 0, adjust the partition and charge account
         if self.n_gpu > 0: 
             self.partition = 'ampere'
-            self.account = 'WARRIER-SL2-GPU' # default GPU account
+            self.account = 'WARRIER-SL3-GPU' # default GPU account
 
         # adjust parallel processes based on available CPUs
         if self.n_cpu < cpu_avail[self.partition]:
