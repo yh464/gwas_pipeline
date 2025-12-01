@@ -68,7 +68,7 @@ def main(args):
 
             for h5, h5prefix in zip(h5ad,h5ad_prefix):
                 out_prefix = f'{outdir}/{p}.{h5prefix}.scdrs'
-                if not os.path.isfile(f'{out_prefix}.sensitivity.txt'):
+                if not os.path.isfile(f'{out_prefix}.sensitivity.txt') or args.force:
                     submitter.add(
                         f'python sc_scdrs_sensitivity.py -i {weights_file} --h5ad {h5} --label '+
                         ' '.join(args.label)+
