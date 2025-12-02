@@ -12,8 +12,6 @@ Requires following inputs:
 '''
 
 import os, warnings
-
-from matplotlib.pylab import norm
 from _utils.path import normaliser, find_gwas
 from _utils.gadgets import mv_symlink
 from _plots.corr_heatmap import corr_heatmap
@@ -25,7 +23,7 @@ def main(args):
     pheno = find_gwas(args.pheno, long = True)
     pheno_short = find_gwas(args.pheno); 
     norm = normaliser()
-    norm.quickmap_pheno(pheno)
+    norm.quickmap_pheno(pheno_short)
 
     # find h5ad annotations
     for sc in args.sc:
@@ -57,9 +55,9 @@ def main(args):
         # plot heatmap
         if len(summary) == 0: warnings.warn(f'No scDRS enrichment found for {sc}'); continue
         summary = pd.concat(summary)
+        summary = norm.normalise(summary, quickmap = True)
         for lab in summary.annotation.unique():
             tmp = summary.loc[summary.annotation == lab,:]
-            tmp = norm.normalise(tmp, quickmap = True)
             tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
             x_size = tmp.dataset + '_' + tmp.cell_type
             if 1 <= x_size.unique().size <= 500:
@@ -81,7 +79,7 @@ if __name__ == '__main__':
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
         'subcluster_identity_broad','subcluster_identity', # keefe
         ])
-    parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
+    # always overwrites
     args = parser.parse_args()
     
     # path normalisation
