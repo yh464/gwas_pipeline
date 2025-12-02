@@ -84,8 +84,6 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     args.nsig = sorted(list(set(args.nsig))) # only unique elements
 
-    from _utils import cmdhistory, logger
+    from _utils import logger
     logger.splash(args)
-    cmdhistory.log()
-    try: main(args)
-    except: cmdhistory.errlog()
+    main(args)

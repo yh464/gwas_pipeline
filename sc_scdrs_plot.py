@@ -10,23 +10,29 @@ Requires following inputs:
     scDRS output folder
     columns containing cell classifications
 '''
+
+import os, warnings
+
+from matplotlib.pylab import norm
+from _utils.path import normaliser, find_gwas
+from _utils.gadgets import mv_symlink
+from _plots.corr_heatmap import corr_heatmap
+import pandas as pd
+
 def main(args):
-    import warnings
 
     # find phenotypes
-    from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, long = True)
     pheno_short = find_gwas(args.pheno); 
+    norm = normaliser()
+    norm.quickmap_pheno(pheno)
 
     # find h5ad annotations
-    import os
-    from _utils.gadgets import mv_symlink
     for sc in args.sc:
         os.makedirs(f'{args._in}/plots/{sc}', exist_ok=True)
         h5ad_prefix = [x[:-5] for x in os.listdir(f'{args.h5ad}/{sc}') if x[-5:] =='.h5ad']
         out_prefix = f'{args._in}/'+'_'.join([x[0] for x in pheno_short])+f'.{sc}'
         # concatenate scDRS output
-        import pandas as pd
         summary = []
         for g, p in pheno:
             pheno_summary = []
@@ -51,10 +57,10 @@ def main(args):
         # plot heatmap
         if len(summary) == 0: warnings.warn(f'No scDRS enrichment found for {sc}'); continue
         summary = pd.concat(summary)
-        from _plots.corr_heatmap import corr_heatmap
         for lab in summary.annotation.unique():
             tmp = summary.loc[summary.annotation == lab,:]
             tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
+            tmp = norm.normalise(tmp, quickmap = True)
             x_size = tmp.dataset + '_' + tmp.cell_type
             if 1 <= x_size.unique().size <= 500:
                 fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])

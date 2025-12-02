@@ -246,8 +246,6 @@ if __name__ == '__main__':
     for arg in ['_in','h5ad','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from _utils import cmdhistory, logger
+    from _utils import logger
     logger.splash(args)
-    cmdhistory.log()
-    try: main(args)
-    except: cmdhistory.errlog()
+    main(args)
