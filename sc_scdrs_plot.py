@@ -59,8 +59,8 @@ def main(args):
         summary = pd.concat(summary)
         for lab in summary.annotation.unique():
             tmp = summary.loc[summary.annotation == lab,:]
-            tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
             tmp = norm.normalise(tmp, quickmap = True)
+            tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
             x_size = tmp.dataset + '_' + tmp.cell_type
             if 1 <= x_size.unique().size <= 500:
                 fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])
