@@ -285,18 +285,18 @@ class normaliser():
         else: df.index = idx.iloc[:,0]
         return df
     
-    def normalise(self, data, backup = None):
+    def normalise(self, data, backup = None, quickmap = False):
         # read table if data is a file
         if type(data) == str and os.path.isfile(data):
             if backup == None: backup = f'{data}.bak'
             os.system(f'cp {data} {backup}')
             if data[-3:] == 'csv':                
                 df = pd.read_csv(data)
-                df = self._normalise_df(df)
+                df = self._normalise_df(df, quickmap = quickmap)
                 df.to_csv(data, index = False)
             else: 
                 df = pd.read_table(data, sep = '\\s+')
-                df = self._normalise_df(df)
+                df = self._normalise_df(df, quickmap = quickmap)
                 df.to_csv(data, index = False, sep = '\t')
             return df
         
@@ -306,7 +306,7 @@ class normaliser():
         # or try to coerse input object into pd.DataFrame
         else: df = pd.DataFrame(data)
         
-        return self._normalise_df(df)
+        return self._normalise_df(df, quickmap = quickmap)
     
     def quickmap_pheno(self, pheno):
         from itertools import chain
