@@ -31,6 +31,7 @@ def search_file(file, patterns):
     for col in ['BETA', 'SE', 'AF1']:
         if col not in df.columns: df[col] = np.nan
     df = df.loc[:,['Phenotype','SNP','BETA','SE','P','N','A1','A2','AF1','CHR','POS']]
+    df['POS'] = df['POS'].astype(int)
     return df
     
 def search_snp(x, tmpdir, args): 
