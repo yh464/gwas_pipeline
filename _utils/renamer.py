@@ -14,6 +14,10 @@ protected_directories = [
     'scripts',
     'params',
     'multiomics',
+    'xqtl',
+    'test',
+    'logs',
+    'pheno',
     'fmri',
     'temp',
     'archive-2023-rsfmri-gwas'
