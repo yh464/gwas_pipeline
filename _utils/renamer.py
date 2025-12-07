@@ -13,6 +13,7 @@ protected_directories = [
     'toolbox',
     'scripts',
     'params',
+    'multiomics',
     'fmri',
     'temp',
     'archive-2023-rsfmri-gwas'
