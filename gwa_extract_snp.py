@@ -74,14 +74,13 @@ def search_snp(x, tmpdir, args):
     return df
 
 def main(args):
-    import os
+    import os, tempfile
     import pandas as pd
     from _utils.path import normaliser
     
     norm = normaliser()
     all_files = []
-    tmpdir = os.path.realpath('../temp/single_snp')
-    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+    tmpdir = tempfile.mkdtemp()
     
     if os.path.isfile(args.snp[0]) and len(args.snp) == 1:
         patterns = args.snp[0]
