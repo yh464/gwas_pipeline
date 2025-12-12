@@ -45,7 +45,7 @@ def main(args):
     from _utils.path import find_gwas, find_gene_sumstats
     from _utils.slurm import array_submitter
     pheno = find_gwas(args.pheno, long = True)
-    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 4, timeout = 720, env = 'gentoolspy')
+    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 8, timeout = 720, env = 'gentoolspy')
 
     # scans hdf5 files
     for g, p in pheno:

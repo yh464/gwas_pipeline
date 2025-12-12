@@ -18,7 +18,7 @@ Requires following inputs:
 
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
-    import os
+    import os, gc
     import scanpy as sc
     import scdrs
     import pandas as pd
@@ -55,6 +55,7 @@ def main(args = None, **kwargs):
                     temp_score[f'n{nsig}'] = tmpdf['raw_score']
                 temp_score.to_csv(tempfile, index = True, sep = '\t')
             score_df.append(temp_score)
+            gc.collect()
         score = pd.concat(score_df)
     else: score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
     score.to_csv(out_score, index = True, sep = '\t')
