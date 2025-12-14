@@ -61,8 +61,12 @@ read_sumstats = function(args){
   out_se = cache %>% lapply(select, SE) %>% bind_cols() %>% as.matrix()
   colnames(out_se) = pheno; rownames(out_se) = snps
   
+  if (is.null(args$gcov)) {
+    cov = diag(length(pheno)) * 0.2
+  } else cov = read.delim(args$gcov,row.names = 1); cov = cov[pheno,pheno] %>% as.matrix()
+  
   cat('Read cache files, time =', proc.time()[3], '\n')
-  return(list(bhat = out_beta, shat = out_se, N = as.integer(max(N)), snps = snps))
+  return(list(bhat = out_beta, shat = out_se, N = as.integer(max(N)), snps = snps, cov = cov))
 }
 
 #### extract reference genotypes ####
@@ -91,18 +95,15 @@ main = function(args){
   library(mvsusieR)
   
   sumstats = read_sumstats(args)
+  
   ref = extract_ref(args$ref %>% gsub('%chr%', args$chr, .), sumstats$snps)
   # merge SNPs from PLINK ref and sumstats
   sumstats$snps = sumstats$snps[sumstats$snps %in% ref$snpinfo$SNP]
   sumstats$bhat = sumstats$bhat[sumstats$snps,]
   sumstats$shat = sumstats$shat[sumstats$snps,]
   
-  if (is.null(args$gcov)) {
-    cov = diag(length(pheno)) * 0.2
-  } else cov = read.delim(args$gcov,row.names = 1); cov = cov[pheno,pheno] %>% as.matrix()
-  
   res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
-    prior_variance = cov)
+    prior_variance = sumstats$cov)
   print(res)
 }
 
