@@ -121,7 +121,15 @@ def main(args):
                     '--gcov',f'{tmpdir}/{out_prefix}_rg.txt', force]
                 submitter.add(' '.join(cmd))
     submitter.submit()
-    
+
+    dict_file = f'{outdir}/.directory.map.txt'
+    if os.path.isfile(dict_file): df = pd.read_table(dict_file, sep = '\t')
+    else: df = pd.DataFrame(index = [], columns = ['directory','phenotypes'])
+    df = pd.concat([df, pd.DataFrame(dict(
+        directory = [outdir], phenotypes = [','.join([f'{g}/{p}' for g,p in gwa])]))])
+    df = df.drop_duplicates().reset_index(drop = True).sort_values(by = 'phenotypes')
+    df.to_csv(dict_file, sep = '\t', index = False)
+
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(
