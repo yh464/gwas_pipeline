@@ -98,5 +98,8 @@ main = function(args){
   sumstats$shat = sumstats$shat[sumstats$snps,]
   
   res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat)
-  
+  print(res)
 }
+
+main(args)
+warnings()
