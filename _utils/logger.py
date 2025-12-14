@@ -38,8 +38,6 @@ def splash(args, silent = False):
 class logger():
     def __init__(self, fname = None, echo = True, **kwargs):
         self.file = open(fname, 'w') if fname is not None else sys.stdout
-        if 'silent' in kwargs.keys(): self.silent = kwargs['silent']
-        else: self.silent = False
         self.echo = echo
         
     def log(self, msg, warning = False):
@@ -49,7 +47,6 @@ class logger():
         msg = f'[ {now} | {calling_file} {warning_str}] {msg}'
         print(msg, file = self.file)
         if self.echo and self.file != sys.stdout: print(msg)
-        if not self.silent: print(msg)
     
     def splash(self, args):
         msg = splash(args, silent = True)
