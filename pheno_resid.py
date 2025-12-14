@@ -7,10 +7,11 @@ def main(args):
     from fnmatch import fnmatch
     from time import perf_counter as t
     from sklearn.linear_model import LinearRegression
-    
+    from _utils import logger
+    log = logger.logger()
     tic = t()
     def toc():
-      print(f'Time = {t()-tic:.3f}')
+      log.log(f'Time = {t()-tic:.3f}')
     
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
@@ -29,8 +30,8 @@ def main(args):
     cov_out['const'] = np.ones(cov_out.shape[0])
     cov_collist = cov_out.columns.tolist()[2:]
     cov_id = cov_out[['FID','IID']]
-    print('Covariates:')
-    for x in cov_collist: print(x)
+    log.log('Covariates:')
+    for x in cov_collist: log.log(x)
     
     toc()
     
@@ -52,7 +53,7 @@ def main(args):
       out.columns = df.columns
       prefix = x.replace('.txt','')
       out.to_csv(f'{args.out}/{prefix}_resid.txt', index = False)
-      print(f'Finished processing {x}')
+      log.log(f'Finished processing {x}')
       toc()
       del df, out, ref
 

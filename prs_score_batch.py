@@ -13,7 +13,8 @@ Upstream workflow:
     
 def main(args):
     from fnmatch import fnmatch
-    
+    from _utils import logger
+    log = logger.logger()
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'prs_score', n_cpu = 1,
@@ -32,7 +33,7 @@ def main(args):
             for y in os.listdir(args.bed):
                 if fnmatch(y.lower(), f'*chr{j+1}.bed'): 
                     bed_list.append(f'{args.bed}/{y[:-4]}')
-                    print(bed_list[-1])
+                    log.log(bed_list[-1])
     else: raise ValueError('Please supply a valid BED file prefix')
     if len(bed_list) == 1: bed_list *= 22
     if not os.path.isdir(args.out): os.mkdir(args.out)

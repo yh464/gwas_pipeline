@@ -3,6 +3,9 @@
 batch runs GREML to assess heritability
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     # locate phenotype file
     import os
@@ -37,14 +40,14 @@ def main(args):
     
     # create output folder
     outdir = f'{args.out}/{f}/'.replace('.txt','')
-    print(outdir)
+    log.log(outdir)
     if not os.path.isdir(outdir):
       os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
     
     # phenotypes to be analysed
     c = c[2:]
-    print('Following traits are to be GWA-analysed:', file = logout)
-    for i in c: print(i, file = logout)
+    log.log('Following traits are to be GWA-analysed:', file = logout)
+    for i in c: log.log(i, file = logout)
     
     # for each phenotype
     for i in range(c.size):
@@ -55,7 +58,7 @@ def main(args):
       # check existing files
       if os.path.isfile(f'{out_fname}.greml.hsq'):
         skip = True
-        print(f'Trait already analysed for: {trait}', file = logout)
+        log.log(f'Trait already analysed for: {trait}', file = logout)
       
       if skip and (not args.force):
         continue

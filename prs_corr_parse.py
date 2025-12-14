@@ -7,11 +7,12 @@ def main(args):
     import numpy as np
     from _utils.path import normaliser
     norm = normaliser()
-    
+    from _utils import logger
+    log = logger.logger()
     summary = []
     for x in args.pheno:
         if not os.path.isfile(f'{args._in}/{x}_summary.txt'):
-            print(f'{x} not found in prs correlation records, check')
+            log.log(f'{x} not found in prs correlation records, check')
             continue
         summary.append(pd.read_table(f'{args._in}/{x}_summary.txt'))
     summary = pd.concat(summary)

@@ -3,6 +3,9 @@
 Creates diagnostic plots for the asymmetry statistics
 '''
 
+from _utils import logger
+
+
 def main(args):
     import pandas as pd
     import seaborn as sns
@@ -10,7 +13,8 @@ def main(args):
     import os
     import fnmatch
     import time
-    
+    from _utils import logger
+    log = logger.logger()
     os.chdir(args._in)
     files = []
     for f in os.listdir():
@@ -23,9 +27,9 @@ def main(args):
     tic = time.perf_counter()
     for i in range(len(files)):
       f = files[i]
-      print(f'processing {f}')
+      log.log(f'processing {f}')
       if os.path.isfile(f'{args.out}/{f}'.replace('txt',args.fmt)) and (not args.force):
-        print(f'{f} is already plotted')
+        log.log(f'{f} is already plotted')
         continue
       df = pd.read_csv(f,sep = ' ')
       cols = df.columns.values
@@ -37,10 +41,10 @@ def main(args):
       sns.histplot(data = df, x = 'value', hue = 'metric',bins = 50, common_bins = False,
                    ax = ax, legend = False, palette = 'pastel6')
       toc = time.perf_counter() - tic
-      print(f'output to {args.out}/{f}, time = {toc:.3f}'.replace('txt','png'))
+      log.log(f'output to {args.out}/{f}, time = {toc:.3f}'.replace('txt','png'))
       plt.savefig(f'{args.out}/{f}'.replace('txt',args.fmt))
       toc= time.perf_counter()-tic
-      print(f'finished {f}. {i+1}/{len(files)}, {toc:.3f} seconds')
+      log.log(f'finished {f}. {i+1}/{len(files)}, {toc:.3f} seconds')
   
   
 if __name__ == '__main__':

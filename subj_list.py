@@ -4,6 +4,8 @@ This script screens subjects with a valid imaging profile
 
 def main(args):
     import os
+    from _utils import logger
+    log = logger.logger()
     
     # fail-safe
     outdir = os.path.dirname(args.out)
@@ -13,7 +15,7 @@ def main(args):
     fout = f'{args.out}.txt'
     errlog = args.out.replace('.txt','_not_found.txt')
     if os.path.isfile(fout) and not args.force: 
-        print('subj list already generated')
+        log.log('subj list already generated')
         return
     
     # count subjs with imaging profiles and w/o
@@ -26,14 +28,14 @@ def main(args):
         target = args.target.replace('%subj',subj) # target file path
         if os.path.isfile(target):
             found += 1
-            print(subj.replace('UKB',''), file = fout)
+            log.log(subj.replace('UKB',''), file = fout)
         else:
             not_found += 1
-            print(subj.replace('UKB',''), file = errlog)
+            log.log(subj.replace('UKB',''), file = errlog)
     
-    print(f'Total {found + not_found} subjects')
-    print(f'Found imaging profiles for {found} subjects')
-    print(f'No imaging profile for {not_found} subjects')
+    log.log(f'Total {found + not_found} subjects')
+    log.log(f'Found imaging profiles for {found} subjects')
+    log.log(f'No imaging profile for {not_found} subjects')
     return
 
 if __name__ == '__main__':

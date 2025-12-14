@@ -26,7 +26,9 @@ def main(args = None, **kwargs):
     if args == None:
         from _utils.gadgets import namespace
         args = namespace(**kwargs)
-
+    from _utils import logger
+    log = logger.logger()
+    
     out_score = f'{args.out}.sensitivity.txt'
     if os.path.isfile(out_score) and not args.force: return
     weights = pd.read_table(args._in).sort_values('weight', ascending = False).reset_index(drop = True)
@@ -44,14 +46,14 @@ def main(args = None, **kwargs):
                 if args.force: raise FileNotFoundError
                 temp_score = pd.read_table(tempfile, index_col = 0)
             except:
-                print(f'Scoring cells {cmin} - {cmax}')
+                log.log(f'Scoring cells {cmin} - {cmax}')
                 temp = adata[cmin:cmax,:]
                 temp_score = pd.DataFrame(0., index = temp.obs_names, columns = [f'n{x}' for x in args.nsig])
                 for nsig in tqdm(args.nsig, desc = f'Scoring with different number of genes'):
                     tmpdf = scdrs.score_cell(temp, gene_list[:nsig], 
                         gene_weight[:nsig] if gene_weight is not None else None, n_ctrl = 1,
                         return_ctrl_norm_score = False, verbose = False)
-                    print(tmpdf)
+                    log.log(tmpdf)
                     temp_score[f'n{nsig}'] = tmpdf['raw_score']
                 temp_score.to_csv(tempfile, index = True, sep = '\t')
             score_df.append(temp_score)

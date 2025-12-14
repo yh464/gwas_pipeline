@@ -15,14 +15,15 @@ def main(args):
     import pandas as pd
     from _utils.path import normaliser
     norm = normaliser()
-
+    from _utils import logger
+    log = logger.logger()
     out_fname = f'{args.out}/prscorr_'+'_'.join(args.pheno)
     
     # read all summary files
     summary = []
     for p in args.pheno:
         f = f'{args._in}/{p}_summary.txt'
-        print(f'Reading {f}')
+        log.log(f'Reading {f}')
         summary.append(pd.read_table(f))
     summary = pd.concat(summary)
     

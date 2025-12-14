@@ -6,7 +6,8 @@ This script generates PRScs from external sumstats
 def main(args):
   from fnmatch import fnmatch
   import pandas as pd
-  
+  from _utils import logger
+  log = logger.logger()
   # parse input
   if not os.path.isdir(args.out): os.mkdir(args.out)
   
@@ -27,7 +28,7 @@ def main(args):
     if not os.path.isdir(f'{tmpdir}/{g}'): os.mkdir(f'{tmpdir}/{g}')
     if os.path.isfile(f'{args._in}/{g}/{p}_noUKBB.fastGWA'): continue # prefer summary stats excluding UKBB
     prefix = p.replace('_noUKBB','')
-    print(p)
+    log.log(p)
     tmpgwa = f'{tmpdir}/{g}/{prefix}.txt'
     tmpn = f'{tmpdir}/{g}/{prefix}_n.txt'
     
@@ -50,7 +51,7 @@ def main(args):
       
       # write cache file
       with open(tmpn, 'w') as n_file: 
-        print(n, file = n_file)
+        log.log(n, file = n_file)
         n_file.close()
     else:
       n = open(tmpn).read().splitlines()[0]

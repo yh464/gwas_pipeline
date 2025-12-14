@@ -7,6 +7,8 @@ def main(args):
   import pandas as pd
   import seaborn as sns
   import matplotlib.pyplot as plt
+  from _utils import logger
+  log = logger.logger()
   
   os.chdir(args._in)
   if not os.path.isdir('diagnostics'): os.mkdir('diagnostics')
@@ -19,7 +21,7 @@ def main(args):
     sns.displot(data = df, x = 'value', col = 'variable', height = 10)
     plt.savefig(out_fname)
     plt.close()
-    print(f'Processed: {f}')
+    log.log(f'Processed: {f}')
 
 if __name__ == '__main__':
   import argparse

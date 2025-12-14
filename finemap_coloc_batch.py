@@ -119,7 +119,7 @@ def main(args):
         if args.mvsusie:
             out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_mvsusie'
             if not os.path.isfile(out+'.txt') or args.force:
-                cmd = ['Rscript', 'finemap_flashfm.r'] + [f'{g}/{p}' for g,p in gwa] + \
+                cmd = ['Rscript', 'finemap_mvsusie.r'] + [f'{g}/{p}' for g,p in gwa] + \
                     ['-i', f'{args.out}/loci',f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out}',
                     '--gcov',f'{tmpdir}/{out_prefix}_rg.txt', force]
                 submitter.add(' '.join(cmd))

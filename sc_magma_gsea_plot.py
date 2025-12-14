@@ -28,6 +28,8 @@ from _utils.path import normaliser, find_gwas
 from tqdm import tqdm
 from multiprocessing import Pool
 import warnings
+from _utils import logger
+log = logger.logger()
 
 def process_pheno(gsets, g, p, args):
     all_gsets = []
@@ -110,7 +112,7 @@ def main(args):
     most_sig = pd.concat(most_sig, axis = 0)
     most_sig.to_clipboard(sep = '\t', index = False)
     most_sig = most_sig.sort_values('p').reset_index(drop = True)
-    print(most_sig.head())
+    log.log(most_sig.head())
 
     if len(all_phenos) == 0: return
     all_phenos = pd.concat(all_phenos, axis = 0)

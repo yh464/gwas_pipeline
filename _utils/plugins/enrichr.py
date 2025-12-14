@@ -7,9 +7,10 @@ A flexible framework to run enrichr based on tabular data
 '''
 
 import gget, io, time, warnings
-from matplotlib.pylab import f
 import pandas as pd
 from ..gadgets import force_gc
+from ..logger import logger
+log = logger()
 
 def get_genes_list(df, top = -1, by = None, top_negative = True, 
     ref = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
@@ -103,12 +104,12 @@ def enrichr_continuous(df, top = -1, by = None, top_negative = True, databases =
     genes_lists, background = get_genes_list(df, top = top, by = by, top_negative = top_negative)
     out = []
     out.append(enrichr_list(genes_lists[0], background = background, databases = databases))
-    print('top positive genes:')
-    print(out[0].head(20))
+    log.log('top positive genes:')
+    log.log(out[0].head(20))
     if len(genes_lists) > 1:
         out.append(enrichr_list(genes_lists[1], background = background, databases = databases))
-        print('top negative genes:')
-        print(out[1].head(20))
+        log.log('top negative genes:')
+        log.log(out[1].head(20))
     return out
 
 def revigo_setup(revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'):

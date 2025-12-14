@@ -6,7 +6,9 @@ Version 1: 2025-03-24
 
 A tool to extract instruments for MR analysis before mr_batch and mr_mvmr_batch
 '''
-    
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     import pandas as pd
@@ -29,9 +31,9 @@ def main(args):
     else: exposures = find_gwas(args.p1 + args.p2)
     all_pheno = find_gwas(args.p1 + args.p2)
     
-    print('Trying to find genetic instruments for all exposure phenotypes')
+    log.log('Trying to find genetic instruments for all exposure phenotypes')
     for expg, expp in exposures:
-        print(f'    {expg}: {len(expp)} phenotypes')
+        log.log(f'    {expg}: {len(expp)} phenotypes')
         all_snps = []
         # read trait-wise clump files
         for x in expp:
@@ -40,7 +42,7 @@ def main(args):
         all_snps = pd.concat(all_snps)['SNP'].unique()
         temp_snps = f'{tmpdir}/{expg}_{args.pval:.0e}.txt'
         with open(temp_snps,'w') as file:
-            for x in all_snps: print(x, file=file)
+            for x in all_snps: log.log(x, file=file)
             file.close()
         
         for p,_ in all_pheno:

@@ -9,6 +9,9 @@ Batch submits jobs for Mendelian Randomisation for all GWAS files in a directory
 (usually the same group of phenotypes). Scans the entire directory for GWAS summary
 stats of the same data extension.
 '''
+from _utils import logger
+log = logger.logger()
+
 def qc(file):
     import pandas as pd
     try: 
@@ -25,8 +28,8 @@ def main(args):
     
     # array submitter
     from mr_extract_snp_batch import api
-    print('Try running following command to force re-extraction of instruments')
-    print(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
+    log.log('Try running following command to force re-extraction of instruments')
+    log.log(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
     snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
@@ -69,9 +72,9 @@ def main(args):
             # filter for rg
             rginfo = exp_corr_out.loc[(exp_corr_out.group1==g1) & (exp_corr_out.pheno1==p1) & \
                 (exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2),:]
-            if rginfo.shape[0] == 0: print(f'No rg for {g1}/{p1} and {g2}/{p2}'); continue
+            if rginfo.shape[0] == 0: log.log(f'No rg for {g1}/{p1} and {g2}/{p2}'); continue
             if (args.rgp > 0 and rginfo.p.values[0] > args.rgp) or (args.rgp < 0 and rginfo.q.values[0] > 0.05):
-                print(f'Correlation between {g1}/{p1} and {g2}/{p2} is not significant, skipping')
+                log.log(f'Correlation between {g1}/{p1} and {g2}/{p2} is not significant, skipping')
                 continue
             
             # find h2 log for trait 1
@@ -83,12 +86,12 @@ def main(args):
                 gwa1 = f'{args.gwa}/{g1}/{p1}.{args.ext1}'
                 clump1, pval1 = find_clump(g1, p1, args.clump, args.pval)
                 clump001, _ = find_clump(g1, p1, args.clump, 0.001)
-            except: print(f'{g1} missing clumped GWAS sumstats'); continue
+            except: log.log(f'{g1} missing clumped GWAS sumstats'); continue
             try: 
                 gwa2 = f'{args.gwa}/{g2}/{p2}.{args.ext2}'
                 clump2, pval2 = find_clump(g2, p2, args.clump, args.pval)
                 clump002, _ = find_clump(g2, p2, args.clump, 0.001)
-            except: print(f'{g2} missing clumped GWAS sumstats'); continue
+            except: log.log(f'{g2} missing clumped GWAS sumstats'); continue
             pval_thr = max([pval1, pval2])
             
             # find instruments
@@ -112,7 +115,7 @@ def main(args):
                 if not qc(file):
                     try: os.remove(file)
                     except: pass
-                    print(f'Empty file: {file}')
+                    log.log(f'Empty file: {file}')
             
             if not os.path.isfile(fwd) or \
                 not os.path.isfile(rev) or \

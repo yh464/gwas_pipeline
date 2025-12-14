@@ -9,6 +9,8 @@ Scans the entire directory for GWAS summary stats of the same data extension.
 Creates summary tables for all MR results of different methods.
 Significant targets identified from summary tables can be manually extracted for visual analysis
 '''
+from _utils import logger
+log = logger.logger()
 
 def parse_mr_results(prefix):
     '''
@@ -166,8 +168,8 @@ def main(args):
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
         norm.normalise(pd.concat(all_compare)).to_csv(
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
-    print('Missing MR results:')
-    for m in missing: print(m)
+    log.log('Missing MR results:')
+    for m in missing: log.log(m)
 
 if __name__ == '__main__':
     import argparse

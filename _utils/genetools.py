@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import scipy.stats as sts
 import warnings
+from .logger import logger
+log = logger()
 
 def _regenerate_ref(file, build = 'hg19'):
     '''Regenerates the reference gene file for inrich'''
@@ -93,7 +95,7 @@ def _find_genes_in_locus(df,
             (ref_df['START'] <= _stop_bp) &
             (ref_df['STOP'] >= _start_bp), find_col].tolist()
         out.extend(genes)
-    print(f'Found {len(set(out))} unique genes in the specified loci')
+    log.log(f'Found {len(set(out))} unique genes in the specified loci')
     return list(set(out))
 
 def locus_to_ensg(df, chrom_col = 'CHR', start_col = 'START', stop_col = 'STOP', window = 10000, build = 'hg19',

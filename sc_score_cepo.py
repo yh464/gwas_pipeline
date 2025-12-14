@@ -10,6 +10,9 @@ Requires following inputs:
     h5ad file and columns for cell classifications
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def segidx(df, n):
     import pandas as pd
     import numpy as np
@@ -31,7 +34,7 @@ def generate_tempfile(adata, subset, block_size = 50000):
         df = pd.DataFrame(index = adata.var.index, columns = ['s','sumsq','nz'], data = 0)
         cells = adata[subset,:].obs_names.to_numpy()
         for i in range(0, adata[subset,:].shape[0], block_size):
-            print(f'Processing block {i}-{min(i+block_size, adata[subset,:].shape[0])} of {adata[subset,:].shape[0]}, time = {t()-tic:.2f}s')
+            log.log(f'Processing block {i}-{min(i+block_size, adata[subset,:].shape[0])} of {adata[subset,:].shape[0]}, time = {t()-tic:.2f}s')
             temp = generate_tempfile(adata, cells[i:min(i+block_size, adata[subset,:].shape[0])], block_size = block_size)
             df += temp; del temp
         return df
@@ -75,7 +78,7 @@ def singlebatchcepo(adata, genes, celltypes, mincells = 20, exprspct:float = 0.0
         temp.index = genes
         keep[ct] = temp
     keep = keep.any(axis = 1).values
-    print(f'Kept {keep.sum()}/{len(keep)} genes')
+    log.log(f'Kept {keep.sum()}/{len(keep)} genes')
 
     segmat = pd.DataFrame(index = genes[keep], columns = celltypes_df.columns, data = float(0))
     for ct in celltypes_df.columns:
@@ -101,7 +104,7 @@ def main(args):
     tic = t()
     adata = anndata.io.read_h5ad(args._in, 'r')
     genes = adata.var.index
-    print(f'Read in data: {adata.shape} in {t()-tic:.2f}s')
+    log.log(f'Read in data: {adata.shape} in {t()-tic:.2f}s')
 
     out_dfs = []
     for label in args.label:
@@ -110,7 +113,7 @@ def main(args):
         if os.path.isfile(tempfile) and not args.force:
             df = pd.read_table(tempfile, index_col = 0)
             out_dfs.append(df)
-            print(label); continue
+            log.log(label); continue
         if label not in adata.obs.columns: Warning(f'Label {label} not found in adata.obs, skipping'); continue
         df = singlebatchcepo(adata, genes, adata.obs[label], mincells = 20, exprspct = 0.05, tempdir = tempdir)
         gc.collect()
@@ -118,7 +121,7 @@ def main(args):
         out_dfs.append(df)
         df.to_csv(tempfile, sep = '\t', index = True, header = True)
         del df
-        print(f'Computed {label} in {t()-tic:.2f}s')
+        log.log(f'Computed {label} in {t()-tic:.2f}s')
     out_dfs = pd.concat(out_dfs, axis = 1)
     adata.file.close()
     out_dfs.columns = out_dfs.columns.str.replace(' ','_').str.replace('/','_').str.replace('-','_')

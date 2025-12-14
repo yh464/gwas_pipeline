@@ -13,6 +13,9 @@ Requires following inputs:
     LDSC H2 logs
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     from fnmatch import fnmatch
@@ -86,7 +89,7 @@ def main(args):
             plt.savefig(f'{args._in}/{x}/h2_summary_z.png')
             plt.close()
         except:
-            print('Check naming conventions, no fig plotted')
+            log.log('Check naming conventions, no fig plotted')
     
     all_summary = pd.concat(all_summary)
     h2_all = all_summary.pivot_table(values = 'h2', index = 'roi', columns = 'pheno')

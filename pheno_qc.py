@@ -7,7 +7,8 @@ def main(args):
     import numpy as np
     import os
     import time
-    
+    from _utils import logger
+    log = logger.logger()
     subjs = np.loadtxt(args.subjs,dtype = 'U')
     if len(subjs[0]) > 10:
       for i in range(subjs.size):
@@ -19,13 +20,13 @@ def main(args):
     idx = 0
     for subj in subjs:
       toc = time.perf_counter()-tic
-      print(f'{idx}/{subjs.size}, time = {toc:.3f}')
+      log.log(f'{idx}/{subjs.size}, time = {toc:.3f}')
       idx += 1
       # specify directories
       in_filename = args._in.replace('%subj',subj)
       
       if not os.path.isfile(in_filename):
-        print(f'No connectome found for the subject {subj}', file = logout)
+        log.log(f'No connectome found for the subject {subj}', file = logout)
         continue
       
       # loading the connectome  

@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt
 from _plots.aes import redblue_alpha
 from _plots import scatterplot_noaxis, temporal_regplot
 from _utils.gadgets import mv_symlink
+from _utils import logger
+log = logger.logger()
 
 # downstream analyses
 def _stratify(df_score, adata, label):
@@ -144,7 +146,7 @@ def main(args = None, **kwargs):
                     if args.force: raise FileNotFoundError
                     temp_score = pd.read_table(tempfile, index_col = 0)
                 except:
-                    print(f'Scoring cells {cmin} - {cmax}')
+                    log.log(f'Scoring cells {cmin} - {cmax}')
                     temp = adata[cmin:cmax,:]
                     temp_score = scdrs.score_cell(temp, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
                     temp_score.to_csv(tempfile, index = True, sep = '\t')
