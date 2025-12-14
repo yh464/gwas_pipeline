@@ -99,7 +99,7 @@ main = function(args){
   
   if (is.null(args$gcov)) {
     cov = diag(length(pheno)) * 0.2
-  } else cov = read.delim(args$gcov,row.names = 1); covy = covy[pheno,pheno] %>% as.matrix()
+  } else cov = read.delim(args$gcov,row.names = 1); cov = cov[pheno,pheno] %>% as.matrix()
   
   res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
     prior_variance = cov)
