@@ -103,8 +103,8 @@ main = function(args){
   sumstats$shat = sumstats$shat[sumstats$snps,]
   
   res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
-    prior_variance = sumstats$cov)
-  print(res)
+    prior_variance = sumstats$cov, max_iter = 1000)
+  save(res, file = paste0(args$out,'.rdata'))
 }
 
 main(args)
