@@ -97,7 +97,12 @@ main = function(args){
   sumstats$bhat = sumstats$bhat[sumstats$snps,]
   sumstats$shat = sumstats$shat[sumstats$snps,]
   
-  res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat)
+  if (is.null(args$gcov)) {
+    cov = diag(length(pheno)) * 0.2
+  } else cov = read.delim(args$gcov,row.names = 1); covy = covy[pheno,pheno] %>% as.matrix()
+  
+  res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
+    prior_variance = cov)
   print(res)
 }
 
