@@ -13,10 +13,10 @@ Required input:
 '''
 
 import os
+from hashlib import sha256
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from fnmatch import fnmatch
 from _utils.path import normaliser, find_gwas
 from _utils.genetools import locus_to_name
 from _utils.plugins.enrichr import enrichr_list, enrichr_to_revigo
@@ -58,17 +58,11 @@ def _inrich(df, traits):
     return main.assign(traits = traits), igt.assign(traits = traits)
 
 def main(args):
-    pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
-    pheno_str = '_'.join([g for g,_ in pheno])
+    from finemap_coloc_batch import find_loci
+    pheno, loci = find_loci(args)
+    pheno_str = sha256(repr(pheno).encode()).hexdigest()[:10]
     in_dir = f'{args._in}/{pheno_str}'  
-
-    # identify blocks of fine-mapping segments
-    gwa = find_gwas(*args.pheno, dirname = args.gwa, long = True)
-    from _utils.plugins.logparser import parse_clump
-    _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
-    loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
-    loci['START'] -= 5e5; loci['STOP'] += 5e5
-    loci = loci.dropna().reset_index(drop=True)
+    norm = normaliser()
 
     orig = []
     summary = []
@@ -105,29 +99,31 @@ def main(args):
     clusters.index.name = 'SNP'
     
     # enrichr and revigo analysis
-    enrichr_res = []; revigo_res = [] 
-    with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
-        enrichr_res = list(tqdm(pool.starmap(_enrichr, 
-            [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
-            total = orig.traits.unique().size))
-        inrich_res = list(tqdm(pool.starmap(_inrich, 
-            [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
-            total = orig.traits.unique().size))
-    revigo_res = enrichr_to_revigo(enrichr_res, keepcols = ['traits'])
-    inrich_main = [x[0] for x in inrich_res]; inrich_igt = [x[1] for x in inrich_res]
-    enrichr_res = pd.concat(enrichr_res)
-    revigo_res = pd.concat(revigo_res)
-    inrich_main = pd.concat(inrich_main)
-    inrich_igt = pd.concat(inrich_igt)
+    if not os.path.isfile(f'{args.out}/{pheno_str}_coloc_revigo.txt') or args.force:
+        enrichr_res = []; revigo_res = [] 
+        with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
+            enrichr_res = list(tqdm(pool.starmap(_enrichr, 
+                [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
+                total = orig.traits.unique().size))
+            inrich_res = list(tqdm(pool.starmap(_inrich, 
+                [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
+                total = orig.traits.unique().size))
+        revigo_res = enrichr_to_revigo(enrichr_res, keepcols = ['traits'])
+        inrich_main = [x[0] for x in inrich_res]; inrich_igt = [x[1] for x in inrich_res]
+        enrichr_res = pd.concat(enrichr_res)
+        revigo_res = pd.concat(revigo_res)
+        inrich_main = pd.concat(inrich_main)
+        inrich_igt = pd.concat(inrich_igt)
+        norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = False)
+        norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = False)
+        norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = False)
+        norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = False)
 
-    norm = normaliser()
     norm.normalise(orig).to_csv(f'{args.out}/{pheno_str}_coloc_raw.txt', sep = '\t', index = True)
     norm.normalise(summary).to_csv(f'{args.out}/{pheno_str}_coloc_summary.txt', sep = '\t', index = True)
     norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
-    norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = False)
-    norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = False)
-    norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = False)
-    norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = False)
+
+    print(f'Output written to {args.out}/{pheno_str}_coloc_*.txt')
     return
 
 if __name__ == '__main__':
@@ -141,6 +137,11 @@ if __name__ == '__main__':
       default = '../gwa/')
     parser.add_argument('-c','--clump', dest = 'clump', help = 'Directory containing all clump outputs',
       default = '../clump/')
+    parser.add_argument('--filter', help = 'Filter for significant correlates of --filter phenotypes',
+      nargs = '*', default = [])
+    parser.add_argument('-r','--rg', help = 'Directory for rg logs, to filter traits',
+      default = '../gcorr/rglog/')
+    parser.add_argument('--rgp', help = 'p-value threshold for genetic correlation', default = None, type = float)
     parser.add_argument('-p', '--pval', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',

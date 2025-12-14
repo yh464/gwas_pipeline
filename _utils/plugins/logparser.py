@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as sts
     
-def parse_h2_log(file, full = False):
+def parse_h2_log(file, full = False, gcov = False):
     '''
     Parses LDSC H2 logs
     input: file name *.h2.log
@@ -32,7 +32,8 @@ def parse_h2_log(file, full = False):
         h2; se # important in case the total observed scale h2 is not read from log
     except:
         h2 = np.nan; se = np.nan; gcov_int = np.nan; gcov_int_se = np.nan
-    if not full: return h2, se
+    if not full and not gcov: return h2, se
+    elif not full and gcov: return gcov_int, gcov_int_se
     df = pd.DataFrame(dict(
         group1 = [os.path.basename(os.path.dirname(file))],
         pheno1 = os.path.basename(file).replace('.h2.log','').replace('.gz',''),
@@ -57,7 +58,7 @@ def parse_greml_h2_log(file):
     except: h2 = np.nan; se = np.nan
     return h2, se
 
-def parse_rg_log(file, full = False):
+def parse_rg_log(file, full = False, gcov = False):
     '''
     Parses LDSC rg log for only one pair of phenotypes
     input: file name *.rg.log
@@ -95,12 +96,14 @@ def parse_rg_log(file, full = False):
     all_stats.loc[all_stats.se < 1e-20, 'se'] = 1e-20
 
     if full: return all_stats
+    elif gcov: return all_stats[['group1','pheno1','group2','pheno2','gcov_int','gcov_int_se','p']].rename(
+        columns = {'gcov_int':'rg','gcov_int_se':'se'})
     else: return all_stats[['group1','pheno1','group2','pheno2','rg','se','p']]
 
 def crosscorr_parse(gwa1, gwa2 = [], 
         logdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog',
         h2dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
-        exclude = [], full = False):
+        exclude = [], full = False, gcov = False):
     '''
     gwa1 and gwa2 are lists of (group, pheno_list) tuples or (group, pheno) tuples, compatible with long/short
     leave gwa2 blank to estimate auto-correlations of gwa1
@@ -125,7 +128,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
                     rg = pd.DataFrame(dict(group1 = [g1], pheno1 = p1, group2 = g1, 
                         pheno2 = p1, rg = h2, se = se, 
                         p = 1-sts.chi2.cdf(h2**2/se**2, df = 1),fixed_int = False))
-                else: rg = parse_h2_log(fname, full = True)
+                else: rg = parse_h2_log(fname, full = True, gcov = gcov)
                 rg['fixed_int'] = False
                 if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
                 summary.append(rg)
@@ -136,7 +139,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
                     f'Try running:\n\n python gcorr_batch.py -p1 {g1} -p2 {g2}\n')
                 continue
             elif not os.path.isfile(fname) and g1 == g2: continue
-            rg = parse_rg_log(fname, full = full)
+            rg = parse_rg_log(fname, full = full, gcov = gcov)
             rg['fixed_int'] = False
             rg = rg.loc[rg.pheno2.isin(p2s),:] # due to the file structure, some other traits may be present in the rg log
             if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
@@ -144,7 +147,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
             
             fname_noint = fname.replace('.rg.log','.noint.rg.log')
             if os.path.isfile(fname_noint):
-                rg = parse_rg_log(fname_noint, full = full)
+                rg = parse_rg_log(fname_noint, full = full, gcov = gcov)
                 rg['fixed_int'] = True
                 if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
                 summary.append(rg)

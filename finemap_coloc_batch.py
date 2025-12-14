@@ -13,6 +13,7 @@ Required input:
     clump output (sentinel variants)
 '''
 
+import os
 import pandas as pd
 from hashlib import sha256
 from time import perf_counter as t
@@ -57,6 +58,7 @@ def main(args):
     tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     gwa, loci = find_loci(args)
+    out_prefix = sha256(repr(gwa).encode()).hexdigest()[:10] # unique prefix for the specified group of phenotypes
     toc = t()-tic
     print(f'Found {len(gwa)} GWAS summary statistics files.')
     print(gwa)
@@ -83,16 +85,16 @@ def main(args):
         )
     
     # correlation matrix is needed for flashfm
-    if args.flashfm:
-        rg = crosscorr_parse(gwa)
+    if args.flashfm or args.mvsusie:
+        rg = crosscorr_parse(gwa, gcov = True)
         rg['p1'] = rg.group1 + '_' + rg.pheno1; rg['p2'] = rg.group2 + '_' + rg.pheno2
         rg = rg.pivot_table(index = 'p1', columns = 'p2', values = 'rg')
         rg.columns.name = None; rg.index.name = None
         rg = rg.fillna(rg.T)
         for x in rg.columns: rg.loc[x,x] = 1
-        rg.to_csv(f'{tmpdir}/{sha256(repr(gwa).encode()).hexdigest()[:10]}_rg.txt', sep = '\t')
+        rg.to_csv(f'{tmpdir}/{out_prefix}_rg.txt', sep = '\t')
 
-    outdir = f'{args.out}/'+'_'.join([g for g,_ in find_gwas(args.pheno)])
+    outdir = f'{args.out}/{out_prefix}'
     if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
     for x in range(1, loci.shape[0]):
         c = loci.loc[x, 'CHR']
@@ -109,7 +111,14 @@ def main(args):
             if not os.path.isfile(out+'.txt') or args.force:
                 cmd = ['Rscript', 'finemap_flashfm.r'] + [f'{g}/{p}' for g,p in gwa] + \
                     ['-i', f'{args.out}/loci',f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out}',
-                    '--gcov',f'{tmpdir}/{sha256(repr(gwa).encode()).hexdigest()[:10]}_rg.txt', force]
+                    '--gcov',f'{tmpdir}/{out_prefix}_rg.txt', force]
+                submitter.add(' '.join(cmd))
+        if args.mvsusie:
+            out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_mvsusie'
+            if not os.path.isfile(out+'.txt') or args.force:
+                cmd = ['Rscript', 'finemap_flashfm.r'] + [f'{g}/{p}' for g,p in gwa] + \
+                    ['-i', f'{args.out}/loci',f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out}',
+                    '--gcov',f'{tmpdir}/{out_prefix}_rg.txt', force]
                 submitter.add(' '.join(cmd))
     submitter.submit()
     
@@ -138,15 +147,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # pre-process cmd line arguments
-    import os
     for arg in ['_in','out','clump', 'rg']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if args.rgp != None and 0 < args.rgp < 1:
         if len(args.filter) == 0: Warning('Ignoring rgp value as no filtering trait is specified')
     if args.rgp != None and (args.rgp > 1 or args.rgp <= 0): raise ValueError('p-value threshold must be 0 to 1')
     if not any([args.hyprcoloc, args.flashfm, args.mvsusie]):
-        Warning('No algorithm specified, defaulting to hyprcoloc')
-        args.hyprcoloc = True
+        Warning('No algorithm specified, defaulting to mvsusie')
+        args.mvsusie = True
     args.pheno.sort()
 
     from _utils import path, cmdhistory, logger
