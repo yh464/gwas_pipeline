@@ -7,7 +7,7 @@ Version 1: 2024-11-25
 This is a general utility to print splash screens with input command-line
 arguments and output a log file
 '''
-import os, sys
+import os, sys, datetime, inspect
 def splash(args, silent = False):
     msg = []
     msg.append('=' * 100)
@@ -36,13 +36,19 @@ def splash(args, silent = False):
     return '\n'.join(msg)
 
 class logger():
-    def __init__(self, fname = None, **kwargs):
+    def __init__(self, fname = None, echo = True, **kwargs):
         self.file = open(fname, 'w') if fname is not None else sys.stdout
         if 'silent' in kwargs.keys(): self.silent = kwargs['silent']
         else: self.silent = False
+        self.echo = echo
         
-    def log(self, msg):
+    def log(self, msg, warning = False):
+        now = datetime.datetime.now().isoformat(sep = ' ')
+        calling_file = os.path.basename(inspect.stack()[1].filename).replace('.py','')
+        warning_str = '| WARNING ' if warning else ''
+        msg = f'[ {now} | {calling_file} {warning_str}] {msg}'
         print(msg, file = self.file)
+        if self.echo and self.file != sys.stdout: print(msg)
         if not self.silent: print(msg)
     
     def splash(self, args):

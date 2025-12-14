@@ -23,7 +23,9 @@ def main(args):
     import pandas as pd
     from scipy.stats import false_discovery_control as fdr
     from _utils.path import normaliser, find_gwas
+    from _utils.logger import logger
     norm = normaliser()
+    log = logger()
     os.chdir(args._in)
     
     qtl_list = []
@@ -32,17 +34,17 @@ def main(args):
         if os.path.isdir(f'{args.qtl}/{p}'):
             if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{p}')]):
                 qtl_list.append(p)
-    print('Following QTL have been found:')
-    for qtl in qtl_list: print(qtl)
-    print()    
+    log.log('Following QTL have been found:')
+    for qtl in qtl_list: log.log(qtl)
+    log.log()    
     
     pheno = find_gwas(args.pheno, dirname = args.gwa)
 
     for g, ps in pheno:
         # overall summary table
         all_phenos = []
-        print(f'Following phenotypes have been found for {g}:')
-        for p in ps: print(p)
+        log.log(f'Following phenotypes have been found for {g}:')
+        for p in ps: log.log(p)
         
         for p in ps:
             all_qtls = []
@@ -50,7 +52,7 @@ def main(args):
                 if os.path.isfile(f'{args._in}/{g}/{p}.{qtl}.smr'):
                     smr = read_smr(f'{args._in}/{g}/{p}.{qtl}.smr')
                 elif not os.path.isdir(f'{args._in}/{g}/{p}.{qtl}'):
-                    Warning(f'Missing SMR results for {g}/{p}.{qtl}'); continue
+                    log.log(f'Missing SMR results for {g}/{p}.{qtl}', warning = True); continue
                 else:
                     smr = []
                     for chrom in os.listdir(f'{args._in}/{g}/{p}.{qtl}'):
@@ -64,13 +66,13 @@ def main(args):
                         smr = pd.DataFrame(columns = ['pheno','qtl','probe','chr','gene','SNP','A1','A2','beta',
                                                       'se','p','p_heidi','nsnp_heidi','q'], index = [])
                         all_qtls.append(smr)
-                        print(f'WARNING: SMR results for {g}/{p}.{qtl} are missing')
+                        log.log(f'SMR results for {g}/{p}.{qtl} are missing', warning = True)
                         continue
                 smr['q'] = np.nan
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
                 all_qtls.append(smr)
             if len(all_qtls) == 0:
-                Warning(f'Missing SMR results for {g}/{p}'); continue
+                log.log(f'Missing SMR results for {g}/{p}', warning = True); continue
             all_qtls = pd.concat(all_qtls).sort_values(by = ['q', 'p_heidi'])
             all_qtls.to_csv(f'{args._in}/{g}/{p}.smr', sep = '\t', index = False)
             all_phenos.append(all_qtls)

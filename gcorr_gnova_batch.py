@@ -15,6 +15,8 @@ Outputs:
 import os, warnings
 
 def main(args):
+    from _utils.logger import logger
+    log = logger()
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_gnova_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         n_cpu = 4, timeout = 30, env = args.gnova)
@@ -34,7 +36,7 @@ def main(args):
             continue
         gene_sets.append(x)
 
-    print(f'Found following gene sets for GNOVA analysis: \n' + '\n'.join(gene_sets))
+    log.log(f'Found following gene sets for GNOVA analysis: \n' + '\n'.join(gene_sets))
 
     for g1, p1, g2, p2 in pairwise:
         if g1 > g2 or (g1 == g2 and p1 > p2):

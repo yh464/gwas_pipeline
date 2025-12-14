@@ -11,6 +11,8 @@ Requires following inputs:
     requires file names to be identical across datasets
     requires fastGWA format (SNP, A1, A2, AF1, BETA, P)
 '''
+from _utils import logger
+log = logger.logger()
 
 def main(args):
   import os
@@ -46,7 +48,7 @@ def main(args):
         snp_file = f'{submitter.tmpdir}/snps_to_extract.txt'
         with open(snp_file, 'w') as f:
           for snp in args.extract:
-            print(snp, file = f)
+            log.log(snp, file = f)
         cmd += f'--extract {snp_file} '
     cmd += f'--metal {args.metal} --plink {args.plink} -o {out} {force}'
     submitter.add(cmd)

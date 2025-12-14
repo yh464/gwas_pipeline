@@ -20,6 +20,7 @@ from time import perf_counter as t
 from _utils.path import find_gwas
 from _utils.plugins.logparser import crosscorr_parse
 
+
 def find_loci(args):
     # scans directory for fastGWA files
     gwa = []
@@ -53,6 +54,8 @@ def find_loci(args):
     return gwa, loci
 
 def main(args):
+    from _utils.logger import logger
+    log = logger()
     tic = t()
     force = '-f' if args.force else ''
     tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
@@ -60,9 +63,9 @@ def main(args):
     gwa, loci = find_loci(args)
     out_prefix = sha256(repr(gwa).encode()).hexdigest()[:10] # unique prefix for the specified group of phenotypes
     toc = t()-tic
-    print(f'Found {len(gwa)} GWAS summary statistics files.')
-    print(gwa)
-    print(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
+    log.log(f'Found {len(gwa)} GWAS summary statistics files.')
+    log.log(gwa)
+    log.log(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
     
     # check cache
     cache_files = [f'{args.out}/loci/{g}/{p}_chr{loci.CHR.iloc[i]}_{loci.START.iloc[i]:.0f}_{loci.STOP.iloc[i]:.0f}.txt'\

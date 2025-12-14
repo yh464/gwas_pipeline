@@ -10,6 +10,9 @@ Requires following inputs:
     GWAS summary statistics (single file)
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def search_file(file, patterns):
     import os
     import numpy as np
@@ -22,7 +25,7 @@ def search_file(file, patterns):
     search = subprocess.Popen(cmd, stdout = subprocess.PIPE)
     
     try: df = pd.read_table(search.stdout, header = None)
-    except: print(f'None of the SNPs found in {file}'); return None
+    except: log.log(f'None of the SNPs found in {file}'); return None
     
     df.columns = hdr
     df['Phenotype'] = os.path.basename(file).replace('.fastGWA','')
@@ -42,7 +45,7 @@ def search_snp(x, tmpdir, args):
     import pandas as pd
     from multiprocessing import Pool
     from functools import partial
-    print(x)
+    log.log(x)
     
     if os.path.isfile(args.snp[0]) and len(args.snp) == 1:
         patterns = args.snp[0]
@@ -53,7 +56,7 @@ def search_snp(x, tmpdir, args):
     for y in os.listdir(f'{args._in}/{x}'):
         if fnmatch(y,'*.fastGWA') and not fnmatch(y, '*_X.fastGWA'): 
             flist.append(f'{args._in}/{x}/{y}')
-    if len(flist) == 0: print(f'NO GWAS FILE FOR {x}'); return None
+    if len(flist) == 0: log.log(f'NO GWAS FILE FOR {x}'); return None
     
     cache = f'{tmpdir}/sigsnp_{snps[0]}_{snps[-1]}_{x}.txt'
     if os.path.isfile(cache) and not args.force:
@@ -77,7 +80,7 @@ def main(args):
     import os, tempfile
     import pandas as pd
     from _utils.path import normaliser
-    
+
     norm = normaliser()
     all_files = []
     tmpdir = tempfile.mkdtemp()
@@ -87,7 +90,7 @@ def main(args):
     else:
         patterns = f'{tmpdir}/snp_list.txt'
         with open(patterns,'w') as tmpfile:
-            for snp in args.snp: print(snp, file = tmpfile)
+            for snp in args.snp: log.log(snp, file = tmpfile)
             tmpfile.close()
     
     temp = [search_snp(x, tmpdir, args) for x in args.pheno]
@@ -101,7 +104,7 @@ def main(args):
     norm.normalise(all_files).to_clipboard(index = False)
     # all_files_wide = all_files.pivot_table(values = 'p', index = 'SNP', columns = 'Phenotype')
     # all_files_wide.insert(loc = 0, column = 'min_pval', value = all_files_wide.min(axis = 1))
-    # print(norm.normalise(all_files_wide))
+    # log.log(norm.normalise(all_files_wide))
     
 if __name__ == '__main__':
     import argparse

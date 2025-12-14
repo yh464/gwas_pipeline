@@ -30,10 +30,11 @@ else: args.out = os.path.realpath(args.out)
 # make output directories
 from fnmatch import fnmatch
 import pandas as pd
+from _utils.logger import logger
 
 if not os.path.isdir(args.out): os.mkdir(args.out)
-logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/'
-log = open(f'{logdir}finemap_annot.log','w')
+logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs'
+log = logger(f'{logdir}/finemap_annot.log', echo = True)
 tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/finemap_annot_cache/'
 if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
 
@@ -60,8 +61,7 @@ for x in args.pheno:
   os.chdir('polyfun_stats')
   all_phenos = []
   for y in pflist:
-    print(f'Processing phenotype: {y}', file = log)
-    print(f'Processing phenotype: {y}')
+    log.log(f'Processing phenotype: {y}')
     all_gsets = []
     for annot in annot_list:
         # output filter
@@ -85,13 +85,13 @@ for x in args.pheno:
         
         sig_sets = []
         for z in flist:
-          print(f'>>>>> Processing segment: {z}', file = log)
+          log.log(f'>>>>> Processing segment: {z}')
           # 95% credible set
           zprefix = z.replace('.csv','')
           df = pd.read_csv(z, sep = '\s+')
           
           n_set = df['CREDIBLE_SET'].values.max()
-          print(f'>>>>> {n_set} significant sets found for segment {z}', file = log)
+          log.log(f'>>>>> {n_set} significant sets found for segment {z}')
           sig_sets.append(n_set)
           
           for i in range(1,n_set+1):
@@ -107,8 +107,7 @@ for x in args.pheno:
                 f'--pval {tmpdir}/{zprefix}.sigset{i}.sigsnp ncol=N --out {out_geneset}')
             
             if o != 0: 
-              print(f'WARNING: magma failed for {out_geneset}')
-              print(f'WARNING: magma failed for {out_geneset}', file = log)
+              log.log(f'magma failed for {out_geneset}', warning = True)
               continue
             
             # concatenate output
@@ -126,7 +125,7 @@ for x in args.pheno:
     
     # merge different annotations
     if len(all_gsets) == 0:
-        print(f'WARNING: phenotype {y} does not have significant SNPs')
+        log.log(f'phenotype {y} does not have significant SNPs', warning = True)
         continue
     
     all_gsets = pd.concat(all_gsets).drop_duplicates()

@@ -28,12 +28,14 @@ tic = time.perf_counter()
 import pandas as pd
 from qmplot import manhattanplot, qqplot
 import matplotlib.pyplot as plt
+from _utils import logger
+log = logger.logger()
 
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams['font.sans-serif'] = 'Arial'
 
 toc = time.perf_counter() - tic
-print(f'Loaded modules. Time = {toc:.3f} seconds')
+log.log(f'Loaded modules. Time = {toc:.3f} seconds')
 
 os.chdir(f'{args._in}/{args.pheno}')
 x = args.file
@@ -91,4 +93,4 @@ if (not os.path.isfile(out_fname)) or args.force:
            ylabel=r"Observed $-log_{10}{(P)}$")
   plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 500, bbox_inches = 'tight')
   plt.close()
-  print(f'Fig plotted, time = {toc:.3f} seconds.')
+  log.log(f'Fig plotted, time = {toc:.3f} seconds.')

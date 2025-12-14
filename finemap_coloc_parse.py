@@ -23,6 +23,7 @@ from _utils.plugins.enrichr import enrichr_list, enrichr_to_revigo
 from _utils.plugins.inrich import inrich
 from multiprocessing import Pool, cpu_count
 
+
 def parse_hyprcoloc_tabular(file):
     df = pd.read_table(file).drop(['iteration','dropped_trait'], axis=1) # valid clusters are now devoid of NA
     df.dropna(inplace = True)
@@ -59,6 +60,8 @@ def _inrich(df, traits):
 
 def main(args):
     from finemap_coloc_batch import find_loci
+    from _utils.logger import logger
+    log = logger()
     pheno, loci = find_loci(args)
     pheno_str = sha256(repr(pheno).encode()).hexdigest()[:10]
     in_dir = f'{args._in}/{pheno_str}'  
@@ -123,7 +126,7 @@ def main(args):
     norm.normalise(summary).to_csv(f'{args.out}/{pheno_str}_coloc_summary.txt', sep = '\t', index = True)
     norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
 
-    print(f'Output written to {args.out}/{pheno_str}_coloc_*.txt')
+    log.log(f'Output written to {args.out}/{pheno_str}_coloc_*.txt')
     return
 
 if __name__ == '__main__':

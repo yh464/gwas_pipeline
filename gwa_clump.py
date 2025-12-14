@@ -31,6 +31,7 @@ if type(args.out) == type(None): args.out = args._in
 
 from _utils import logger
 logger.splash(args)
+log = logger.logger()
 
 def main(args):
     import time
@@ -50,12 +51,12 @@ def main(args):
     df = pd.read_table(args._in, sep = '\t')
     sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
     if sf.sum() == 0:
-      print(f'File {prefix} contains no significant SNP, skipping')
+      log.log(f'File {prefix} contains no significant SNP, skipping')
       out_df = pd.DataFrame(columns = ['CHR', 'F', 'SNP', 'BP', 'P', 
           'TOTAL', 'NSIG','S05','S01', 'S001','S0001','SP2'], index = [])
       out_df.to_csv(out, sep = '\t', index = False)
       toc = time.perf_counter() - tic
-      print(f'Total time = {toc:.3f}.')
+      log.log(f'Total time = {toc:.3f}.')
       return
     
     df_sig = df.loc[sf,:].sort_values(by = 'P')
@@ -89,7 +90,7 @@ def main(args):
       if os.path.isfile(f'{tmpout}.clumped'):
           out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
       toc = time.perf_counter() - tic
-      print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
+      log.log(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
     if len(out_df) > 0:
         out_df = pd.concat(out_df, axis = 0)
     else: out_df = pd.DataFrame(columns = ['CHR', 'F', 'SNP', 'BP', 'P', 

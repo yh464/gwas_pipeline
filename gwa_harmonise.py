@@ -11,6 +11,8 @@ Requires following inputs:
     GWAS summary statistics (scans directory)
     require the following columns: SNP, A1, A2, BETA or OR (manually edit if necessary)
 '''
+from _utils import logger
+log = logger.logger()
 
 def harmonise(file, ref):
     import pandas as pd
@@ -25,7 +27,7 @@ def harmonise(file, ref):
     try:
         df = pd.read_table(file, sep = '\\s+', index_col = 'SNP')
         toc = perf_counter() - tic
-        print(f'Read {file}, time = {toc:.2f} seconds')
+        log.log(f'Read {file}, time = {toc:.2f} seconds')
         to_drop = ['CHR','POS','BP']
         for col in ['CHR','POS','BP']: # erase CHR and BP information in case of different GRCh builds
             if not col in df.columns: to_drop.remove(col)
@@ -33,7 +35,7 @@ def harmonise(file, ref):
         for col in ['A1','A2']:
             df[col] = df[col].str.upper()
         df = df.rename(columns = {'A1':'A1_in','A2':'A2_in'})
-        toc = perf_counter() - tic; print(f'Pre-processed {file}, time = {toc:.2f} seconds')
+        toc = perf_counter() - tic; log.log(f'Pre-processed {file}, time = {toc:.2f} seconds')
 
         # pre-process reference snp info
         ref = ref[['CHR','POS','A1','A2','AF1']] if not 'AF1' in df.columns else ref[['CHR','POS','A1','A2']]
@@ -42,18 +44,18 @@ def harmonise(file, ref):
         matched = (df.A1 == df.A1_in) & (df.A2 == df.A2_in)
         flipped = (df.A1 == df.A2_in) & (df.A2 == df.A1_in)
         mismatch = (~matched) & (~flipped)
-        toc = perf_counter() - tic; print(f'Identified mismatch for {file}, time = {toc:.2f} seconds')
+        toc = perf_counter() - tic; log.log(f'Identified mismatch for {file}, time = {toc:.2f} seconds')
         
         if 'OR' in df.columns: df.loc[flipped,'OR'] = df.loc[flipped,'OR'] ** -1
         if 'BETA' in df.columns: df.loc[flipped,'BETA'] *= -1
         if 'AF1' in df.columns: df.loc[flipped,'AF1'] = 1 - df.loc[flipped,'AF1']
         df = df.loc[~mismatch,:].drop(['A1_in','A2_in'], axis = 1).sort_values(by = ['CHR','POS'])
         toc = perf_counter() - tic
-        print(f'Harmonised {file}, time = {toc:.2f} seconds')
+        log.log(f'Harmonised {file}, time = {toc:.2f} seconds')
 
         df.to_csv(file, sep = '\t', index = True)
         toc = perf_counter() - tic
-        print(f'Saved {file}, time = {toc:.2f} seconds')
+        log.log(f'Saved {file}, time = {toc:.2f} seconds')
     except:
         warnings.warn(f'Failed to harmonise {file}, consider manual harmonisation')
     return
@@ -70,7 +72,7 @@ def main(args):
     # reference SNP info: CHR, SNP, POS, A1, A2, AF1
     fields = ['CHR','SNP','POS','A1','A2','AF1']
     ref = pd.read_table(args.ref, index_col='SNP')
-    print('Read reference')
+    log.log('Read reference')
     gwa = find_gwas(args.pheno, dirname=args._in, ext = 'fastGWA', long = True)
     flist = []
     for g,p in gwa:

@@ -39,6 +39,8 @@ def main(args = None, **kwargs):
     import pandas as pd
     from fnmatch import fnmatch
     from _utils.path import normaliser
+    from _utils.logger import logger
+    log = logger()
     
     if args == None:
         from _utils.gadgets import namespace
@@ -49,7 +51,7 @@ def main(args = None, **kwargs):
     crosstrait_clumps = []
     # for each phenotype
     for p in args.pheno:
-        print(p)
+        log.log(p)
         # scan directory for clump files at desired p value threshold
         flist = []
         for f in os.listdir(f'{args._in}/{p}'):

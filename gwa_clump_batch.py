@@ -13,7 +13,9 @@ Requires following inputs:
 def main(args):
     import os
     from fnmatch import fnmatch
-    
+    from _utils.logger import logger
+    log = logger()
+
     if args.force: force = '-f'
     else: force = ''
     
@@ -34,7 +36,7 @@ def main(args):
     # directory management
     for g,p in pheno:
       if not os.path.isdir(f'{args.out}/{g}'): os.system(f'mkdir -p {args.out}/{g}') # creates output folder
-      print(f'{g}/{p}')
+      log.log(f'{g}/{p}')
       out_fname = f'{args.out}/{g}/{p}_{args.pval:.0e}.clumped'
       if os.path.isfile(out_fname) and (not args.force): continue
       submitter.add(

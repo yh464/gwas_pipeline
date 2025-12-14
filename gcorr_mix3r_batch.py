@@ -16,6 +16,8 @@ from _utils.gadgets import namespace
 from _utils.slurm import array_submitter
 
 def main(args = None, **kwargs):
+    from _utils.logger import logger
+    log = logger()
     if args == None: args = namespace(**kwargs)
 
     if len(args.pheno) % 3 != 0:
@@ -26,7 +28,7 @@ def main(args = None, **kwargs):
 
     for i in range(0, len(args.pheno), 3):
         pheno = find_gwas(args.pheno[i:i+3], dirname = args._in, long = True, ext = 'sumstats')
-        print(', '.join([f'{p[0]}/{p[1]}' for p in pheno]))
+        log.log(', '.join([f'{p[0]}/{p[1]}' for p in pheno]))
         out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
 
         if os.path.isfile(out_file) and not args.force: return
@@ -35,7 +37,7 @@ def main(args = None, **kwargs):
         os.makedirs(tmpdir, exist_ok = True)
         config = f'{tmpdir}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.config.json'
         with open(config, 'w') as f:
-            print(f'''
+            log.log(f'''
     {{
         "sumstats": [
             "{args._in}/{pheno[0][0]}/{pheno[0][1]}.sumstats",

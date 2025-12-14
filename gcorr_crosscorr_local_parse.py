@@ -13,6 +13,7 @@ Input format: LONG-format table, group1 (*local) pheno1 group2 pheno2 rg se p q
 '''
 
 import argparse
+from math import log
 parser = argparse.ArgumentParser(
   description = 'this script prepares the psychiatric rg for r-ggseg plotting')
 parser.add_argument('-p1', nargs = '*', help = 'local phenotypes',
@@ -32,6 +33,7 @@ args = parser.parse_args()
 
 from _utils import logger, path
 logger.splash(args)
+log = logger.logger()
 norm = path.normaliser()
 
 import os
@@ -66,7 +68,7 @@ for g2, p2 in zip(pheno_2, prefix_2):
                 continue
         fname = f'{args._in}/{g1}/{g2}/{g1}_{p1}.{g2}_{p2}.rg.log'
         if not os.path.isfile(fname):
-            print(f'{fname} does not exist')
+            log.log(f'{fname} does not exist')
             continue
         tmp = open(fname)
         tmp_stats = tmp.read().splitlines()
@@ -79,7 +81,7 @@ for g2, p2 in zip(pheno_2, prefix_2):
             if rg < -1: rg = -1
         except: 
           rg = np.nan
-          print(f'{fname} shows NA correlation!')
+          log.log(f'{fname} shows NA correlation!')
         try: se = max((float(tmp_stats[3]),10**-20))
         except: se = np.nan
 

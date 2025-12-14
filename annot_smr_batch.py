@@ -38,7 +38,7 @@ def format_gwa(gwa, tmpgwa):
     if not log:
         print_field = ','.join([f'${x+1}' for x in out])
         cmd = ['awk', '-v', r'OFS="\t"', '\'{print', print_field+'}\'', gwa, '>', tmpgwa]
-        print(' '.join(cmd))
+        log.log(' '.join(cmd))
         os.system(' '.join(cmd))
     else:
         df = pd.read_table(gwa, usecols = out)
@@ -112,9 +112,9 @@ def main(args):
                 )
         
         else:
-            # print(f'Processing: {pheno} \n\tConducting SMR by chromosome, following files have been found:')
+            # log.log(f'Processing: {pheno} \n\tConducting SMR by chromosome, following files have been found:')
             # for x, b in zip(xqtl_list, bfile_list):
-            #     print('\t\t'.join([str(x), str(b)]))
+            #     log.log('\t\t'.join([str(x), str(b)]))
             
             if not os.path.isdir(f'{out}/{pheno}.{qtl}'): os.mkdir(f'{out}/{pheno}.{qtl}')
             
@@ -133,8 +133,8 @@ def main(args):
             if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]):
                 qtl_list.append(f'{args.qtl}/{y}')
     
-    print('Following QTL have been found:')
-    for x in qtl_list: print(x)
+    log.log('Following QTL have been found:')
+    for x in qtl_list: log.log(x)
     
     from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)

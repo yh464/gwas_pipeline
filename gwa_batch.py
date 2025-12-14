@@ -13,7 +13,11 @@ Requires following inputs:
     covariates files in FID IID *** format
 '''
 
+
+
 def main(args):
+  from _utils.logger import logger
+  log = logger()
   # array submitter
   from _utils.slurm import array_submitter
   submitter = array_submitter(name = f'gwa_{args.pheno}',timeout = 90)
@@ -39,7 +43,7 @@ def main(args):
       snp_file = f'{submitter.tmpdir}/snps_to_extract.txt'
       with open(snp_file, 'w') as f:
         for snp in args.extract:
-          print(snp, file = f)
+          log.log(snp, file = f)
       extract = f'--extract {snp_file} '
   else: extract = ''
 
@@ -56,14 +60,14 @@ def main(args):
   
   # create output folder
   outdir = f'{args.out}/{os.path.basename(f)}/'.replace('.txt','')
-  print(outdir)
+  log.log(outdir)
   if not os.path.isdir(outdir):
     os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
   
   # phenotypes to be analysed
   c = c[2:]
-  print('Following traits are to be GWA-analysed:')
-  for i in c: print(i)
+  log.log('Following traits are to be GWA-analysed:')
+  for i in c: log.log(i)
   
   # for each phenotype
   for i in range(c.size):
@@ -72,7 +76,7 @@ def main(args):
     out_fname = outdir + trait
     # check existing files
     if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
-      print(f'Trait already analysed for: {trait}')
+      log.log(f'Trait already analysed for: {trait}')
       continue
     
     submitter.add(

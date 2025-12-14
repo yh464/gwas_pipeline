@@ -12,6 +12,9 @@ Requires following inputs:
     PLINK bed binaries, needs all autosomes concatenated into one file
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
   # array submitter
   from _utils.slurm import array_submitter
@@ -45,7 +48,7 @@ def main(args):
       elif tmp.find('/') == -1: outdir = f'{outdir}{tmp}'
       else: outdir = tmp
     if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
-    print(f'GWAS output will be saved to {outdir}')
+    log.log(f'GWAS output will be saved to {outdir}')
 
     # run GENESIS
     for p in hdr[2:]:

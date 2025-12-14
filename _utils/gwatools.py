@@ -138,13 +138,13 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   
   # match input and output columns
   from .logger import logger
-  _logger = logger(**kwargs)
-  _logger.log('Specifying output columns')
+  _log = logger(**kwargs)
+  _log.log('Specifying output columns')
   out_cols = validate_columns(outcols, **kwargs)
   # fill out SE, P values and Z scores if requested and not present
   df = _convert_z_p_se(df, out_cols['zscore'] != None, out_cols['pval'] != None, out_cols['se'] != None, **kwargs)
   df = convert_chrom(df, **kwargs)
-  _logger.log('Parsing input columns')
+  _log.log('Parsing input columns')
   orig_cols = validate_columns(df.columns, **kwargs)
   if orig_cols['a1'] != None: df[orig_cols['a1']] = df[orig_cols['a1']].str.upper()
   if orig_cols['a2'] != None: df[orig_cols['a2']] = df[orig_cols['a2']].str.upper()
@@ -161,13 +161,13 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   if orig_cols['odds_ratio'] != None:
     or_median = np.median(df[orig_cols['odds_ratio']])
     if 0.9 < or_median < 1.1:
-      _logger.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LINEAR SCALE')
+      _log.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LINEAR SCALE')
       if all_beta:
         df[beta] = np.log(df[orig_cols['odds_ratio']])
         out_cols['beta'] = beta; orig_cols['beta'] = beta # only beta will be outputted
       else: out_cols['odds_ratio'] = odds_ratio # only OR will be outputted
     elif -0.1 < or_median < 0.1:
-      _logger.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LOG SCALE')
+      _log.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LOG SCALE')
       if all_beta == False:
         df[odds_ratio] = np.exp(df[orig_cols['odds_ratio']])
         out_cols['odds_ratio'] = odds_ratio; orig_cols['odds_ratio'] = odds_ratio # only OR will be outputted
@@ -190,7 +190,7 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   out_df = df[match_cols].rename(columns=dict(zip(match_cols, out_cols_list)))
   if out != None:
     out_df.to_csv(out, sep = '\t', index = False)
-    _logger.log(f'Output written to {out}')
+    _log.log(f'Output written to {out}')
   
   return out_df
 

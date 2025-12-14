@@ -11,14 +11,15 @@ Requires following inputs:
     LDSC rg logs
     LDSC h2 logs
 '''
+import pandas as pd
+import numpy as np
+import scipy.stats as sts
+from _utils.path import normaliser
+from _plots import corr_heatmap
 
 def main(args):
-    import pandas as pd
-    import numpy as np
-    import scipy.stats as sts
-    from _utils.path import normaliser
-    from _plots import corr_heatmap
-    
+    from _utils.logger import logger
+    log = logger()
     os.chdir(args._in)
     
     # Phenotypic matrix
@@ -84,7 +85,7 @@ def main(args):
                     if rg < -1: rg = -1
                 except: 
                   rg = np.nan
-                  print(f'{fname} shows NA correlation!')
+                  log.log(f'{fname} shows NA correlation!')
                 try: se = max((float(tmp_stats[3]),1e-20))
                 except: se = np.nan
             
