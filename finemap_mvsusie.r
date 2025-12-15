@@ -94,17 +94,21 @@ main = function(args){
   library(tidyverse)
   library(mvsusieR)
   
-  sumstats = read_sumstats(args)
-  
-  ref = extract_ref(args$ref %>% gsub('%chr%', args$chr, .), sumstats$snps)
-  # merge SNPs from PLINK ref and sumstats
-  sumstats$snps = sumstats$snps[sumstats$snps %in% ref$snpinfo$SNP]
-  sumstats$bhat = sumstats$bhat[sumstats$snps,]
-  sumstats$shat = sumstats$shat[sumstats$snps,]
-  
-  res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
-    prior_variance = sumstats$cov, max_iter = 1000, tol = 0.01, n_thread = 4)
-  save(res, file = paste0(args$out,'.rdata'))
+  if (file.exists(paste0(args$out, '.rdata')) & !args$force) {
+    load(paste0(args$out, '.rdata'))
+  } else {
+    sumstats = read_sumstats(args)
+    
+    ref = extract_ref(args$ref %>% gsub('%chr%', args$chr, .), sumstats$snps)
+    # merge SNPs from PLINK ref and sumstats
+    sumstats$snps = sumstats$snps[sumstats$snps %in% ref$snpinfo$SNP]
+    sumstats$bhat = sumstats$bhat[sumstats$snps,]
+    sumstats$shat = sumstats$shat[sumstats$snps,]
+    
+    res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
+      prior_variance = sumstats$cov, max_iter = 1000, tol = 0.01, n_thread = 4)
+    save(res, file = paste0(args$out,'.rdata'))
+  }
   
   output_table = list()
   for (cs in names(res$sets$cs)) {
