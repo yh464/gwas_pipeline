@@ -125,7 +125,7 @@ def main(args):
                 submitter.add(' '.join(cmd))
     submitter.submit()
 
-    dict_file = f'{outdir}/.directory.map.txt'
+    dict_file = f'{args.out}/.directory.map.txt'
     if os.path.isfile(dict_file): df = pd.read_table(dict_file, sep = '\t')
     else: df = pd.DataFrame(index = [], columns = ['directory','phenotypes'])
     df = pd.concat([df, pd.DataFrame(dict(

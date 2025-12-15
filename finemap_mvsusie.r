@@ -103,8 +103,18 @@ main = function(args){
   sumstats$shat = sumstats$shat[sumstats$snps,]
   
   res = mvsusie_rss(R = ref$ld, N = sumstats$N, Bhat = sumstats$bhat, Shat = sumstats$shat,
-    prior_variance = sumstats$cov, max_iter = 1000, tol = 0.01)
+    prior_variance = sumstats$cov, max_iter = 1000, tol = 0.01, n_thread = 4)
   save(res, file = paste0(args$out,'.rdata'))
+  
+  output_table = list()
+  for (cs in names(res$sets$cs)) {
+    output_table[[cs]] = tibble(
+      SNP = res$variable_names[res$sets$cs[[cs]]],
+      pip = res$pip[res$sets$cs[[cs]]],
+      credible_set = cs
+    )
+  }
+  output_table %>% bind_rows() %>% write_tsv(paste0(args$out, '.txt'))
 }
 
 main(args)
