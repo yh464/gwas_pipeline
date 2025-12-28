@@ -133,12 +133,8 @@ class array_submitter():
         print(f'Max {self.lim} batches * {self.parallel} commands per file, {self.arraysize} files per array job')
 
         # directories
-        self.logdir = f'{log}/{self.name}' # to prevent confusion with other array submissions
-        if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
-        os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
-        self.tmpdir = f'{tmpdir}/{self.name}' # to prevent confusion with other array submissions
-        if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
-        os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
+        self.logdir = f'{log}/{self.name}'
+        self.tmpdir = f'{tmpdir}/{self.name}'
 
         # commands are staged up to an array size limit before a new job array is initialised
         self.array_cmd_limit = self.arraysize * self.lim * self.parallel
@@ -276,6 +272,12 @@ class array_submitter():
         if len(self._staged_cmd) == 0: return
         cmds_to_dump = self._staged_cmd[:min(len(self._staged_cmd), self.array_cmd_limit)]
 
+        # make directories and remove temp files from previous runs
+        os.makedirs(self.logdir, exist_ok = True)
+        os.makedirs(self.tmpdir, exist_ok = True)
+        os.system(f'rm -rf {self.logdir}/*')
+        os.system(f'rm -rf {self.tmpdir}/*')
+
         # organise cmds into parallel batches
         if self.parallel > 1:
             batches = []
@@ -382,29 +384,37 @@ class array_submitter():
         self._submit_single()
         self._staged_cmd = []
 
+def add_slurm_args(parser: argparse.ArgumentParser):
+    slurm = parser.add_argument_group('SLURM configuration, enter numbers to override default resource allocation,\n'+
+        'enter x2, etc. to multiply the default values, leave blank to use defaults')
+    slurm.add_argument('--jobname', help = 'Manually specify job name')
+    slurm.add_argument('--partition', help = 'partition')
+    slurm.add_argument('--account', help = 'account to charge')
+    slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
+    slurm.add_argument('--n_gpu', help = 'number of GPUs per task')
+    slurm.add_argument('--n_node', help = 'number of nodes needed')
+    slurm.add_argument('--n_task', help = 'number of tasks per job')
+    slurm.add_argument('--arraysize', help = 'number of files per array job')
+    slurm.add_argument('--timeout', help = 'timeout in minutes')
+    slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
+    slurm.add_argument('--parallel', help = 'number of parallel processes')
+    slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
+    slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
+    slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
+    return parser
+
+def add_slurm_args_dec(generator):
+    def wrapper(*args, **kwargs):
+        parser = generator(*args, **kwargs)
+        parser = add_slurm_args(parser)
+        return parser
+    return wrapper
+
 class slurm_parser(argparse.ArgumentParser):
-    '''
-    An argparse.ArgumentParser with default SLURM config options
-    '''
+    '''An argparse.ArgumentParser with default SLURM config options'''
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.parser_config()
 
     def parser_config(self):
-        slurm = self.add_argument_group('SLURM configuration, enter numbers to override default resource allocation,\n'+
-            'enter x2, etc. to multiply the default values, leave blank to use defaults')
-        slurm.add_argument('--jobname', help = 'Manually specify job name')
-        slurm.add_argument('--partition', help = 'partition')
-        slurm.add_argument('--account', help = 'account to charge')
-        slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
-        slurm.add_argument('--n_gpu', help = 'number of GPUs per task')
-        slurm.add_argument('--n_node', help = 'number of nodes needed')
-        slurm.add_argument('--n_task', help = 'number of tasks per job')
-        slurm.add_argument('--arraysize', help = 'number of files per array job')
-        slurm.add_argument('--timeout', help = 'timeout in minutes')
-        slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
-        slurm.add_argument('--parallel', help = 'number of parallel processes')
-        slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
-        slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
-        slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
-        
+        self = add_slurm_args(self)
