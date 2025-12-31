@@ -104,9 +104,9 @@ def scatterplot_adata(adata, v, rep = 'umap', **kwargs):
   x = adata.obsm[coord_key][:,0]
   y = adata.obsm[coord_key][:,1]
   
-  if v in adata.obs.columns:
+  if isinstance(v, str) and v in adata.obs.columns.tolist():
     val = adata.obs[v]; vname = v
-  elif v in adata.var.index:
+  elif isinstance(v, str) and v in adata.var.index.tolist():
     gene_idx = adata.var.index.get_loc(v)
     val = adata.X[:,gene_idx].toarray().flatten() if hasattr(adata.X, 'toarray') else adata.X[:,gene_idx].flatten()
     vname = v

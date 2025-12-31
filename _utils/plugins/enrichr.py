@@ -42,7 +42,7 @@ def get_genes_list(df, top = -1, by = None, top_negative = True,
             if col.lower() in ['gene','genes','gene_name','feature_name','geneid']:
                 genes = df[col].tolist()
                 break
-            if col.dtype == str and col.iloc[0].startswith('ENSG'):
+            if df[col].dtype == str and df[col].iloc[0].startswith('ENSG'):
                 genes = df[col].tolist()
                 break
     # find genes by genomic position
