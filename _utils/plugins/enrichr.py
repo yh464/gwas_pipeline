@@ -69,9 +69,9 @@ def get_genes_list(df, top = -1, by = None, top_negative = True,
     if top_negative and top > 0: genes_n = genes[-min(top, len(genes)):]
     else: genes_n = []
 
-    if isinstance(genes_p[0],list): genes_p = [g for l in genes_p for g in l]
-    if isinstance(genes_n[0],list): genes_n = [g for l in genes_n for g in l]
-    if isinstance(genes[0],list): genes = [g for l in genes_n for g in l]
+    if len(genes_p) > 0 and isinstance(genes_p[0],list): genes_p = [g for l in genes_p for g in l]
+    if len(genes_n) > 0 and isinstance(genes_n[0],list): genes_n = [g for l in genes_n for g in l]
+    if len(genes) > 0 and isinstance(genes[0],list): genes = [g for l in genes_n for g in l]
     
     # map genes to labels
     if genes_p[0].startswith('ENSG'):
@@ -100,16 +100,20 @@ def enrichr_list(genes, background = None, databases =
     return pd.concat(out).sort_values(by = 'p_val').reset_index(drop = True)
 
 def enrichr_continuous(df, top = -1, by = None, top_negative = True, databases =
-    ['GO_Biological_Process_2025', 'GO_Cellular_Component_2025', 'GO_Molecular_Function_2025', 'SynGO_2024']):
+    ['GO_Biological_Process_2025', 'GO_Cellular_Component_2025', 'GO_Molecular_Function_2025', 'SynGO_2024'],
+    use_background = True
+    ):
     genes_lists, background = get_genes_list(df, top = top, by = by, top_negative = top_negative)
+    if not use_background: background = None
     out = []
-    out.append(enrichr_list(genes_lists[0], background = background, databases = databases))
+    out.append(enrichr_list(genes_lists[0], background = background, databases = databases).assign(sign = '+'))
     log.log('top positive genes:')
-    log.log(out[0].head(20))
+    print(out[0].head(20))
     if len(genes_lists) > 1:
-        out.append(enrichr_list(genes_lists[1], background = background, databases = databases))
+        out.append(enrichr_list(genes_lists[1], background = background, databases = databases).assign(sign = '-'))
         log.log('top negative genes:')
-        log.log(out[1].head(20))
+        print(out[1].head(20))
+    out = pd.concat(out)
     return out
 
 def revigo_setup(revigo_dir = '/rds/project/rds-Nl99R8pHODQ/toolbox/revigo'):

@@ -338,6 +338,7 @@ class array_submitter():
         msg.append('Following job has been submitted to SLURM:')
         msg.append(f'    Name:       {self._full_name}')
         msg.append(f'    Path:       {self.tmpdir}')
+        msg.append(f'    Log:        {self.logdir}')
         msg.append(f'    Partition:  {self.partition}')
         msg.append(f'    Timeout:    {self.timeout * math.ceil(self._count / self.parallel)} minutes')
         msg.append(f'    CPUs:       {n_cpu}')

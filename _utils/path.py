@@ -16,6 +16,8 @@ from fnmatch import fnmatch
 import warnings
 import re
 import pandas as pd
+from .logger import logger
+log = logger()
 
 def find_clump(group, pheno, 
                dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
@@ -115,7 +117,11 @@ def find_gwas(*pheno,
                 if x[-7:] == '_noUKBB' and x[:-7] in xlist: xlist.remove(x)
         if len(out) == 0 or pdir != out[-1][0]: out.append((pdir, xlist))
         else: out[-1] = (pdir, sorted(out[-1][1] + xlist))
-    if long: out = [(x,z) for x,y in out for z in y]
+    out_long = [(x,z) for x,y in out for z in y]
+    log.log(f'Found {len(out_long)} GWAS datasets')
+    for x, y in out_long:
+        log.log(f'    {x}/{y}')
+    if long: return out_long
     return out
 
 def pair_gwas(gwa1, gwa2 = [], self_pair = True):

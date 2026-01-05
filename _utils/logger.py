@@ -44,7 +44,7 @@ class logger():
     def log(self, msg, warning = False, error = False, calling_file = None):
         now = datetime.datetime.now().isoformat(sep = ' ')
         if calling_file is None:
-            calling_file = os.path.basename(inspect.stack()[1].filename).replace('.py','')
+            calling_file = os.path.basename(inspect.stack()[2].filename).replace('.py','')
         if warning: warning_str = '| WARNING '
         elif error: warning_str = '| ERROR '
         else: warning_str = ''
