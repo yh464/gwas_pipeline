@@ -98,6 +98,9 @@ def main(args):
     import os
     gsets = [(f'{args.gset}/{x[:-4]}', x[:-4]) for x in os.listdir(args.gset) if x[-4:] == '.txt']
     gscores = [(f'{args.gscore}/{x[:-4]}', x[:-4]) for x in os.listdir(args.gscore) if x[-4:] == '.txt']
+    log.log(f'Found {len(gsets)} gene sets and {len(gscores)} gene scores to process')
+    for _, x in gsets + gscores:
+        log.log(f'    {x}')
 
     # identify phenotypes
     pheno = find_gwas(args.pheno, long = True)
@@ -160,6 +163,7 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path
+    log.splash(args)
     cmdhistory.log()
     proj = path.project()
     proj.add_var('%gset',r'.+','gene set')
