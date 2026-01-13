@@ -83,7 +83,7 @@ def downstream_correlation(adata, df_score, label, genes = []):
     out_corr.append(_corr_genes(df_score, adata, strata, genes))
     return pd.concat(out_corr, axis = 1)
 
-def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
+def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000, 2000]):
     stratum = stratum.dropna().sort_values(ascending = True)
     gene_list = stratum.index.tolist()
     out = []
