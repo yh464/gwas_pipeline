@@ -99,7 +99,7 @@ def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], t
                 sign = '+', process = enrichr_res['path_name'], p = enrichr_res['p_val'])))
     return pd.concat(out, axis = 0)
 
-def downstream_enrichr(corr_df):
+def downstream_enrichr(corr_df, out_enrichr, out_revigo, force = False):
     # only include classes with <=100 cell types
     strata = corr_df.index.to_frame()
     for a in strata['annot'].unique():
@@ -112,7 +112,9 @@ def downstream_enrichr(corr_df):
     with Pool(min(cpu_count()*4, len(strata))) as p:
         summary = list(tqdm(p.imap(_enrichr, [corr_df.loc[i,:] for i in strata]), total = len(strata), desc = 'Conducting Enrichr analysis'))
     enrichr_summary = pd.concat(summary, axis = 0)
-    
+    enrichr_summary.to_csv(out_enrichr, index = False, sep = '\t')
+
+    if os.path.isfile(out_revigo) and (not force): return enrichr_summary, pd.read_table(out_revigo, sep = '\t')
     from _utils.plugins.enrichr import enrichr_to_revigo
     revigo_summary = enrichr_to_revigo(
         [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
@@ -123,6 +125,7 @@ def downstream_enrichr(corr_df):
             annot = group[0], cell_type = group[1], n_genes = group[2], top = group[3], sign = group[4]
         )
     revigo_summary = pd.concat(revigo_summary, axis = 0)
+    revigo_summary.to_csv(out_revigo, index = False, sep = '\t')
     return enrichr_summary, revigo_summary
 
 def main(args = None, **kwargs):
@@ -206,12 +209,10 @@ def main(args = None, **kwargs):
     # Downstream analysis 2: for each cell type, conduct enrichment analysis using top correlated genes
     out_enrichr = f'{args.out}.downstream.enrichr.txt'
     out_revigo = f'{args.out}.downstream.revigo.txt'
-    if args.downstream and (not os.path.isfile(out_enrichr) or not os.path.isfile(out_revigo) or args.force):
+    if args.downstream:
         try: corr
         except: corr = pd.read_table(out_downstream, index_col = [0,1])
-        enrichr, revigo = downstream_enrichr(corr)
-        enrichr.to_csv(out_enrichr, index = False, sep = '\t')
-        revigo.to_csv(out_revigo, index = False, sep = '\t')
+        enrichr, revigo = downstream_enrichr(corr, out_enrichr, out_revigo, force = args.force)
 
     # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
     out_pseudotime_fig = f'{args.out}.pseudotime.png'
