@@ -14,7 +14,7 @@ def main(args):
       for i in range(subjs.size):
         subjs[i] = subjs[i][13:23]
     naflag = []
-    logout = open('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/asym_stats_timeout.log','w')
+    logout = open('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs/asym_stats_timeout.log','w')
     
     tic = time.perf_counter()
     idx = 0
@@ -50,7 +50,7 @@ if __name__ == '__main__':
                                ' for one single individual for imaging derived phenotypes')
     parser.add_argument('-i','--in',dest = '_in', help =
         'Target file to screen',
-        default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Imaging/'+
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Imaging/'+
         '%subj/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
     parser.add_argument('-s', '--subjs', dest = 'subjs', help = 'list of subjs',
                         default = '../params/subjlist_rsfmri_hcp.txt')

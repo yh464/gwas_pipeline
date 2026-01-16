@@ -20,7 +20,7 @@ from .logger import logger
 log = logger()
 
 def find_clump(group, pheno, 
-               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
+               dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
                pval = 5e-8):
     '''
     Find PLINK clump files for a specific trait
@@ -54,7 +54,7 @@ def find_clump(group, pheno,
     raise FileNotFoundError(f'No clump found for {pheno}')
     
 def find_gwas(*pheno, 
-              dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
+              dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
               ext = 'fastGWA',
               exclude = [],
               long = False,
@@ -141,20 +141,20 @@ def pair_gwas(gwa1, gwa2 = [], self_pair = True):
     return pairwise
 
 def find_gene_sumstats(group, pheno, 
-    dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/annot/magma',
+    dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/annot/magma',
     annot = 'ENSG', ext = 'genes.out'):
     '''Finds gene-level summary stats for a given phenotype
     pheno parameter should be a single <group>, <pheno> tuple '''
     
     annot = annot.replace('.genes.annot','')
     if dirname.find('smr') > -1: 
-        if not annot in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/xqtl'):
+        if not annot in os.listdir('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/xqtl'):
             annot = 'psychencode_eqtl'
         if not ext in ['txt','smr']: ext = 'smr'
         Warning('Found SMR in directory name, automatically setting config to SMR output')
     if dirname.find('magma') > -1:
-        if not annot in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma') and not \
-            f'{annot}.genes.annot' in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma'):
+        if not annot in os.listdir('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma') and not \
+            f'{annot}.genes.annot' in os.listdir('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma'):
             annot = 'ENSG'
         if not ext in ['genes.raw','genes.out']: ext = 'genes.out'
         Warning('Found MAGMA in directory name, automatically setting config to MAGMA output')
@@ -189,7 +189,7 @@ def find_bed(bed, sep_chr = True, x = False):
         elif len(out) == n_chr + 1: return out[:-1]
         else: raise FileNotFoundError('Incorrect number of chromosome-specific bed files')
 
-def find_h5ad(*datasets, dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/raw', long = False):
+def find_h5ad(*datasets, dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/raw', long = False):
     '''
     Finds h5ad files for a specific single-cell dataset
     dirname: Directory to look for h5ad files

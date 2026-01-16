@@ -13,11 +13,11 @@ parser = ArgumentParser(description = 'This script runs flashfm')
 parser$add_argument('pheno', nargs = '+',
   help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('-i','--in', dest = 'input', help = 'input summary stats directory',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/loci')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/loci')
 parser$add_argument('-c','--chr', help = 'chromosome', type = 'integer')
 parser$add_argument('-r','--ref', 
   help = 'reference genotype file in PLINK format, auto scans directory for files split by chromosome',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/autosomes')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/autosomes')
 parser$add_argument('--gcov', help = 'Genetic covariance matrix')
 parser$add_argument('--start', help = 'start of locus', type = 'integer')
 parser$add_argument('--stop', help = 'end of locus', type = 'integer')
@@ -102,14 +102,14 @@ main = function(args){
   out = NULL; trials = 0
   while (is.null(out)) {
     out = tryCatch(FLASHFMwithFINEMAP(cache, ref$corx, raf, ybar, N, tempdir(), 1, covy, 0.99, 1, 
-      '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap'),
+      '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap'),
       error = function(e){return(NULL)})
     trials = trials + 1
     if (trials >=5 ) break
   }
   # one last try
   if (is.null(out)) out = FLASHFMwithFINEMAP(cache, ref$corx, raf, ybar, N, tempdir(), 1, covy, 
-    0.99, 1, '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap')
+    0.99, 1, '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/finemap')
                                    
   cat('Saving temp files to', tempdir(), '\n')
   save(out, file = paste0(args$out,'.rdata'))

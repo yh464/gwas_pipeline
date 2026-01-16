@@ -13,7 +13,7 @@ from ..logger import logger
 log = logger()
 
 def get_genes_list(df, top = -1, by = None, top_negative = True, 
-    ref = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
+    ref = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
     '''
     gets a list of genes from a DataFrame
     df: pd.DataFrame

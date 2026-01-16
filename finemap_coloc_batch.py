@@ -58,7 +58,7 @@ def main(args):
     log = logger()
     tic = t()
     force = '-f' if args.force else ''
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     gwa, loci = find_loci(args)
     out_prefix = sha256(repr(gwa).encode()).hexdigest()[:10] # unique prefix for the specified group of phenotypes

@@ -16,7 +16,7 @@ Outputs:
 
 # construct LAVA command for R script
 def lava_cmd(out, exp, cov, overlap, clump, task, outfile, 
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'):
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'):
   from hashlib import sha256
   overlap_prefix = sha256((f'{out[0]}:{out[1]})_' + '_'.join([f'{g}:{p}' for g, ps in (exp + cov) for p in ps])
                           ).encode()).hexdigest() + '_overlap.txt'
@@ -41,7 +41,7 @@ def main(args):
   from _utils.slurm import array_submitter
   submitter = array_submitter(name = 'gcorr_lava_'+'_'.join(args.p1)+'_'+'_'.join(args.p2), 
     env = 'gentoolsr', n_cpu = 2, timeout = 240)
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
   if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
 
   # find files
@@ -124,7 +124,7 @@ if __name__ == '__main__':
   parser.add_argument('--clump', dest = 'clump', help = 'Clumping output directory', 
     default = '../clump/')
   parser.add_argument('--ref', help = 'Reference LD Blocks directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
   parser.add_argument('--all-loci', action = 'store_true', help = 'Analyse all loci')

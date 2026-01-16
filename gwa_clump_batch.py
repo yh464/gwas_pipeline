@@ -20,7 +20,7 @@ def main(args):
     else: force = ''
     
     # temp and log
-    tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
     
     # array submitter
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
       default = '../gwa/')
     parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Genetics/plink')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
     parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
       default = '../params/bed_files_ukb.txt')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output directory',

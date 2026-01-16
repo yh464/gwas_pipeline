@@ -46,7 +46,7 @@ if __name__ == '__main__':
         'a valid imaging profile')
     parser.add_argument('-t','--target',dest = 'target', help =
         'Target file to screen',
-        default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Imaging/'+
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Imaging/'+
         '%subj/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
     parser.add_argument('-o','--out', dest = 'out', help = 'output subj list dir',
         default = '../params')

@@ -21,7 +21,7 @@ def main(args):
     
     # output directory
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_snp_list'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_snp_list'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     force = ' -f' if args.force else ''

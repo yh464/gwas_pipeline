@@ -95,9 +95,9 @@ if __name__ == '__main__':
     parser.add_argument('-c','--clump', dest = 'clump', help = 'Input clumping output file', required = True)
     parser.add_argument('-o', '--out', dest = 'out', help = 'output file name', required = True)
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'directory of bed binaries',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/')
     parser.add_argument('--polyfun', help = 'directory of POLYFUN tool',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
     parser.add_argument('-p', dest = 'p', help = 'p-value', type = float, default = 5e-8)
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')

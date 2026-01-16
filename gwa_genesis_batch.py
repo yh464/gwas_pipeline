@@ -71,10 +71,10 @@ if __name__ == '__main__':
   parser.add_argument('-d','--dcov',dest = 'dcov', help = 'DISCRETE covariance file', default = '../params/abcd_dcov.txt')
   parser.add_argument('-q','--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file', default = '../params/abcd_qcov.txt')
   parser.add_argument('-b','--bed', help = 'PLINK bed file PREFIX, needs all autosomes',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed_abcd/abcd_eur')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed_abcd/abcd_eur')
   parser.add_argument('-s','--snp', 
     help = 'SNP information table from larger population as GENESIS is used for small sample size, requires SNP and AF1 columns',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
   parser.add_argument('--extract', help = 'List of SNPs to extract')
   parser.add_argument('--maf', type = float, default = 0.01, help = 'Minor allele frequency threshold for SNPs')
   parser.add_argument('--n_threads', type = int, default = 8, help = 'Number of threads to use')

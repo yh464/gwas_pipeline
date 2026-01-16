@@ -14,7 +14,7 @@ def main(args):
       pheno = args.pheno
     
     # temp directory
-    tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     flist = []

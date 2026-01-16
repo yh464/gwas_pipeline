@@ -271,9 +271,9 @@ if __name__ == '__main__':
     path.add_argument('-rg', dest = 'rg', help = 'Directory to rg log files, required for causal and subtraction',
         default = '../gcorr/rglog')
     path.add_argument('--ref', help = 'Reference file for SNP variance estimation', default = 
-        '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
+        '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
     path.add_argument('--ld', help = 'LD reference panel', default = 
-        '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
+        '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
     
     pheno = parser.add_argument_group('Phenotype specifications')
     pheno.add_argument('-p1', help = 'Exposure, scans directory', nargs = '+', default = [])

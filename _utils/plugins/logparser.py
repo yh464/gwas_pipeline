@@ -101,8 +101,8 @@ def parse_rg_log(file, full = False, gcov = False):
     else: return all_stats[['group1','pheno1','group2','pheno2','rg','se','p']]
 
 def crosscorr_parse(gwa1, gwa2 = [], 
-        logdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog',
-        h2dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
+        logdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog',
+        h2dir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
         exclude = [], full = False, gcov = False):
     '''
     gwa1 and gwa2 are lists of (group, pheno_list) tuples or (group, pheno) tuples, compatible with long/short
@@ -218,7 +218,7 @@ def overlap_clumps(df, dist:int = 0):
     clumps.append(current_clump)
     return pd.concat([c.to_dataframe() for c in clumps]).fillna(0), clumps
 
-def parse_clump(pheno, clump_dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump', pval = 5e-08):
+def parse_clump(pheno, clump_dir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/clump', pval = 5e-08):
     '''Identifies all clumps from a list of GWAS summary statistics'''
     # long format list of phenotypes
     if isinstance(pheno[0][1], list): pheno = [(g,p) for g, ps in pheno for p in ps]

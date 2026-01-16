@@ -6,7 +6,7 @@ import os
 import datetime as dt
 import sys
 
-default_dir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/cmdhistory/'
+default_dir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/cmdhistory/'
 default_filename = 'current_cmdhistory.txt'
 
 def newfile():

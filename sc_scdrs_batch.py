@@ -108,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('-n','--nsig', help = 'Number of significant genes, -1 for all FDR-significant genes, default 1000', 
         type = int, default = 1000)
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang

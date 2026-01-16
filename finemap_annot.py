@@ -33,9 +33,9 @@ import pandas as pd
 from _utils.logger import logger
 
 if not os.path.isdir(args.out): os.mkdir(args.out)
-logdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs'
+logdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs'
 log = logger(f'{logdir}/finemap_annot.log', echo = True)
-tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/finemap_annot_cache/'
+tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/finemap_annot_cache/'
 if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
 
 # gene labelling

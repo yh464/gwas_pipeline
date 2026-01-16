@@ -34,11 +34,11 @@ def main(args):
     os.chdir(args.out)
     
     # log and temp
-    log = open(f'/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwama_{args.prefix}.log','w')
+    log = open(f'/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwama_{args.prefix}.log','w')
     log.log('Traits analysed in n-weighted GWAMA', file = log)
     for x in prefix:
       log.log(x, file = log)
-    tmp = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
+    tmp = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
     if not os.path.isdir(tmp): os.mkdir(tmp)
     
     # extract data

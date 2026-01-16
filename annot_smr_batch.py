@@ -50,7 +50,7 @@ def main(args):
     from fnmatch import fnmatch
     
     # temp directory
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/smr_temp'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/smr_temp'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     # array submitter
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     parser.add_argument('-q','--qtl', dest = 'qtl', help = 'Directory containing all xQTL files',
       default = '../params/xqtl')
     parser.add_argument('-s','--smr', dest = 'smr', help = 'Location of SMR binary',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary to use in magma',
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/') # intentionally absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',

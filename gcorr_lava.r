@@ -10,7 +10,7 @@ library(here)
 parser = ArgumentParser(description = 'This script runs LAVA')
 # path specs
 parser$add_argument('-i','--in', dest = 'input', help = 'input summary stats directory',
-                    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa/')
+                    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gwa/')
 parser$add_argument('--p1', nargs = '+', required = T,
                     help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('--p2', nargs = '*',
@@ -21,7 +21,7 @@ parser$add_argument('--clump', nargs = '*', help = 'clumping outputs, in order t
 parser$add_argument('--all-loci', default = F, action = 'store_true', help = 'use all loci for regional correlation')
 parser$add_argument('--overlap', help = 'sample overlap file from LDSC gcov_int')
 parser$add_argument('--ref', help = 'Reference files directory', default = 
-                      '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
+                      '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
 parser$add_argument('--eth', help = 'ethnicity', choices = c('afr','amr','eas','eur','sas'), default = 'eur')
 parser$add_argument('--all-exp', dest = 'all_exp', help = 'Multiple regression with all exposures',
                     action = 'store_true', default = F)
@@ -93,7 +93,7 @@ main = function(args) {
   library(progress)
   library(doParallel)
   
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
   if (! dir.exists(dirname(args$out))) dir.create(dirname(args$out), recursive = T)
   if (file.exists(args$out) & !args$force) return(NULL)

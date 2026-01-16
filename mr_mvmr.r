@@ -422,7 +422,7 @@ main = function(args){
   if (args$sub & ncol(susie.pipmdl) > 2 & (!file.exists(results_sub) | args$force)) {
     # MVMR-Horse for all sub-models, better than MVMR-cML-DP in simulation
     cat('Conducting MVMR-Horse for all sub-models from MVMR-cML-SuSIE. Time =', proc.time()[3],'\n')
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/mr_cache'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/mr_cache'
     out_mrhorse_sub = list()
     if (! dir.exists(tmpdir)) dir.create(tmpdir)
     for (i in 1:nrow(susie.pipmdl)){

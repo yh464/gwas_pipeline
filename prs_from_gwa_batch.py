@@ -11,7 +11,7 @@ def main(args):
   # parse input
   if not os.path.isdir(args.out): os.mkdir(args.out)
   
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/prs_temp'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/prs_temp'
   if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
   
   from _utils.path import find_gwas, find_bed
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'input directory',
       default = '../gwa/')
     parser.add_argument('--prscs', dest = 'prscs', help = 'directory of PRSCS executable',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/PRScs/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/PRScs/')
     parser.add_argument('--ref', dest = 'ref', help = 'reference panel',
       default = '../params/ref/ldblk/ldblk_1kg_eur/')
     parser.add_argument('--bed', dest = 'bed', help = 'list of PLINK binaries for target sample',

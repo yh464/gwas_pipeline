@@ -48,8 +48,8 @@ class array_submitter():
                  n_task = 1,
                  n_cpu = 1,
                  n_gpu = 0,
-                 log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
-                 tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
+                 log = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
+                 tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
                  lim = warnings.warn(DeprecationWarning('Command limit will be automatically determined')), # deprecated
                  arraysize = 200, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500

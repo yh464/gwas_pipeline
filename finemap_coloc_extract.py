@@ -22,7 +22,7 @@ def main(args = None, **kwargs):
   _, loci = parse_clump(pheno, clump_dir = args.clump, pval = args.pval)
   loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
   loci['START'] -= 5e5; loci['STOP'] += 5e5
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
   if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
   tempfile = f'{tmpdir}/{sha256(repr(pheno).encode()).hexdigest()}.txt'
   loci.to_csv(tempfile, sep = '\t')

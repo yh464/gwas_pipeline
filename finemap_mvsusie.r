@@ -13,10 +13,10 @@ parser = ArgumentParser(description = 'This script runs mvSuSiE')
 parser$add_argument('pheno', nargs = '+',
                     help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('-i','--in', dest = 'input', help = 'input summary stats directory',
-                    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/loci')
+                    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/loci')
 parser$add_argument('-r','--ref', 
                     help = 'reference genotype file in PLINK format, auto scans directory for files split by chromosome',
-                    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chr%chr%')
+                    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chr%chr%')
 parser$add_argument('--gcov', help = 'Genetic covariance matrix')
 parser$add_argument('-c','--chr', help = 'chromosome', type = 'integer')
 parser$add_argument('--start', help = 'start of locus', type = 'integer')

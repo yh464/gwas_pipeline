@@ -32,7 +32,7 @@ def main(args):
   if len(flist) != 1: raise ValueError('Please give only ONE phenotype file')
   
   # temp and log
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'                                 # temporatory dir
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'                                 # temporatory dir
   if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
   
   force = '-f' if args.force else ''
@@ -106,7 +106,7 @@ if __name__ == '__main__':
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
     default = '../params/bed_files_ukb.txt')
   io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/sp0.05_grm')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/sp0.05_grm')
   
   params = parser.add_argument_group(title = 'parameters for GCTA')
   params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
@@ -114,14 +114,14 @@ if __name__ == '__main__':
   params.add_argument('--maf', dest = 'maf', help = 'Filter by minor allele frequency',
     default = '0.01', type = str)
   params.add_argument('--keep', dest = 'keep', help = 'Subjects to keep', # intentionally absolute
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
   params.add_argument('--extract', nargs='*', help = 'SNPs to extract from input files', default = [])
   
   xchr = parser.add_argument_group(title = 'X chromosome GWAS options')
   xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
       default = True, action = 'store_false')
   xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')
   
   parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
     default = False, action = 'store_true')

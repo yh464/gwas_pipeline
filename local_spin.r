@@ -25,7 +25,7 @@ require(tidyverse)
 require(ggplot2)
 require(ggridges)
 
-tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
+tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
 if (! dir.exists(tmpdir)) dir.create(tmpdir)
 
 #### read data ####
@@ -43,11 +43,11 @@ bilateral = (bilateral > 0)
 #### Mapping from HCP to Yeo and Mesulam ####
 maps = list()
 if (bilateral) {
-  maps$mes <- read.csv('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2meslr.csv', header=T)
-  maps$yeo <- read.csv('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
+  maps$mes <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2meslr.csv', header=T)
+  maps$yeo <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
 } else {
-  maps$mes <- read.csv('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2mes.csv', header=T)
-  maps$yeo <- read.csv('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv', header=T)
+  maps$mes <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2mes.csv', header=T)
+  maps$yeo <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv', header=T)
 }
 colnames(maps$mes) <- c("annot1","annot2","Gof","label1","label2")
 colnames(maps$yeo) <- c("annot1","annot2","Gof","label1","label2")
@@ -65,7 +65,7 @@ palettes = list(
 #### define the function to permute on one phenotype and one parcellation ####
 perm = function(df, ref, nperm = 10000) {
   # load permutation parameters
-  permfile <- '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/spin_perms.rdata'
+  permfile <- '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/spin_perms.rdata'
   if (exists('perms')) {} else if (file.exists(permfile)){
     load(permfile)
   } else {

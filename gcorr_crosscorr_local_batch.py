@@ -97,7 +97,7 @@ if __name__ == '__main__':
       help = 'match local phenotype to corresponding global phenotype',
       default = False, action = 'store_true')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     args = parser.parse_args()

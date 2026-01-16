@@ -33,7 +33,7 @@ def main(args):
     # tempdir
     mixer_py = f'{args.mixer}/precimed/mixer_dev.py'
     tmpdir = tempfile.mkdtemp()
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsa_mixer'; os.makedirs(tmpdir, exist_ok = True)
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsa_mixer'; os.makedirs(tmpdir, exist_ok = True)
 
     # find GWAS sumstats
     from _utils.path import find_gwas, pair_gwas

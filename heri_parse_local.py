@@ -25,7 +25,7 @@ def main(args):
     import matplotlib.pyplot as plt
     import scipy.stats as sts
     
-    m2m = pd.read_csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv')
+    m2m = pd.read_csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv')
     m2m = m2m[['label1','label2']]
     m2m.columns = ['roi','Yeo']
     

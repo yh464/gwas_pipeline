@@ -16,7 +16,7 @@ parser.add_argument('-i','--in', dest = '_in', help = 'Input file')
 parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
   default = '../params/bed_files_ukb.txt')
 parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
-  default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Genetics/plink')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
 parser.add_argument('-o','--out', dest = 'out', help = 'Output directory')     # defaults to input dir
 parser.add_argument('-p',help = 'p-value threshold',
   default = 5e-8, type = float) # or 3.1076e-11, or 5e-6; 3.1076e-11 is derived from matrix decomposition
@@ -44,7 +44,7 @@ def main(args):
     prefix = '.'.join(os.path.basename(args._in).split('.')[:-1])
     out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
     
-    tmpdir = f'/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
+    tmpdir = f'/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     os.chdir(args.out)                                                             # we do not need the input dir
     

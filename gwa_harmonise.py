@@ -92,7 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
         default = '../gwa/')
     parser.add_argument('-r','--ref', dest = 'ref', help = 'reference UKB genetics data',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
         default = False, help = 'force overwrite')
     args = parser.parse_args()

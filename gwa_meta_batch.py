@@ -63,9 +63,9 @@ if __name__ == '__main__':
   parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
     default = '../gwa/')
   parser.add_argument('--metal', help = 'METAL executable',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/metal') # intended to be absolute
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/metal') # intended to be absolute
   parser.add_argument('--plink', help = 'PLINK 1.9 executable',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink') # intended to be absolute
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink') # intended to be absolute
   parser.add_argument('--extract', nargs='*', help = 'SNPs to extract from input files', default = [])
   parser.add_argument('-o','--out', dest = 'out', 
     help = 'output directory, relative to the --in dir')

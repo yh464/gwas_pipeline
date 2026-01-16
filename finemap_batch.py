@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary',
       default = '../params/bed/')
     parser.add_argument('--polyfun', help = 'directory of POLYFUN tool',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
     parser.add_argument('-p', dest = 'p', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')

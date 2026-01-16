@@ -10,10 +10,10 @@ library(here)
 parser = ArgumentParser(description = 'This script runs genomic SEM')
 # path specs
 parser$add_argument('-i','--in', dest = 'input', help = 'input MUNGED summary stats directory',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats')
 parser$add_argument('--full', dest = 'full', 
   help = 'input FULL summary stats directory, needed for common factor GWAS/GWAS by subtraction',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
 parser$add_argument('--p1', nargs = '+', 
   help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('--p2', nargs = '*',
@@ -24,9 +24,9 @@ parser$add_argument('--med', nargs = '*',
   help = 'Mediators, format <group>/<pheno>')
 parser$add_argument('--meta', nargs = '*', help = 'Metadata files')
 parser$add_argument('--ld', help = 'LD reference',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
 parser$add_argument('--ref', help = 'Reference file for SNP variance calculation', default = 
-  '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
+  '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
 parser$add_argument('-o','--out', help = 'Output prefix; NB manual models will be output where model file is')
 
 # analyses
@@ -173,7 +173,7 @@ main = function(args){
   library(GenomicSEM)
   library(openssl)
   library(tidyverse)
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsem'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsem'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
   
   #### Read metadata ####

@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'input directory',
       default = '../prs/prs_effsize/')
     parser.add_argument('--plink', dest = 'plink', help = 'Location of plink2 executable',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Genetics/plink2')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink2')
     parser.add_argument('--bed', dest = 'bed', help = 'PLINK binaries for target sample, list or directory or prefix',
       default = '../params/bed')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',

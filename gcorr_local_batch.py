@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'summary stats file directory',
       default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/')
     parser.add_argument('-g','--global', dest = 'glob', help = 'pqath to global summary stats',
       default = '../gcorr/ldsc_sumstats/global/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',

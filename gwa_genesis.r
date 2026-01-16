@@ -14,7 +14,7 @@ parser$add_argument('--qcov', help = 'Quantitative covariates file, first two co
 parser$add_argument('--n_threads', help = 'Number of threads', type = 'integer', default = 8)
 # because GENESIS is used for small populations, use UKB as a reference for MAF filtering
 parser$add_argument('--snp', help = 'SNP information table of reference population, used for MAF filter',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
 parser$add_argument('--extract', help = 'List of SNPs to extract')
 parser$add_argument('--maf', help = 'MAF filter', type = 'numeric', default = 0.01)
 parser$add_argument('-o','--out', help = 'Output directory')

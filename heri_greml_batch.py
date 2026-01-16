@@ -24,9 +24,9 @@ def main(args):
         timeout = 360, lim = 1)
     
     # temp and log
-    tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/' # temporatory dir
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/' # temporatory dir
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
-    logout = open('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwa_by_trait.log','w')
+    logout = open('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwa_by_trait.log','w')
     
     # check validity of the phenotype file
     import pandas as pd
@@ -91,7 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariate file',
       default = '../params/quantitative_covars.txt')
     parser.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
-      # default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/'+
+      # default = '/home/yh464/rds/rds-rb643-ukbiobank2/'+
       # 'Data_Genetics/Genetic_data/Neuroimaging_samples/full_grm')
       # 'Data_Users/yh464/params/sp0.05_grm')
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yg330/GRM_chr_merged/full_grm')

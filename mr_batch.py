@@ -162,7 +162,7 @@ if __name__ == '__main__':
     path_spec.add_argument('-o','--out', dest = 'out', help = 'Output directory',
         default = '../mr')
     path_spec.add_argument('--ldsc', help = 'LD scores, for LCV regression', # intentionally absolute
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/uk10k.l2.ldscore')
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/uk10k.l2.ldscore')
     
     pheno_spec = parser.add_argument_group('Phenotype specifications')
     pheno_spec.add_argument('-p1','--pheno1', dest = 'p1', 

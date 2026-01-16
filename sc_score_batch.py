@@ -36,9 +36,9 @@ if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script generates gene scores for MAGMA gene covariate analysis')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory containing h5ad single-cell multiomics dataset',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/cepo') # intentionally absolute
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/cepo') # intentionally absolute
     parser.add_argument('-o','--out', help = 'Output directory', 
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/gene_score') # intentionally absolute
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/gene_score') # intentionally absolute
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
