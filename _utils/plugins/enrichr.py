@@ -84,7 +84,7 @@ def get_genes_list(df, gene_col = None, top = -1, by = None, cutoff = None, top_
     if len(genes) > 0 and isinstance(genes[0],list): genes = [g for l in genes_n for g in l]
     
     # map genes to labels
-    if genes_p[0].startswith('ENSG'):
+    if len(genes_p) > 0 and genes_p[0].startswith('ENSG'):
         genes_p = [x for x in genes_p if x in ref.index]
         genes_p = ref.loc[genes_p, 'LABEL'].dropna().unique().tolist()
     if len(genes_n) > 0 and genes_n[0].startswith('ENSG'):
