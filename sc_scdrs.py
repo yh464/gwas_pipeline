@@ -113,11 +113,11 @@ def downstream_enrichr(corr_df, out_enrichr, out_revigo, force = False):
     if os.path.isfile(out_revigo) and (not force): return enrichr_summary, pd.read_table(out_revigo, sep = '\t')
     from _utils.plugins.enrichr import enrichr_to_revigo
     revigo_summary = enrichr_to_revigo(
-        [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
+        [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign','cutoff'])],
     )
-    for idx, (group, _) in enumerate(enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])):
+    for idx, (group, _) in enumerate(enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign','cutoff'])):
         revigo_summary[idx] = revigo_summary[idx].assign(
-            annot = group[0], cell_type = group[1], n_genes = group[2], top = group[3], sign = group[4]
+            annot = group[0], cell_type = group[1], n_genes = group[2], top = group[3], sign = group[4], cutoff = group[5]
         )
     revigo_summary = pd.concat(revigo_summary, axis = 0)
     revigo_summary.to_csv(out_revigo, index = False, sep = '\t')
