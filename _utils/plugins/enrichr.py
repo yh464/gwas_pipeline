@@ -122,7 +122,7 @@ def enrichr_continuous(df, gene_col = None,
     out = []
     out.append(enrichr_list(genes_lists[0], background = background, databases = databases).assign(
         sign = '+',
-        n_genes = len(genes_lists[0]),
+        top = len(genes_lists[0]),
         cutoff = cutoff if cutoff != None else np.nan
         ))
     if not silent: log.log('top positive genes:')
@@ -130,7 +130,7 @@ def enrichr_continuous(df, gene_col = None,
     if len(genes_lists) > 1:
         out.append(enrichr_list(genes_lists[1], background = background, databases = databases).assign(
             sign = '-',
-            n_genes = len(genes_lists[1]),
+            top = len(genes_lists[1]),
             cutoff = cutoff if cutoff != None else np.nan
             ))
         if not silent: log.log('top negative genes:')
