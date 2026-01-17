@@ -114,7 +114,6 @@ def downstream_enrichr(corr_df, out_enrichr, out_revigo, force = False):
     from _utils.plugins.enrichr import enrichr_to_revigo
     revigo_summary = enrichr_to_revigo(
         [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
-        name_col = 'process', pval_col = 'p'
     )
     for idx, (group, _) in enumerate(enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])):
         revigo_summary[idx] = revigo_summary[idx].assign(
