@@ -86,6 +86,7 @@ def downstream_correlation(adata, df_score, label, genes = []):
 
 def _enrichr(stratum, cutoff = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]):
     stratum = stratum.dropna().sort_values(ascending = True)
+    print(stratum.head())
     out = []
     for t in cutoff:
         out.append(enrichr_continuous(
