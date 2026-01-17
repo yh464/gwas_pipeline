@@ -86,11 +86,10 @@ def downstream_correlation(adata, df_score, label, genes = []):
 
 def _enrichr(stratum, cutoff = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]):
     stratum = stratum.dropna().sort_values(ascending = True)
-    print(stratum.head())
     out = []
     for t in cutoff:
         out.append(enrichr_continuous(
-            stratum, top = -1, cutoff = t, top_negative = True, use_background = True, silent = True
+            stratum, gene_col = 'index', top = -1, cutoff = t, top_negative = True, use_background = True, silent = True
         ).assign(
             annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum)
         ))
@@ -209,7 +208,7 @@ def main(args = None, **kwargs):
     if args.downstream:
         try: corr
         except: corr = pd.read_table(out_downstream, index_col = [0,1])
-        enrichr, revigo = downstream_enrichr(corr, out_enrichr, out_revigo, force = args.force)
+        downstream_enrichr(corr, out_enrichr, out_revigo, force = args.force)
 
     # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
     out_pseudotime_fig = f'{args.out}.pseudotime.png'

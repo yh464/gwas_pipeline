@@ -13,7 +13,7 @@ from ..gadgets import force_gc
 from ..logger import logger
 log = logger()
 
-def get_genes_list(df, top = -1, by = None, cutoff = None, top_negative = True, 
+def get_genes_list(df, gene_col = None, top = -1, by = None, cutoff = None, top_negative = True, 
     ref = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
     '''
     gets a list of genes from a DataFrame
@@ -37,7 +37,9 @@ def get_genes_list(df, top = -1, by = None, cutoff = None, top_negative = True,
 
     # find column corresponding to gene names
     genes = None
-    if isinstance(df.index[0], str) and df.index[0].startswith('ENSG'):
+    if gene_col == 'index': genes = df.index.tolist()
+    elif gene_col != None and gene_col in df.columns: genes = df[gene_col].tolist()
+    elif isinstance(df.index[0], str) and df.index[0].startswith('ENSG'):
         genes = df.index.tolist()
     elif isinstance(df.columns[0], str) and df.columns[0].startswith('ENSG'):
         genes = df.columns.tolist()
@@ -107,14 +109,15 @@ def enrichr_list(genes, background = None, databases =
     )
     return pd.concat(out).sort_values(by = 'p_val').reset_index(drop = True)
 
-def enrichr_continuous(df, top = -1, by = None, cutoff = None, top_negative = True, databases =
+def enrichr_continuous(df, gene_col = None,
+    top = -1, by = None, cutoff = None, top_negative = True, databases =
     ['GO_Biological_Process_2025', 'GO_Cellular_Component_2025', 'GO_Molecular_Function_2025', 'SynGO_2024'],
     use_background = True, silent = False
     ):
     if isinstance(df, pd.Series): df = df.to_frame()
     if df.shape[1] == 1: by = df.columns[0]
     cutoff = abs(cutoff) if cutoff != None else None
-    genes_lists, background = get_genes_list(df, top = top, by = by, cutoff = cutoff, top_negative = top_negative)
+    genes_lists, background = get_genes_list(df, gene_col = gene_col, top = top, by = by, cutoff = cutoff, top_negative = top_negative)
     if not use_background: background = None
     out = []
     out.append(enrichr_list(genes_lists[0], background = background, databases = databases).assign(
