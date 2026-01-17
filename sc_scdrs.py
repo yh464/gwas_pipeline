@@ -89,7 +89,7 @@ def _enrichr(stratum, cutoff = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]):
     out = []
     for t in cutoff:
         out.append(enrichr_continuous(
-            stratum, gene_col = 'index', top = -1, cutoff = t, top_negative = True, use_background = True, silent = True
+            stratum, gene_col = 'index', top = -1, cutoff = t, top_negative = True, use_background = False, silent = True
         ).assign(
             annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum)
         ))
