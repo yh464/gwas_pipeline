@@ -8,11 +8,12 @@ A flexible framework to run enrichr based on tabular data
 
 import gget, io, time, warnings
 import pandas as pd
+import numpy as np
 from ..gadgets import force_gc
 from ..logger import logger
 log = logger()
 
-def get_genes_list(df, top = -1, by = None, top_negative = True, 
+def get_genes_list(df, top = -1, by = None, cutoff = None, top_negative = True, 
     ref = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/genes_ref.txt'):
     '''
     gets a list of genes from a DataFrame
@@ -27,8 +28,11 @@ def get_genes_list(df, top = -1, by = None, top_negative = True,
     '''
     
     df = df.copy()
+    if df.shape[1] == 1: by = df.columns[0]
     if by != None: df = df.sort_values(by=by, ascending=False)
-    if top == -1 or df.shape[0] <= top: top = df.shape[0]; top_negative = False
+    if cutoff != None and cutoff < 0: cutoff = -cutoff
+    if (top == -1 and (cutoff == None or by == None)) or df.shape[0] <= top: 
+        top = df.shape[0]; top_negative = False
     ref = pd.read_table(ref, index_col = 0)
 
     # find column corresponding to gene names
@@ -64,9 +68,13 @@ def get_genes_list(df, top = -1, by = None, top_negative = True,
                 genes.append(ref.loc[(ref.CHR == chrom) & (ref.POS <= stop) & (ref.POS >= start), 'LABEL']).tolist()
         else: raise ValueError('Cannot find gene names or genomic positions in the DataFrame!')
     
-    if top < 0: genes_p = genes
+    if top < 0 and (cutoff == None or by == None): genes_p = genes
+    elif top < 0:
+        genes_p = [genes[i] for i in range(len(genes)) if df[by].iloc[i] >= cutoff]
     else: genes_p = genes[:min(top, len(genes))]
     if top_negative and top > 0: genes_n = genes[-min(top, len(genes)):]
+    elif top_negative and cutoff != None and by != None:
+        genes_n = [genes[i] for i in range(len(genes)) if df[by].iloc[i] <= -cutoff]
     else: genes_n = []
 
     if len(genes_p) > 0 and isinstance(genes_p[0],list): genes_p = [g for l in genes_p for g in l]
@@ -99,20 +107,31 @@ def enrichr_list(genes, background = None, databases =
     )
     return pd.concat(out).sort_values(by = 'p_val').reset_index(drop = True)
 
-def enrichr_continuous(df, top = -1, by = None, top_negative = True, databases =
+def enrichr_continuous(df, top = -1, by = None, cutoff = None, top_negative = True, databases =
     ['GO_Biological_Process_2025', 'GO_Cellular_Component_2025', 'GO_Molecular_Function_2025', 'SynGO_2024'],
-    use_background = True
+    use_background = True, silent = False
     ):
-    genes_lists, background = get_genes_list(df, top = top, by = by, top_negative = top_negative)
+    if isinstance(df, pd.Series): df = df.to_frame()
+    if df.shape[1] == 1: by = df.columns[0]
+    cutoff = abs(cutoff) if cutoff != None else None
+    genes_lists, background = get_genes_list(df, top = top, by = by, cutoff = cutoff, top_negative = top_negative)
     if not use_background: background = None
     out = []
-    out.append(enrichr_list(genes_lists[0], background = background, databases = databases).assign(sign = '+'))
-    log.log('top positive genes:')
-    print(out[0].head(20))
+    out.append(enrichr_list(genes_lists[0], background = background, databases = databases).assign(
+        sign = '+',
+        n_genes = len(genes_lists[0]),
+        cutoff = cutoff if cutoff != None else np.nan
+        ))
+    if not silent: log.log('top positive genes:')
+    if not silent: print(out[0].head(20))
     if len(genes_lists) > 1:
-        out.append(enrichr_list(genes_lists[1], background = background, databases = databases).assign(sign = '-'))
-        log.log('top negative genes:')
-        print(out[1].head(20))
+        out.append(enrichr_list(genes_lists[1], background = background, databases = databases).assign(
+            sign = '-',
+            n_genes = len(genes_lists[1]),
+            cutoff = cutoff if cutoff != None else np.nan
+            ))
+        if not silent: log.log('top negative genes:')
+        if not silent: print(out[1].head(20))
     out = pd.concat(out)
     return out
 

@@ -22,6 +22,7 @@ from tqdm import tqdm
 import scanpy as sc
 import scdrs, gget, gc, warnings, os, argparse
 from _utils.genetools import ensg_to_name
+from _utils.plugins.enrichr import enrichr_continuous
 from multiprocessing import Pool, cpu_count
 from _utils.gadgets import namespace
 import matplotlib.pyplot as plt
@@ -83,20 +84,15 @@ def downstream_correlation(adata, df_score, label, genes = []):
     out_corr.append(_corr_genes(df_score, adata, strata, genes))
     return pd.concat(out_corr, axis = 1)
 
-def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000, 2000]):
+def _enrichr(stratum, cutoff = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]):
     stratum = stratum.dropna().sort_values(ascending = True)
-    gene_list = stratum.index.tolist()
     out = []
-    for db in databases:
-        for n in top:
-            enrichr_res = gget.enrichr(gene_list[:n], db)
-            out.append(pd.DataFrame(dict(
-                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
-                sign = '-', process = enrichr_res['path_name'], p = enrichr_res['p_val'])))
-            enrichr_res = gget.enrichr(gene_list[-n:], db)
-            out.append(pd.DataFrame(dict(
-                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
-                sign = '+', process = enrichr_res['path_name'], p = enrichr_res['p_val'])))
+    for t in cutoff:
+        out.append(enrichr_continuous(
+            stratum, top = -1, cutoff = t, top_negative = True, use_background = True, silent = True
+        ).assign(
+            annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum)
+        ))
     return pd.concat(out, axis = 0)
 
 def downstream_enrichr(corr_df, out_enrichr, out_revigo, force = False):
