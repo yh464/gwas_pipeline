@@ -19,7 +19,7 @@ import os
 def parse_lava_output(file):
     import pandas as pd
     df = pd.read_table(file).rename(columns = {'CHR':'chr', 'START': 'start_bp', 'STOP':'stop_bp'})
-    df = df.loc[df['type'] == 'rg', :].reset_index(drop = True)
+    df = df.loc[(df['type'] == 'rg') & df['h2_sig'], :].reset_index(drop = True)
     out = []
     for phen, phen_df in df.groupby(['group1','pheno1','group2','pheno2']):
         phen_dict = {'+': dict(), '-': dict()}
