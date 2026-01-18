@@ -61,9 +61,8 @@ def main(args):
   if len(meta) > 0: task += ['--meta'] + meta
   if len(cov) > 0: task += ['--cov'] + [f'{g}:{p}' for g, p in cov]
 
-  if 0 < args.pval < 1 and not args.all_loci:
-    exposures_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in exposures]
-    outcomes_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in outcomes]
+  exposures_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in exposures]
+  outcomes_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in outcomes]
   
   # sample overlap matrix
   gcorr = crosscorr_parse(exposures + outcomes + cov, logdir = args.rg, full = True)
