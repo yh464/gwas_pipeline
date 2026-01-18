@@ -216,8 +216,12 @@ main = function(args) {
   }
   stats = lapply(stats_files %>% na.omit(), read_tsv, col_types = 
     cols(CHR = 'i', START='d', STOP = 'd', nsnp = 'i')) %>% bind_rows() %>% 
-    drop_na() %>%
-    group_by(type) %>% mutate(q = p.adjust(p, 'BH'), p_bonferroni = p.adjust(p, 'bonferroni'))
+    drop_na() %>% group_by(type, group1, pheno1) %>% 
+    mutate(q = p.adjust(p, 'BH'), p_bonferroni = p.adjust(p, 'bonferroni'))
+  locus_sig = stats %>% filter(type == 'h2') %>% group_by(CHR, START, STOP) %>%
+    summarize(h2_sig = max(q) < 0.05)
+  stats = stats %>% left_join(locus_sig) %>% group_by(type, group1, pheno1, h2_sig) %>% 
+    mutate(q_sigloci = if_else(h2_sig, p.adjust(p, 'BH'), NA))
   write_tsv(stats, args$out)
   
   if (length(error_loci) > 0) write_tsv(bind_rows(error_loci), 
