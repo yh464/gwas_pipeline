@@ -216,8 +216,8 @@ main = function(args) {
   }
   stats = lapply(stats_files %>% na.omit(), read_tsv, col_types = 
     cols(CHR = 'i', START='d', STOP = 'd', nsnp = 'i')) %>% bind_rows() %>% 
-    mutate(p_bonferroni = p * nrow(loci)) %>% 
-    group_by(type) %>% mutate(q = p.adjust(p, 'BH'))
+    drop_na() %>%
+    group_by(type) %>% mutate(q = p.adjust(p, 'BH'), p_bonferroni = p.adjust(p, 'bonferroni'))
   write_tsv(stats, args$out)
   
   if (length(error_loci) > 0) write_tsv(bind_rows(error_loci), 
