@@ -18,12 +18,12 @@ parser$add_argument('--p2', nargs = '*',
 parser$add_argument('--cov', nargs = '*', help = 'Covariates, format <group>/<pheno>')
 parser$add_argument('--meta', nargs = '*', help = 'Metadata files')
 parser$add_argument('--clump', nargs = '*', help = 'clumping outputs, in order to select for loci')
-parser$add_argument('--all-loci', default = F, action = 'store_true', help = 'use all loci for regional correlation')
+parser$add_argument('--all_loci', default = F, action = 'store_true', help = 'use all loci for regional correlation')
 parser$add_argument('--overlap', help = 'sample overlap file from LDSC gcov_int')
 parser$add_argument('--ref', help = 'Reference files directory', default = 
                       '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
 parser$add_argument('--eth', help = 'ethnicity', choices = c('afr','amr','eas','eur','sas'), default = 'eur')
-parser$add_argument('--all-exp', dest = 'all_exp', help = 'Multiple regression with all exposures',
+parser$add_argument('--all_exp', help = 'Multiple regression with all exposures',
                     action = 'store_true', default = F)
 parser$add_argument('-o','--out', help = 'Output file name', required = T)
 parser$add_argument('-f','--force', help = 'force overwrite', action = 'store_true', default = F)

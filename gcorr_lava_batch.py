@@ -55,8 +55,8 @@ def main(args):
 
   # task string general to all commands
   task = ['--ref', args.ref, '--eth', args.eth, '-i', args._in]
-  if args.all_loci: task.append('--all-loci')
-  if args.all_exp: task.append('--all-exp')
+  if args.all_loci: task.append('--all_loci')
+  if args.all_exp: task.append('--all_exp')
   if args.force: task.append('-f')
   if len(meta) > 0: task += ['--meta'] + meta
   if len(cov) > 0: task += ['--cov'] + [f'{g}:{p}' for g, p in cov]
@@ -127,8 +127,8 @@ if __name__ == '__main__':
     default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
-  parser.add_argument('--all-loci', action = 'store_true', help = 'Analyse all loci')
-  parser.add_argument('--all-exp', action = 'store_true', help = 'Multiple regression with all exposures')
+  parser.add_argument('--all_loci', action = 'store_true', help = 'Analyse all loci')
+  parser.add_argument('--all_exp', action = 'store_true', help = 'Multiple regression with all exposures')
   parser.add_argument('--pval', type = float, default = 5e-8, help = 'Clumping p-value threshold')
   parser.add_argument('-f', '--force', action = 'store_true', help = 'Force overwrite')
   args = parser.parse_args()
