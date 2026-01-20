@@ -41,6 +41,8 @@ def main(args):
   from _utils.slurm import array_submitter
   submitter = array_submitter(name = 'gcorr_lava_'+'_'.join(args.p1)+'_'+'_'.join(args.p2), 
     env = 'gentoolsr', n_cpu = 2, timeout = 240)
+  enrich_submitter = array_submitter(name = 'gcorr_lava_enrich_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
+    env = 'gentoolspy', n_cpu = 1, timeout = 60, dependency = submitter)
   tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
   if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
 
@@ -101,11 +103,15 @@ def main(args):
           c2s = c1s[p1s.index(p1):]; c2s.remove(c1)
         if len(p2s) == 0: continue
         outfile = f'{outdir}/{g1}_{p1}.{g2}.lava.txt'
-        if os.path.isfile(outfile) and not args.force: continue
-        # all phenotypes in g2 are included and correlated with g1_p1
-        cmd = lava_cmd((g1, p1), [(g2, p2s)], cov, overlap, [c1] + c2s, task, outfile)
-        submitter.add(cmd)
+        if not os.path.isfile(outfile) or args.force:
+          # all phenotypes in g2 are included and correlated with g1_p1
+          cmd = lava_cmd((g1, p1), [(g2, p2s)], cov, overlap, [c1] + c2s, task, outfile)
+          submitter.add(cmd)
+        if os.path.isfile(f'{outfile[:-4]}.inrich.txt') and not args.force and not args.fd: continue
+        enrich_cmd = f'python gcorr_lava_enrich.py -i {outfile} --inrich {args.inrich} -o {outfile[:-4]}'
+        enrich_submitter.add(enrich_cmd)
   submitter.submit()
+  enrich_submitter.submit()
 
 if __name__ == '__main__':
   from _utils.slurm import slurm_parser
@@ -126,10 +132,14 @@ if __name__ == '__main__':
     default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
+  parser.add_argument('--inrich', 
+        help = 'folder of the inrich binary and resources, should contain resources/genes.txt and resources/snps.txt',
+        default = '/rds/project/rds-Nl99R8pHODQ/toolbox/inrich') # intentionally absolute
   parser.add_argument('--all_loci', action = 'store_true', help = 'Analyse all loci')
   parser.add_argument('--all_exp', action = 'store_true', help = 'Multiple regression with all exposures')
   parser.add_argument('--pval', type = float, default = 5e-8, help = 'Clumping p-value threshold')
   parser.add_argument('-f', '--force', action = 'store_true', help = 'Force overwrite')
+  parser.add_argument('--fd', action = 'store_true', help = 'Overwrite downstream analyses only')
   args = parser.parse_args()
 
   import os

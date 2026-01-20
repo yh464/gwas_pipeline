@@ -10,13 +10,14 @@ if slurm returns 'FAILED', some steps may still run normally
 CHECK LOG
 '''
 
-from logging import warning
+from .logger import logger
 import os
 import argparse
 import re
 import warnings
 import math
 from hashlib import sha256
+_logger = logger()
 
 class array_submitter():
     '''
@@ -51,7 +52,6 @@ class array_submitter():
                  log = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
-                 lim = warnings.warn(DeprecationWarning('Command limit will be automatically determined')), # deprecated
                  arraysize = 200, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500
                  email = True,
                  wallclock = -1, # total time limit per file, default 240 minutes
@@ -130,7 +130,7 @@ class array_submitter():
         # number of *parallel batches* of commands per file
         self.lim = int(self.wallclock/timeout)
         self.lim = max(self.lim, 1) # at least one command per file
-        print(f'Max {self.lim} batches * {self.parallel} commands per file, {self.arraysize} files per array job')
+        _logger.log(f'Max {self.lim} batches * {self.parallel} commands per file, {self.arraysize} files per array job for {self.name}')
 
         # directories
         self.logdir = f'{log}/{self.name}'
@@ -226,11 +226,11 @@ class array_submitter():
                 dep_str.append(f'afterok:{dep}')
             else:
                 if dep._blank: 
-                    print(f'Warning: {dep.name} has no commands to run, skipping dependency')
+                    _logger.warn(f'{dep.name} has no commands to run, skipping dependency')
                     continue
                 if not dep.submitted:
                     dep.submit()
-                    print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
+                    _logger.warn(f'{dep.name} is listed as a dependency and automatically submitted')
                 for idx in dep._slurmid:
                     dep_str.append(f'afterok:{idx}')
                 if len(dep._slurmid) == 0:
