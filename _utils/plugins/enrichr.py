@@ -67,7 +67,7 @@ def get_genes_list(df, gene_col = None, top = -1, by = None, cutoff = None, top_
                 chrom = int(str(row[chrom_col]).replace('chr','').replace('X','23').replace('Y','24'))
                 start = int(row[start_col])
                 stop = int(row[stop_col])
-                genes.append(ref.loc[(ref.CHR == chrom) & (ref.POS <= stop) & (ref.POS >= start), 'LABEL']).tolist()
+                genes.append(ref.loc[(ref.CHR == chrom) & (ref.POS <= stop) & (ref.POS >= start), 'LABEL'].tolist())
         else: raise ValueError('Cannot find gene names or genomic positions in the DataFrame!')
     
     if top < 0 and (cutoff == None or by == None): genes_p = genes
