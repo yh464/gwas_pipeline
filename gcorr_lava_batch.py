@@ -107,7 +107,8 @@ def main(args):
           # all phenotypes in g2 are included and correlated with g1_p1
           cmd = lava_cmd((g1, p1), [(g2, p2s)], cov, overlap, [c1] + c2s, task, outfile)
           submitter.add(cmd)
-        if os.path.isfile(f'{outfile[:-4]}.inrich.txt') and not args.force and not args.fd: continue
+        if os.path.isfile(f'{outfile[:-4]}.inrich.txt') and os.path.isfile(f'{outfile[:-4]}.enrichr.txt') \
+          and not args.force and not args.fd: continue
         enrich_cmd = f'python gcorr_lava_enrich.py -i {outfile} --inrich {args.inrich} -o {outfile[:-4]}'
         enrich_submitter.add(enrich_cmd)
   submitter.submit()
