@@ -98,5 +98,6 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out', type = str, required = True, help = 'output prefix')
     parser.add_argument('-f','--force', help = 'force overwrite', action = 'store_true', default = False)
     args = parser.parse_args()
-    for key, value in vars(args).items(): setattr(args, key, os.path.realpath(value))
+    for key, value in vars(args).items()[:-1]: 
+        if key != 'force': setattr(args, key, os.path.realpath(value))
     main(args)
