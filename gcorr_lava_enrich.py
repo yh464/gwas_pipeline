@@ -52,11 +52,11 @@ def main(args):
             if df.shape[0] == 0: continue
 
             # Enrichr analysis are quick to overwrite every time
-            genes = get_genes_list(df.rename(columns = {'chr':'CHR','start_bp':'START','stop_bp':'STOP'}))
+            genes,_ = get_genes_list(df.rename(columns = {'chr':'CHR','start_bp':'START','stop_bp':'STOP'}))
             all_genes.append(pd.DataFrame(dict(
                 group1 = g1, pheno1 = p1, group2 = g2, pheno2 = p2,
                 sign = sign, threshold = threshold,
-                genes = [', '.join(genes[0])]
+                genes = [', '.join(genes)]
             )))
 
             if len(genes) == 0:
