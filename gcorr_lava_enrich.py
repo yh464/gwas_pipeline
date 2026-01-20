@@ -56,7 +56,7 @@ def main(args):
             all_genes.append(pd.DataFrame(dict(
                 group1 = g1, pheno1 = p1, group2 = g2, pheno2 = p2,
                 sign = sign, threshold = threshold,
-                genes = [', '.join(genes)]
+                genes = [', '.join(genes[0])]
             )))
 
             if len(genes) == 0:
