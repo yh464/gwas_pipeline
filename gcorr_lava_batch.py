@@ -109,7 +109,7 @@ def main(args):
           submitter.add(cmd)
         if os.path.isfile(f'{outfile[:-4]}.inrich.txt') and os.path.isfile(f'{outfile[:-4]}.enrichr.txt') \
           and not args.force and not args.fd: continue
-        enrich_cmd = f'python gcorr_lava_enrich.py -i {outfile} --inrich {args.inrich} -o {outfile[:-4]}'
+        enrich_cmd = f'python gcorr_lava_enrich.py -i {outfile} --inrich {args.inrich} -o {outfile[:-4]}' + (' -f' if args.force else '')
         enrich_submitter.add(enrich_cmd)
   submitter.submit()
   enrich_submitter.submit()

@@ -96,6 +96,7 @@ if __name__ == '__main__':
         help = 'folder of the inrich binary and resources, should contain resources/genes.txt and resources/snps.txt',
         default = '/rds/project/rds-Nl99R8pHODQ/toolbox/inrich')
     parser.add_argument('-o', '--out', type = str, required = True, help = 'output prefix')
+    parser.add_argument('-f','--force', help = 'force overwrite', action = 'store_true', default = False)
     args = parser.parse_args()
     for key, value in vars(args).items(): setattr(args, key, os.path.realpath(value))
     main(args)
