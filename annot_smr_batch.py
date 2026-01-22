@@ -127,12 +127,13 @@ def main(args):
                 submitter.add(f'{args.smr} --bfile {bfile_list[0]} --gwas-summary {tmpgwa} '+
                     f'--beqtl-summary {qtl[0]} --out {args.out}/{p}.{os.path.basename(qtl[0])}')
             else:
-                os.makedirs(f'{args.out}/{p}.{os.path.basename(qtl[0])}', exist_ok = True)
+                qtl_name = os.path.basename(qtl[0]).replace('_chr1','').replace('.besd','')
+                os.makedirs(f'{args.out}/{p}.{qtl_name}', exist_ok = True)
                 for q, b, chrom in zip(qtl, bfile_list, range(1,25)):
-                    if os.path.isfile(f'{args.out}/{p}.{os.path.basename(qtl[0])}/chr{chrom}.smr') and not args.force:
+                    if os.path.isfile(f'{args.out}/{p}.{qtl_name}/chr{chrom}.smr') and not args.force:
                         continue
                     submitter.add(f'{args.smr} --bfile {b} --gwas-summary {tmpgwa} '+
-                        f'--beqtl-summary {q} --out {args.out}/{p}.{os.path.basename(qtl[0])}/chr{chrom}')
+                        f'--beqtl-summary {q} --out {args.out}/{p}.{qtl_name}/chr{chrom}')
     
     submitter.submit()
 
