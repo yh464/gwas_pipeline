@@ -48,6 +48,7 @@ def main(args):
         for p in ps:
             all_qtls = []
             for qtl in qtl_list:
+                log.log(f'Reading SMR results for {g}/{p}.{qtl}')
                 if os.path.isfile(f'{args._in}/{g}/{p}.{qtl}.smr'):
                     smr = read_smr(f'{args._in}/{g}/{p}.{qtl}.smr')
                 elif not os.path.isdir(f'{args._in}/{g}/{p}.{qtl}'):
@@ -82,8 +83,9 @@ def main(args):
             log.log(f'SMR results for {g}/{p} have been written to {args._in}/{g}/{p}.smr')
             all_phenos.append(all_qtls)
         all_phenos = pd.concat(all_phenos).sort_values(by = ['q','p_heidi'])
+        all_phenos = all_phenos.loc[(all_phenos.p < 0.05) & (all_phenos.p_heidi > 0.01),:]
         all_phenos = norm.normalise(all_phenos)
-        all_phenos.loc[(all_phenos.p < 0.05) & (all_phenos.p_heidi > 0.01),:].to_csv(f'{args._in}/{g}_sig.smr', sep = '\t', index = False)
+        all_phenos.to_csv(f'{args._in}/{g}_sig.smr', sep = '\t', index = False)
         log.log(f'All significant SMR results have been written to {args._in}/{g}_sig.smr')
         
 if __name__ == '__main__':
