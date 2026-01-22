@@ -69,6 +69,10 @@ def main(args):
                         log.log(f'SMR results for {g}/{p}.{qtl} are missing', warning = True)
                         continue
                 smr['q'] = np.nan
+                smr_filter = ~smr.p.isna() & (smr.p >= 0) & (smr.p <= 1)
+                if not all(smr_filter):
+                    smr = smr.loc[smr_filter, :].reset_index(drop = True)
+                    log.warn(f'Dropping {len(smr_filter) - sum(smr_filter)} genes with invalid p-values')
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
                 all_qtls.append(smr)
             if len(all_qtls) == 0:
