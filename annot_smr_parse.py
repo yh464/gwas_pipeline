@@ -71,6 +71,7 @@ def main(args):
                 smr['q'] = np.nan
                 smr_filter = ~smr.p.isna() & (smr.p >= 0) & (smr.p <= 1)
                 if not all(smr_filter):
+                    print(smr.loc[~smr_filter, :])
                     smr = smr.loc[smr_filter, :].reset_index(drop = True)
                     log.warn(f'Dropping {len(smr_filter) - sum(smr_filter)} genes with invalid p-values')
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
