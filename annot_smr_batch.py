@@ -133,7 +133,7 @@ def main(args):
                     if os.path.isfile(f'{args.out}/{g}/{p}.{qtl_name}/chr{chrom}.smr') and not args.force:
                         continue
                     submitter.add(f'{args.smr} --bfile {b} --gwas-summary {tmpgwa} '+
-                        f'--beqtl-summary {q} --out {args.out}/{p}.{qtl_name}/chr{chrom}')
+                        f'--beqtl-summary {q} --out {args.out}/{g}/{p}.{qtl_name}/chr{chrom}')
     
     submitter.submit()
 
