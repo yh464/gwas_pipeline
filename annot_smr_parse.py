@@ -42,10 +42,9 @@ def main(args):
 
     for g, ps in pheno:
         # overall summary table
+        if os.path.isfile(f'{args._in}/{g}_sig.smr') and not args.force: continue
         all_phenos = []
-        log.log(f'Following phenotypes have been found for {g}:')
-        for p in ps: log.log(p)
-        
+
         for p in ps:
             all_qtls = []
             for qtl in qtl_list:
@@ -99,7 +98,7 @@ if __name__ == '__main__':
         default = '../gwa/')
     parser.add_argument('-q','--qtl', dest = 'qtl', help = 'Directory containing all xQTL files',
         default = '../params/xqtl')
-    # always overwrites
+    parser.add_argument('-f','--force', help = 'force overwrite', action = 'store_true', default = False)
     args = parser.parse_args()
     import os
     for arg in ['_in','qtl','gwa']:
