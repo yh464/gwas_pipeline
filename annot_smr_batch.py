@@ -125,12 +125,12 @@ def main(args):
             if qtl[0] == qtl[1] and bfile_list[0] == bfile_list[1]:
                 if os.path.isfile(f'{args.out}/{p}.smr') and not args.force: continue
                 submitter.add(f'{args.smr} --bfile {bfile_list[0]} --gwas-summary {tmpgwa} '+
-                    f'--beqtl-summary {qtl[0]} --out {args.out}/{p}.{os.path.basename(qtl[0])}')
+                    f'--beqtl-summary {qtl[0]} --out {args.out}/{g}/{p}.{os.path.basename(qtl[0])}')
             else:
                 qtl_name = os.path.basename(qtl[0]).replace('_chr1','').replace('.besd','')
-                os.makedirs(f'{args.out}/{p}.{qtl_name}', exist_ok = True)
+                os.makedirs(f'{args.out}/{g}/{p}.{qtl_name}', exist_ok = True)
                 for q, b, chrom in zip(qtl, bfile_list, range(1,25)):
-                    if os.path.isfile(f'{args.out}/{p}.{qtl_name}/chr{chrom}.smr') and not args.force:
+                    if os.path.isfile(f'{args.out}/{g}/{p}.{qtl_name}/chr{chrom}.smr') and not args.force:
                         continue
                     submitter.add(f'{args.smr} --bfile {b} --gwas-summary {tmpgwa} '+
                         f'--beqtl-summary {q} --out {args.out}/{p}.{qtl_name}/chr{chrom}')
