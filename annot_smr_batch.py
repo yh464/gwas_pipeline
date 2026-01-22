@@ -83,6 +83,7 @@ def main(args):
             qtl_list.append([f'{args.qtl}/{y}'.replace('.besd','')] * 24)
         if os.path.isdir(f'{args.qtl}/{y}'):
             if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]): log.log(y)
+            else: continue
             tmp_list = []
             for chrom in range(1, 25):
                 found = False
