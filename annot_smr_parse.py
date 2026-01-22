@@ -75,15 +75,14 @@ def main(args):
                     smr = smr.loc[smr_filter, :].reset_index(drop = True)
                     log.warn(f'Dropping {len(smr_filter) - sum(smr_filter)} genes with invalid p-values')
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
-                print(smr)
                 all_qtls.append(smr)
             if len(all_qtls) == 0:
                 log.log(f'Missing SMR results for {g}/{p}', warning = True); continue
-            all_qtls = pd.concat(all_qtls).sort_values(by = ['q', 'p_heidi'])
+            all_qtls = pd.concat(all_qtls).sort_values(by = ['q'])
             all_qtls.to_csv(f'{args._in}/{g}/{p}.smr', sep = '\t', index = False)
             log.log(f'SMR results for {g}/{p} have been written to {args._in}/{g}/{p}.smr')
             all_phenos.append(all_qtls)
-        all_phenos = pd.concat(all_phenos).sort_values(by = ['q','p_heidi'])
+        all_phenos = pd.concat(all_phenos).sort_values(by = ['q'])
         all_phenos = all_phenos.loc[(all_phenos.p < 0.05) & (all_phenos.p_heidi > 0.01),:]
         all_phenos = norm.normalise(all_phenos)
         all_phenos.to_csv(f'{args._in}/{g}_sig.smr', sep = '\t', index = False)

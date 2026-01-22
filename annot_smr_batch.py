@@ -12,6 +12,9 @@ Requires following inputs:
     BESD format xQTL datasets.
 '''
 
+from _utils.logger import logger
+log = logger()
+
 def format_gwa(gwa, tmpgwa):
     # input file name, usually fastGWA format
     import pandas as pd
