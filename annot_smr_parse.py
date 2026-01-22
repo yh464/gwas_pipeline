@@ -80,11 +80,12 @@ def main(args):
                 log.log(f'Missing SMR results for {g}/{p}', warning = True); continue
             all_qtls = pd.concat(all_qtls).sort_values(by = ['q', 'p_heidi'])
             all_qtls.to_csv(f'{args._in}/{g}/{p}.smr', sep = '\t', index = False)
+            log.log(f'SMR results for {g}/{p} have been written to {args._in}/{g}/{p}.smr')
             all_phenos.append(all_qtls)
         all_phenos = pd.concat(all_phenos).sort_values(by = ['q','p_heidi'])
         all_phenos = norm.normalise(all_phenos)
-        all_phenos.to_csv(f'{args._in}/{g}.smr', sep = '\t', index = False)
-        all_phenos.loc[all_phenos.p < 0.05,:].to_csv(f'{args._in}/{g}_sig.smr', sep = '\t', index = False)
+        all_phenos.loc[(all_phenos.p < 0.05) & (all_phenos.p_heidi > 0.01),:].to_csv(f'{args._in}/{g}_sig.smr', sep = '\t', index = False)
+        log.log(f'All significant SMR results have been written to {args._in}/{g}_sig.smr')
         
 if __name__ == '__main__':
     import argparse
