@@ -22,19 +22,20 @@ def format_gwa(gwa, tmpgwa):
     import os
     with open(gwa) as f:
         hdr = f.readline().strip().split()
-    out = [0,0,0,0,0,0,0,0] # 8 columns
+    out = [None, None, None, None, None, None, None, None] # 8 columns
+    out_col = [None] * 8
     os.makedirs(os.path.dirname(tmpgwa), exist_ok = True)
     
     for idx, col in enumerate(hdr):
-        if col.lower() in ['snp','id','rsid']: out[0] = idx
-        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = idx
-        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = idx
-        if col.lower() in ['af1','freq','eaf','maf']: out[3] = idx
-        if col.lower() in ['beta','logor','b']: out[4] = idx; log_eff = False
-        if col.lower() in ['or']: out[4] = idx; log_eff = True
-        if col.lower() in ['se', 'stderr']: out[5] = idx
-        if col.lower() in ['p','pval']: out[6] = idx
-        if col.lower() in ['nobs','n']: out[7] = idx
+        if col.lower() in ['snp','id','rsid']: out[0] = idx; out_col[0] = col
+        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = idx; out_col[1] = col
+        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = idx; out_col[2] = col
+        if col.lower() in ['af1','freq','eaf','maf']: out[3] = idx; out_col[3] = col
+        if col.lower() in ['beta','logor','b']: out[4] = idx; out_col[4] = col; log_eff = False
+        if col.lower() in ['or']: out[4] = idx; out_col[4] = col; log_eff = True
+        if col.lower() in ['se', 'stderr']: out[5] = idx; out_col[5] = col
+        if col.lower() in ['p','pval']: out[6] = idx; out_col[6] = col
+        if col.lower() in ['nobs','n']: out[7] = idx; out_col[7] = col
     
     log.log(f'''Identified necessary columns at positions: 
             SNP  = {out[0]}
@@ -46,7 +47,7 @@ def format_gwa(gwa, tmpgwa):
             P    = {out[6]}
             N    = {out[7]}''')
 
-    if any([x == 0 for x in out[:3]]): raise ValueError('Missing necessary columns')
+    if any([x is None for x in out[:3]]): raise ValueError('Missing necessary columns')
 
     if not log_eff:
         print_field = ','.join([f'${x+1}' for x in out])
@@ -55,6 +56,7 @@ def format_gwa(gwa, tmpgwa):
         os.system(' '.join(cmd))
     else:
         df = pd.read_table(gwa, usecols = out)
+        df = df.loc[:, out_col]
         df.iloc[:,4] = np.log(df.iloc[:,4])
         df.to_csv(tmpgwa, sep = '\t', index = False)
 
