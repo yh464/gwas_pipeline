@@ -52,7 +52,7 @@ def validate_columns(colnames, silent = False, **kwargs):
     if len(intersect) == 1:
       out_dict[group] = intersect[0]
       if not silent: log.log(f'Interpreting {intersect[0]:15s} as {description[group]}')
-  log.log()
+  print()
   return out_dict
 
 def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
@@ -95,7 +95,7 @@ def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
       cols['pval'] = 'P'
     else: raise ValueError('Cannot impute p-value')
     log.log('Imputed p-values in P column')
-  log.log()
+  print()
   return df
 
 def convert_chrom(df, **kwargs):

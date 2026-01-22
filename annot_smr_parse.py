@@ -36,7 +36,7 @@ def main(args):
                 qtl_list.append(p)
     log.log('Following QTL have been found:')
     for qtl in qtl_list: log.log(qtl)
-    log.log()    
+    print()    
     
     pheno = find_gwas(args.pheno, dirname = args.gwa)
 
