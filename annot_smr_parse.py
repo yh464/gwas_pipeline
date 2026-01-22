@@ -75,6 +75,7 @@ def main(args):
                     smr = smr.loc[smr_filter, :].reset_index(drop = True)
                     log.warn(f'Dropping {len(smr_filter) - sum(smr_filter)} genes with invalid p-values')
                 smr.loc[~smr.p.isna(),'q'] = fdr(smr.loc[~smr.p.isna(),'p'])
+                print(smr)
                 all_qtls.append(smr)
             if len(all_qtls) == 0:
                 log.log(f'Missing SMR results for {g}/{p}', warning = True); continue
