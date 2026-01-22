@@ -30,15 +30,25 @@ def format_gwa(gwa, tmpgwa):
         if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = idx
         if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = idx
         if col.lower() in ['af1','freq','eaf','maf']: out[3] = idx
-        if col.lower() in ['beta','logor','b']: out[4] = idx; log = False
-        if col.lower() in ['or']: out[4] = idx; log = True
+        if col.lower() in ['beta','logor','b']: out[4] = idx; log_eff = False
+        if col.lower() in ['or']: out[4] = idx; log_eff = True
         if col.lower() in ['se', 'stderr']: out[5] = idx
         if col.lower() in ['p','pval']: out[6] = idx
         if col.lower() in ['nobs','n']: out[7] = idx
     
+    log.log(f'''Identified necessary columns at positions: 
+            SNP  = {out[0]}
+            A1   = {out[1]}
+            A2   = {out[2]}
+            AF1  = {out[3]}
+            BETA = {out[4]}
+            SE   = {out[5]}
+            P    = {out[6]}
+            N    = {out[7]}''')
+
     if any([x == 0 for x in out[:3]]): raise ValueError('Missing necessary columns')
 
-    if not log:
+    if not log_eff:
         print_field = ','.join([f'${x+1}' for x in out])
         cmd = ['awk', '-v', r'OFS="\t"', '\'{print', print_field+'}\'', gwa, '>', tmpgwa]
         log.log(' '.join(cmd))
@@ -46,7 +56,7 @@ def format_gwa(gwa, tmpgwa):
     else:
         df = pd.read_table(gwa, usecols = out)
         df.iloc[:,4] = np.log(df.iloc[:,4])
-        out.to_csv(tmpgwa, sep = '\t', index = False)
+        df.to_csv(tmpgwa, sep = '\t', index = False)
 
 def main(args):
     import os
@@ -71,7 +81,7 @@ def main(args):
         # munge input summary statistics
         if not os.path.isfile(f'{tmpdir}/{group}/{pheno}.txt') or force:
             try: format_gwa(gwa, f'{tmpdir}/{group}/{pheno}.txt')
-            except: Warning(f'{pheno} missing necessary columns'); return
+            except: log.warn(f'{pheno} missing necessary columns'); return
         
         # parse input xqtl file
         from fnmatch import fnmatch
