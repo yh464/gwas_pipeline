@@ -19,7 +19,6 @@ def main(args):
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     from subprocess import check_output
     
-    scripts_path = os.path.dirname(os.path.realpath(__file__))
     
     # scans directories to include sumstats
     from _utils.path import find_gwas, pair_gwas
@@ -30,7 +29,7 @@ def main(args):
     # array submitter
     timeout = int(max([len(x) for _,x in (gwa1+gwa2)]+[45])/12) # each phenotype takes ~5 seconds
     from _utils.slurm import array_submitter
-    submitter = array_submitter(name = f'gcorr_{args.p1[0]}',timeout = timeout, wd = args._in)
+    submitter = array_submitter(name = f'gcorr_{args.p1[0]}',timeout = timeout, wd = args._in, env = args.ldsc)
     
     for g1, p1s, g2, p2s in pairwise:
         # p1s means list of <pheno1>s in group1
@@ -69,7 +68,7 @@ def main(args):
                     [f'{g2}/{p2}.sumstats' for p2 in na_p2s]
                 sumstats = ','.join(sumstats)
                 submitter.add(
-                    f'bash {scripts_path}/ldsc_master.sh ldsc.py '+
+                    f'python {args.ldsc}/ldsc.py '+
                     f'--ref-ld-chr {args.ldsc}/baseline/ --w-ld-chr {args.ldsc}/baseline/ '+
                     f'--rg {sumstats} --out {out_noint_rg[:-4]} --no-intercept')
         
@@ -80,7 +79,7 @@ def main(args):
                     sumstats.append(f'{g2}/{p2}.sumstats')
             sumstats = ','.join(sumstats)
             submitter.add(
-                f'bash {scripts_path}/ldsc_master.sh ldsc.py '+
+                f'python {args.ldsc}/ldsc.py '+
                 f'--ref-ld-chr {args.ldsc}/baseline/ --w-ld-chr {args.ldsc}/baseline/ '+
                 f'--rg {sumstats} --out {out_rg[:-4]}')
     

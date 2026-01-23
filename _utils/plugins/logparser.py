@@ -13,7 +13,9 @@ from fnmatch import fnmatch
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
-    
+from ..logger import logger
+_logger = logger()
+
 def parse_h2_log(file, full = False, gcov = False):
     '''
     Parses LDSC H2 logs
@@ -135,7 +137,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
                 
             fname = f'{logdir}/{g1}.{g2}/{g1}_{p1}.{g2}.rg.log'
             if not os.path.isfile(fname) and g1 != g2: 
-                warnings.warn(f'No gene correlation found for {g1}/{p1} with {g2}\n'+
+                _logger.warn(f'No gene correlation found for {g1}/{p1} with {g2}\n'+
                     f'Try running:\n\n python gcorr_batch.py -p1 {g1} -p2 {g2}\n')
                 continue
             elif not os.path.isfile(fname) and g1 == g2: continue
