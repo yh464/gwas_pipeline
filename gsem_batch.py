@@ -277,7 +277,9 @@ if __name__ == '__main__':
     
     pheno = parser.add_argument_group('Phenotype specifications')
     pheno.add_argument('-p1', help = 'Exposure, scans directory', nargs = '+', default = [])
-    pheno.add_argument('-p2', help = 'Outcome, scans directory', nargs = '*', default = [])
+    pheno.add_argument('-p2', help = 
+        'Outcome, scans directory; specify -p2 and -p1 and --gwas to output GWAS-by-subtraction, p2 adjusted for p1', 
+        nargs = '*', default = [])
     pheno.add_argument('-m','--med', help = 'Mediators, scans directory', nargs = '*', default = [])
     pheno.add_argument('-c','--cov', help = 'Covariates, scans directory', nargs = '*', default = [])
     pheno.add_argument('--exclude', help = 'Exclude phenotypes', nargs = '*', default = [])
