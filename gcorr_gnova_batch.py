@@ -12,11 +12,11 @@ Outputs:
     GNOVA report
 '''
 
-import os, warnings
+import os
+from _utils.logger import logger
+log = logger()
 
 def main(args):
-    from _utils.logger import logger
-    log = logger()
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_gnova_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         n_cpu = 4, timeout = 30, env = args.gnova)
@@ -32,11 +32,12 @@ def main(args):
     for x in os.listdir(args.gene_set):
         if x.startswith('.') or not os.path.isdir(f'{args.gene_set}/{x}'): continue
         if not any([f'{chrom}.gnova' in os.listdir(f'{args.gene_set}/{x}') for chrom in range(1,23)]): 
-            warnings.warn(f'Missing GNOVA annotation file in {args.gene_set}/{x}, skipping')
+            log.warn(f'Missing GNOVA annotation file in {args.gene_set}/{x}, skipping')
             continue
         gene_sets.append(x)
 
-    log.log(f'Found following gene sets for GNOVA analysis: \n' + '\n'.join(gene_sets))
+    log.log(f'Found following gene sets for GNOVA analysis:')
+    for gene_set in gene_sets: log.log(f'    {gene_set}')
 
     for g1, p1, g2, p2 in pairwise:
         if g1 > g2 or (g1 == g2 and p1 > p2):

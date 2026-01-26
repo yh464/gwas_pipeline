@@ -150,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'MAGMA output directory',
       default = '../sc/magma_gsea')
-    parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG')
+    parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG_10kb')
     parser.add_argument('--gset', dest = 'gset', help = 'Gene sets to study enrichment, scans directory',
         default = '../multiomics/gene_set')
     parser.add_argument('--gscore', help = 'Directory containing gene scores', default = '../multiomics/gene_score')
