@@ -161,7 +161,7 @@ add_af1 = function(mgwas, ref){
   ref_rev = ref; names(ref_rev) = c('SNP','AF1','A2','A1'); ref_rev$AF1 = 1 - ref_rev$AF1
   ref = bind_rows(ref, ref_rev)
   mgwas = mgwas %>% left_join(ref)
-  mgwas$AF1 = mgwas$AF1 %>% replace_na(mgwas$MAF)
+  mgwas$AF1 = mgwas$AF1 %>% coalesce(mgwas$MAF)
   mgwas$MAF = mgwas$AF1
   mgwas = mgwas %>% select(-AF1) %>% rename(AF1 = MAF)
   return(mgwas)
