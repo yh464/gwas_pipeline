@@ -78,7 +78,7 @@ class array_submitter():
         self._full_name = name
         if len(name) > 30:
             name = sha256(name.encode()).hexdigest()[:6] # truncate to 6S characters
-            warnings.warn(f'Job name too long, using random name {name}')
+            _logger.warn(f'Job name too long, using random name {name}')
         self.name = '_' + name.replace('/','_') + '_0'
         self.debug = debug
         self.intr = intr
@@ -380,7 +380,7 @@ class array_submitter():
         Submits all commands to the cluster (SLURM manager)
         '''
         if self._blank: return
-        if self.submitted: warnings.warn(f'Job {self.name} already submitted'); return
+        if self.submitted: _logger.warn(f'Job {self.name} already submitted'); return
         self._dump()
         self._submit_single()
         self._staged_cmd = []

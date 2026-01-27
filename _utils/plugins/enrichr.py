@@ -6,6 +6,7 @@ Version 1: 2025-10-06
 A flexible framework to run enrichr based on tabular data
 '''
 
+from operator import call
 import gget, io, time, warnings
 import pandas as pd
 import numpy as np
@@ -102,7 +103,7 @@ def enrichr_list(genes, background = None, databases =
     out = []
     for db in databases:
         try: out.append(gget.enrichr(genes, database = db, background_list = background))
-        except: warnings.warn(f'Enrichr failed for database {db}'); continue
+        except: log.warn(f'Enrichr failed for database {db}'); continue
     if len(out) == 0: return pd.DataFrame(
         columns = ['rank','path_name','p_val','z_score','combined_score','overlapping_genes','adj_p_val','database'],
         index = []
@@ -196,7 +197,7 @@ def enrichr_to_revigo(enrichr_dfs, name_col = 'path_name', pval_col = 'p_val', k
     for revigo_worker, keepcols in zip(revigo_workers, keepdict):
         hdr = ['go_id','path_name','value','logsize','frequency','uniqueness','dispensability','pc_1','pc_2','representative']
         if revigo_worker.BPVisualizer.IsEmpty:
-            warnings.warn('No significant GO terms found for Revigo analysis')
+            log.warn('No significant GO terms found for Revigo analysis', calling_file = 'enrichr_to_revigo')
         output_buffer = io.StringIO()
         oTerms = revigo_worker.BPVisualizer.Terms.FindClustersAndSortByThem(oOntology, dCutoff)
         i = 0

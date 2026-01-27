@@ -141,7 +141,7 @@ def main(args):
                 pleio_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward_pleiotropy.txt',
                                             sep = '\t', index = False)
             except:
-                warnings.warn(f'{p2} no MR forward results - check summary stats')
+                log.warn(f'{p2} no MR forward results - check summary stats')
             
             try:
                 results_rev = pd.concat(results_rev)
@@ -154,7 +154,7 @@ def main(args):
                 pleio_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse_pleiotropy.txt', 
                                             sep = '\t', index = False)
             except:
-                warnings.warn(f'{p2} no MR reverse results - check summary stats')
+                log.warn(f'{p2} no MR reverse results - check summary stats')
             
             try:
                 results_compare = pd.concat(results_compare)

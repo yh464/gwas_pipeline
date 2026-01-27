@@ -49,7 +49,7 @@ def find_clump(group, pheno,
              flist.append(y)
     if len(flist) > 0:
         plist = [float(z[-13:-8]) for z in flist]
-        warnings.warn(f'{pheno} has <5 SNPs')
+        log.warn(f'{pheno} has <5 SNPs', calling_file = 'find_clump')
         return f'{dirname}/{pheno}_{max(plist):.0e}.clumped', max(plist)
     raise FileNotFoundError(f'No clump found for {pheno}')
     

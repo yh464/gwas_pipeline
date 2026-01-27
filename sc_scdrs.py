@@ -182,7 +182,7 @@ def main(args = None, **kwargs):
         
         class_cols = [x for x in args.label if x in adata.obs.columns]
         mis_cols = [x for x in args.label if not x in adata.obs.columns]
-        if len(mis_cols) > 0: warnings.warn('Following columns are missing from the h5ad dataset: '+' '.join(mis_cols))
+        if len(mis_cols) > 0: log.warn('Following columns are missing from the h5ad dataset: '+' '.join(mis_cols))
         res = scdrs.method.downstream_group_analysis(adata, score, class_cols)
         enrichments = []
         for group, df in res.items():

@@ -57,7 +57,7 @@ def harmonise(file, ref):
         toc = perf_counter() - tic
         log.log(f'Saved {file}, time = {toc:.2f} seconds')
     except:
-        warnings.warn(f'Failed to harmonise {file}, consider manual harmonisation')
+        log.warn(f'Failed to harmonise {file}, consider manual harmonisation')
     return
 
 def main(args):

@@ -8,6 +8,9 @@ Batch submits jobs for MVMR for all GWAS files in a directory.
 Scans the entire directory for GWAS summary stats of the same data extension.
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     from _utils.plugins.logparser import crosscorr_parse
     from _utils.path import find_gwas
@@ -60,10 +63,10 @@ def main(args):
         exposures_corr['exp'] = exposures_corr['group1'] + '/' + exposures_corr['pheno1']
         exposures_filtered = exposures_corr.exp.to_list()
         if len(exposures_filtered) == 0:
-            warnings.warn(f'No exposures found for {g2}/{p2}')
+            log.warn(f'No exposures found for {g2}/{p2}')
             continue
         elif len(exposures_filtered) == 1:
-            warnings.warn(f'Only one exposure found for {g2}/{p2}: '+
+            log.warn(f'Only one exposure found for {g2}/{p2}: '+
                           f'{exposures_filtered[0]}, consider UVMR')
             continue
         

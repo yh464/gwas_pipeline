@@ -37,7 +37,7 @@ def process_pheno(gsets, g, p, args):
     for gset_file, gset in gsets:
         # process MAGMA output for main analysis
         magma_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.gsa.out'
-        if not os.path.isfile(magma_output): warnings.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
+        if not os.path.isfile(magma_output): log.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
         df = pd.read_table(magma_output, sep = '\\s+', comment = '#')
         df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
         if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE

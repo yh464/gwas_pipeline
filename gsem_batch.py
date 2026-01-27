@@ -64,7 +64,7 @@ class manual_model():
         elif all([y in [str(x+2) for x in range(len(self.phenotypes))] for y in name.split(' ')]):
             return ' + '.join([self.phenotypes[int(x)-2] for x in name.split(' ')])
         elif re.match('^[0-9.]+$', name.replace('\\','')) != None: return name.replace('\\','')
-        elif re.match('^[0-9]', name) != None or re.search('[$/*+\-?\^()\\\|]',name) != None:
+        elif re.match('^[0-9]', name) != None or re.search('[-$/*+?\^()\\\|]',name) != None:
             return self._check_name(input('Please enter a valid parameter name or phenotype code:\n'))
         print(f'Specifying a new parameter: {name}, please specify constraints; blank line for no constraints')
         self.phenotypes.append(name)

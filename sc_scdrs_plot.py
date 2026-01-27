@@ -13,6 +13,8 @@ Requires following inputs:
 
 import os, warnings
 from _utils.path import normaliser, find_gwas
+from _utils import logger
+log = logger.logger()
 from _utils.gadgets import mv_symlink
 from _plots.corr_heatmap import corr_heatmap
 import pandas as pd
@@ -41,9 +43,9 @@ def main(args):
                                f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.score.png')
                     mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.pseudotime.png',
                                f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.pseudotime.png')
-                except: warnings.warn(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
+                except: log.warn(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
                 pheno_summary.append(df)
-            if len(pheno_summary) == 0: warnings.warn(f'Missing scDRS enrichment for {g}/{p}'); continue
+            if len(pheno_summary) == 0: log.warn(f'Missing scDRS enrichment for {g}/{p}'); continue
             pheno_summary = pd.concat(pheno_summary, axis = 0)
             pheno_summary.to_csv(f'{args._in}/{g}/{p}.{sc}.scdrs.enrichment.txt', index = False, sep = '\t')
             pheno_summary.columns = ['cell_type', 'annotation', 'n_cell','n_ctrl','p','beta','hetero_p','hetero_z','fdr.05','fdr.1','fdr.2','dataset']
@@ -53,7 +55,7 @@ def main(args):
             summary.append(pheno_summary)
         
         # plot heatmap
-        if len(summary) == 0: warnings.warn(f'No scDRS enrichment found for {sc}'); continue
+        if len(summary) == 0: log.warn(f'No scDRS enrichment found for {sc}'); continue
         summary = pd.concat(summary)
         summary = norm.normalise(summary, quickmap = True)
         for lab in summary.annotation.unique():
@@ -63,7 +65,7 @@ def main(args):
             if 1 <= x_size.unique().size <= 500:
                 fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])
                 fig.savefig(f'{out_prefix}_{lab}_enrichment.pdf', bbox_inches = 'tight')
-            else: warnings.warn(f'{out_prefix}_{lab} is too large to plot, check tabular output')
+            else: log.warn(f'{out_prefix}_{lab} is too large to plot, check tabular output')
 
 
 if __name__ == '__main__':  
