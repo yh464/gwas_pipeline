@@ -119,7 +119,7 @@ def main(args):
 
     if len(all_phenos) == 0: return
     all_phenos = pd.concat(all_phenos, axis = 0)
-    out_prefix = f'{args._in}/'+'_'.join([x[0] for x in pheno_short]) + f'.{args.annot}.enrichments'
+    out_prefix = f'{args._in}/{args.annot}'
     all_phenos = norm.normalise(all_phenos)
     # all_phenos.to_csv(f'{out_prefix}.txt', sep = '\t', index = False)
 
