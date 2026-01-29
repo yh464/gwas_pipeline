@@ -37,7 +37,7 @@ def main(args = None, **kwargs):
         os.makedirs(tmpdir, exist_ok = True)
         config = f'{tmpdir}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.config.json'
         with open(config, 'w') as f:
-            log.log(f'''
+            print(f'''
     {{
         "sumstats": [
             "{args._in}/{pheno[0][0]}/{pheno[0][1]}.sumstats",
