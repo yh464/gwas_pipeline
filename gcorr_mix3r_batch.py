@@ -28,10 +28,14 @@ def main(args = None, **kwargs):
 
     for i in range(0, len(args.pheno), 3):
         pheno = find_gwas(args.pheno[i:i+3], dirname = args._in, long = True, ext = 'sumstats')
+        if len(args.name) >= i + 3:
+            name = args.name[i:i+3]
+        else:
+            name = [f'{p[1]}' for p in pheno]
         log.log(', '.join([f'{p[0]}/{p[1]}' for p in pheno]))
-        out_file = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}.json'
+        out_prefix = f'{args.out}/{pheno[0][0]}_{pheno[0][1]}.{pheno[1][0]}_{pheno[1][1]}.{pheno[2][0]}_{pheno[2][1]}'
 
-        if os.path.isfile(out_file) and not args.force: return
+        if os.path.isfile(f'{out_prefix}.json') and not args.force: return
 
         tmpdir = '/rds/user/yh464/hpc-work/tmp/mix3r'
         os.makedirs(tmpdir, exist_ok = True)
@@ -47,7 +51,7 @@ def main(args = None, **kwargs):
         "template_dir": "{args.mix3r}/template",
         "nbin_het_hist": 64,
 
-        "out": "{out_file}",
+        "out": "{out_prefix}.json",
 
         "snp_filters": {{
             "chromosomes": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22],
@@ -74,14 +78,18 @@ def main(args = None, **kwargs):
     }}
     ''', file = f)
         
-        cmd = f'python {args.mix3r}/mix3r_int_weights.py --config {config}'
-        submitter.add(cmd)
+        submitter.add(
+            f'python {args.mix3r}/mix3r_int_weights.py --config {config}',
+            f'python {args.mix3r}/extract_p.py --input {out_prefix}.json --out {out_prefix}',
+            f'Rscript {args.mix3r}/make_euler.r {out_prefix}.parameters.csv {out_prefix} '+ ' '.join([f'"{n}"' for n in name])
+        )
     submitter.submit()
 
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs mix3r on 3 GWAS summary statistics')
     parser.add_argument('pheno', type = str, nargs = '*', help = 'Phenotypes, exactly 3 traits')
+    parser.add_argument('-n','--name', type = str, nargs = '*', help = 'Phenotype names for plotting')
     parser.add_argument('-i', '--in', dest = '_in', type = str, help = 'Input directory',
         default = '/rds/project/rds-Q6dKROTNf6s/Data_Users/yh464/gcorr/ldsc_sumstats')
     parser.add_argument('--mix3r', type = str, help = 'Mix3r installation path', 
