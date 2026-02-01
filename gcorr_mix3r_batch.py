@@ -28,8 +28,8 @@ def main(args = None, **kwargs):
 
     for i in range(0, len(args.pheno), 3):
         pheno = find_gwas(args.pheno[i:i+3], dirname = args._in, long = True, ext = 'sumstats')
-        if len(args.name) >= i + 3:
-            name = args.name[i:i+3]
+        if len(args.pheno_name) >= i + 3:
+            name = args.pheno_name[i:i+3]
         else:
             name = [f'{p[1]}' for p in pheno]
         log.log(', '.join([f'{p[0]}/{p[1]}' for p in pheno]))
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs mix3r on 3 GWAS summary statistics')
     parser.add_argument('pheno', type = str, nargs = '*', help = 'Phenotypes, exactly 3 traits')
-    parser.add_argument('-n','--name', type = str, nargs = '*', help = 'Phenotype names for plotting')
+    parser.add_argument('-n','--pheno_name', type = str, nargs = '*', help = 'Phenotype names for plotting')
     parser.add_argument('-i', '--in', dest = '_in', type = str, help = 'Input directory',
         default = '/rds/project/rds-Q6dKROTNf6s/Data_Users/yh464/gcorr/ldsc_sumstats')
     parser.add_argument('--mix3r', type = str, help = 'Mix3r installation path', 
