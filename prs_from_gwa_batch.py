@@ -32,7 +32,7 @@ def main(args):
     tmpgwa = f'{tmpdir}/{g}/{prefix}.txt'
     tmpn = f'{tmpdir}/{g}/{prefix}_n.txt'
     
-    if not os.path.isfile(tmpgwa) or not os.path.isfile(tmpn) or args.force:
+    if not os.path.isfile(tmpgwa) or args.force:
       # format GWAS
       hdr = open(f'{args._in}/{g}/{p}.fastGWA').readline().replace('\n','').split()
       idx = [hdr.index('SNP'), hdr.index('A1'), hdr.index('A2')]
@@ -43,7 +43,9 @@ def main(args):
       idx = [x + 1 for x in idx]
       cmd = ['awk', '-v', 'OFS=\'\\t\'', '\'{print'] + [f'${i},' for i in idx[:-1]] + [f'${idx[-1]}'+'}\'', f'{args._in}/{g}/{p}.fastGWA >', tmpgwa]
       os.system(' '.join(cmd))
-
+    try:
+      n = open(tmpn).read().splitlines()[0]
+    except:
       df = pd.read_table(f'{args._in}/{g}/{p}.fastGWA', usecols = ['N'] if 'N' in hdr else ['N_CAS','N_CON'])
       if not 'N' in df.columns and 'N_CAS' in df.columns and 'N_CON' in df.columns:
         n = df['N_CAS'].max() + df['N_CON'].max()
@@ -53,8 +55,6 @@ def main(args):
       with open(tmpn, 'w') as n_file: 
         print(n, file = n_file)
         n_file.close()
-    else:
-      n = open(tmpn).read().splitlines()[0]
     n = int(float(n))
 
     outdir = f'{args.out}/{g}/{prefix}'
