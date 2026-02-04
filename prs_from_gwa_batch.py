@@ -46,6 +46,7 @@ def main(args):
     try:
       n = open(tmpn).read().splitlines()[0]
     except:
+      hdr = open(f'{args._in}/{g}/{p}.fastGWA').readline().replace('\n','').split()
       df = pd.read_table(f'{args._in}/{g}/{p}.fastGWA', usecols = ['N'] if 'N' in hdr else ['N_CAS','N_CON'])
       if not 'N' in df.columns and 'N_CAS' in df.columns and 'N_CON' in df.columns:
         n = df['N_CAS'].max() + df['N_CON'].max()
