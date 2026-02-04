@@ -16,9 +16,7 @@ def main(args):
     from _utils import logger
     log = logger.logger()
     from _utils.slurm import array_submitter
-    submitter = array_submitter(
-        name = 'prs_score', n_cpu = 1,
-        timeout = 20, mode = 'long')
+    submitter = array_submitter(name = 'prs_score', n_cpu = 1,timeout = 20)
     
     # parse input
     if fnmatch(args.bed, '*.bed'):

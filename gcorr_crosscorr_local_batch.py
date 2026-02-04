@@ -21,7 +21,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = f'gcorr_{args.p1[0]}_{args.p2[0]}',
-        timeout = 10, mode = 'long',
+        timeout = 10,
         debug = True
         )
     

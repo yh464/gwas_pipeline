@@ -11,7 +11,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'gcorr_local',
-        timeout = 10,mode = 'long')
+        timeout = 10)
     
     scripts_path = os.path.realpath(__file__)
     scripts_path = os.path.dirname(scripts_path)

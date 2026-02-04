@@ -15,7 +15,7 @@ def main(args):
   submitter = array_submitter(
     name = 'pheno',
     partition = 'icelake',
-    timeout = 5, mode = 'long',
+    timeout = 5,
     )
   
   subjs = np.loadtxt(args.subjs,dtype = 'U')
