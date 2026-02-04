@@ -18,6 +18,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'prs_score', n_cpu = 1,timeout = 20)
     from _utils.path import find_gwas
+    import pandas as pd
 
     # parse input
     if fnmatch(args.bed, '*.bed'):
@@ -44,12 +45,24 @@ def main(args):
         if not os.path.isdir(out_dir): os.system(f'mkdir -p {out_dir}')
         
         # Score by chromosome
+        completed = True
         for j in range(22):
             effsz = f'{in_dir}/{p}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt'
             out_fname = f'{out_dir}/{p}.chr{j+1}'
             if not os.path.isfile(out_fname+'.sscore') or args.force:
+                completed = False
                 submitter.add(f'{args.plink} --bfile {bed_list[j]} --chr {j+1} --score {effsz} 2 4 6 center '+
                     f'cols=fid,denom,dosagesum,scoresums --out {out_fname}')
+                
+        if not completed: continue
+        log.log(f'Combining chromosomes for {g}/{p}')
+        all_chrs = pd.concat([pd.read_table(f'{out_dir}/{p}.chr{j+1}.sscore', usecols = ['#FID', 'IID', 'SCORE1_SUM']).rename(
+            columns = {'#FID': 'FID', 'SCORE1_SUM': f'chr{j+1}'}).sort_values(
+            ['FID','IID']).drop_duplicates(['FID','IID']).set_index(['FID','IID']) for j in range(22)], axis = 1).dropna()
+        score_total = all_chrs.sum(axis = 1)
+        total = pd.DataFrame(dict(score_total = score_total, score_norm = score_total/score_total.std()), index = all_chrs.index)
+        total.to_csv(f'{args.out}/{g}/{p}.txt', index = True, sep = '\t')
+
     submitter.submit()
      
 if __name__ == '__main__':

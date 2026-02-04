@@ -71,29 +71,28 @@ if not os.path.isfile(f'{args.out}/{prefix}_summary.txt') or args.force:
                 prs_list.append(x)
         
         for prs in prs_list:
-            log.log(prs)
-            # sum PRS across all chromosomes
-            if (not os.path.isfile(f'{args.prsdir}/{p}/{prs}.txt') or \
-                args.force) and os.path.isdir(f'{args.prsdir}/{p}/{prs}'):
-                chrom = []
-                for j in range(22):
-                    df = pd.read_table(f'{args.prsdir}/{p}/{prs}/{prs}.chr{j+1}.sscore'
-                        ).sort_values('IID').drop_duplicates()
-                    col = df.columns.tolist()
-                    col[0] = 'FID'
-                    df.columns = col
-                    df = df.set_index(['FID','IID'])
-                    chrom.append(df.iloc[:,-1].to_frame())
-                chrom = pd.concat(chrom, axis = 1)
-                out = pd.DataFrame(index = chrom.index, columns = [])
-                out['score_total'] = chrom.sum(axis = 1)
-                out['score_norm'] = out.score_total/out.score_total.std()
-                out.to_csv(f'{args.prsdir}/{p}/{prs}.txt', index = True, sep = '\t')
-            else:
-                out = pd.read_table(f'{args.prsdir}/{p}/{prs}.txt', index_col = ['FID','IID'])
-            log.log(f'    {args.prsdir}/{p}/{prs}.txt')
+            # # sum PRS across all chromosomes
+            # if (not os.path.isfile(f'{args.prsdir}/{p}/{prs}.txt') or \
+            #     args.force) and os.path.isdir(f'{args.prsdir}/{p}/{prs}'):
+            #     chrom = []
+            #     for j in range(22):
+            #         df = pd.read_table(f'{args.prsdir}/{p}/{prs}/{prs}.chr{j+1}.sscore'
+            #             ).sort_values('IID').drop_duplicates()
+            #         col = df.columns.tolist()
+            #         col[0] = 'FID'
+            #         df.columns = col
+            #         df = df.set_index(['FID','IID'])
+            #         chrom.append(df.iloc[:,-1].to_frame())
+            #     chrom = pd.concat(chrom, axis = 1)
+            #     score = pd.DataFrame(index = chrom.index, columns = [])
+            #     score['score_total'] = chrom.sum(axis = 1)
+            #     score['score_norm'] = score.score_total/score.score_total.std()
+            #     score.to_csv(f'{args.prsdir}/{p}/{prs}.txt', index = True, sep = '\t')
+            # else:
+            score = pd.read_table(f'{args.prsdir}/{p}/{prs}.txt', index_col = ['FID','IID'])
+            log.log(f'Scores for {prs} read from {args.prsdir}/{p}/{prs}.txt')
             
-            tmp = out[['score_norm']]
+            tmp = score[['score_norm']]
             tmp.columns = ['prs']
             tmp_merge = pd.concat([phen_cov.copy(),tmp], axis = 1, join = 'inner')
             log.log(f'    Sample size: {tmp_merge.shape[0]}')
