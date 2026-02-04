@@ -17,7 +17,8 @@ def main(args):
     log = logger.logger()
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'prs_score', n_cpu = 1,timeout = 20)
-    
+    from _utils.path import find_gwas
+
     # parse input
     if fnmatch(args.bed, '*.bed'):
         bed_list = [args.bed[:-4]]
@@ -36,19 +37,19 @@ def main(args):
     if len(bed_list) == 1: bed_list *= 22
     if not os.path.isdir(args.out): os.mkdir(args.out)
     
-    for p in args.pheno:
-        for x in os.listdir(f'{args._in}/{p}'):
-            in_dir = f'{args._in}/{p}/{x}'
-            out_dir = f'{args.out}/{p}/{x}'
-            if not os.path.isdir(out_dir): os.system(f'mkdir -p {out_dir}')
-          
-            # Score by chromosome
-            for j in range(22):
-                effsz = f'{in_dir}/{x}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt'
-                out_fname = f'{out_dir}/{x}.chr{j+1}'
-                if not os.path.isfile(out_fname+'.sscore') or args.force:
-                    submitter.add(f'{args.plink} --bfile {bed_list[j]} --chr {j+1} --score {effsz} 2 4 6 center '+
-                      f'cols=fid,denom,dosagesum,scoresums --out {out_fname}')
+    pheno = find_gwas(args.pheno, long = True)
+    for g, p in pheno:
+        in_dir = f'{args._in}/{g}/{p}'
+        out_dir = f'{args.out}/{g}/{p}'
+        if not os.path.isdir(out_dir): os.system(f'mkdir -p {out_dir}')
+        
+        # Score by chromosome
+        for j in range(22):
+            effsz = f'{in_dir}/{p}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt'
+            out_fname = f'{out_dir}/{p}.chr{j+1}'
+            if not os.path.isfile(out_fname+'.sscore') or args.force:
+                submitter.add(f'{args.plink} --bfile {bed_list[j]} --chr {j+1} --score {effsz} 2 4 6 center '+
+                    f'cols=fid,denom,dosagesum,scoresums --out {out_fname}')
     submitter.submit()
      
 if __name__ == '__main__':

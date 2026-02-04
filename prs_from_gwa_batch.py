@@ -51,7 +51,7 @@ def main(args):
       
       # write cache file
       with open(tmpn, 'w') as n_file: 
-        log.log(n, file = n_file)
+        print(n, file = n_file)
         n_file.close()
     else:
       n = open(tmpn).read().splitlines()[0]
@@ -66,7 +66,7 @@ def main(args):
         continue
       submitter.add(f'python {args.prscs}/PRScs.py --ref_dir={args.ref} '+
         f'--bim_prefix={bed_list[j]} --sst_file={tmpgwa} --n_gwas={int(n)} --out_dir={out_prefix} '+
-        f'--chrom={j+1} --phi={args.phi} --seed 114514')
+        f'--chrom={j+1} --phi={args.phi} --seed 19260817')
   submitter.submit()
         
 if __name__ == '__main__':
