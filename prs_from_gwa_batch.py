@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--ref', dest = 'ref', help = 'reference panel',
       default = '../params/ref/ldblk/ldblk_1kg_eur/')
     parser.add_argument('--bed', dest = 'bed', help = 'list of PLINK binaries for target sample',
-      default = '../params/bed_files_ukb.txt')
+      default = '../params/bed')
     parser.add_argument('-o','--out', dest ='out', help = 'output directory',
       default = '../prs/prs_effsize/')
     parser.add_argument('--phi', dest = 'phi', 

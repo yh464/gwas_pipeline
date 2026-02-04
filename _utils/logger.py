@@ -58,6 +58,12 @@ class logger():
     def error(self, msg, calling_file = None):
         self.log(msg, error = True, calling_file = calling_file)
     
+    def system(self, cmd, calling_file = None):
+        out = os.system(cmd)
+        self.log(cmd, calling_file = calling_file)
+        self.log(f'Exit code: {out}', calling_file = calling_file)
+        return out
+
     def splash(self, args):
         msg = splash(args, silent = True)
         print(msg, file = self.file)
