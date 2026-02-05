@@ -10,6 +10,8 @@ Requires following inputs:
     MUNGED GWAS summary statistics
     FULL GWAS summary statistics (optional, only for SNP-level models)
 '''
+from _utils.logger import logger
+log = logger()
 
 class manual_model():
     import os
@@ -172,7 +174,7 @@ def main(args):
     manual_kwd['silent'] = (len(outcomes) > 0)
 
     for g2, p2 in outcomes:
-        print(f'Outcome: {g2}/{p2}')
+        log.log(f'Outcome: {g2}/{p2}')
         if not os.path.isdir(f'{args.out}/{g2}'): os.system(f'mkdir -p {args.out}/{g2}')
         med = (['--med'] + [ f'{g}/{p}' for g, p in mediators]) if len(mediators) > 0 else []
         cov = (['--cov'] + [ f'{g}/{p}' for g, p in covariates]) if len(covariates) > 0 else []
@@ -189,7 +191,7 @@ def main(args):
 
         # all correlated exposures in the same model
         if args.all_exp:
-            print('Using all exposures from',' '.join(args.p1))
+            log.log('Using all exposures from',' '.join(args.p1))
             out_prefix = f'{args.out}/{g2}/{p2}.all_'+'_'.join(args.p1)
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                    '--p1'] + [f'{g}/{p}' for g, p in exposures_filtered]
@@ -211,7 +213,7 @@ def main(args):
         # individual correlated exposures in each model
         else:
             for g1, p1 in exposures_filtered:
-                print(f'    Exposure: {g1}/{p1}')
+                log.log(f'    Exposure: {g1}/{p1}')
                 if not os.path.isdir(f'{args.out}/{g2}/{g1}'): os.system(f'mkdir -p {args.out}/{g2}/{g1}')
                 out_prefix = f'{args.out}/{g2}/{g1}/{p2}.{g1}_{p1}'
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
@@ -233,14 +235,14 @@ def main(args):
             
     if len(outcomes) == 0:
         if not args.all_exp: 
-            RuntimeWarning('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
+            log.warn('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
         if not os.path.isfile(args.manual):
             outdir = f'{args.out}/'+'_'.join([x for x,_ in exposures_short])
             if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
             tmp_prefix = '_'.join([x+'_'+'_'.join(y) for x,y in exposures_short])
             if len(tmp_prefix) > 100:
-                tmp_prefix = hashlib.sha256(tmp_prefix)
-                RuntimeWarning(f'Output prefix too long, using sha256 {tmp_prefix}')
+                tmp_prefix = hashlib.sha256(tmp_prefix.encode()).hexdigest()[:10]
+                log.warn(f'Output prefix too long, using sha256 {tmp_prefix}')
             out_prefix = f'{outdir}/{tmp_prefix}'
         pheno = covariates + mediators + exposures
         p1 = [f'{g}/{p}' for g, p in exposures]
