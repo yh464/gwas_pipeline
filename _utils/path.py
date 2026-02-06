@@ -118,9 +118,10 @@ def find_gwas(*pheno,
         if len(out) == 0 or pdir != out[-1][0]: out.append((pdir, xlist))
         else: out[-1] = (pdir, sorted(out[-1][1] + xlist))
     out_long = [(x,z) for x,y in out for z in y]
-    log.log(f'Found {len(out_long)} GWAS datasets')
+    log.log('Found following GWAS datasets')
     for x, y in out_long:
         log.log(f'    {x}/{y}')
+    log.log(f'Total {len(out_long)} datasets found')
     if long: return out_long
     return out
 
