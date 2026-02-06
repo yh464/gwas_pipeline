@@ -72,7 +72,10 @@ if __name__ == '__main__':
     
     for arg in ['_in', 'out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
-
+    if not args.pca and not args.nw:
+        args.pca = True # default to PCA if no method specified
+        log.warn('No method specified for estimating weights, defaulting to PCA (--pca)')
+        
     from _utils import cmdhistory
     logger.splash(args)
     cmdhistory.log()
