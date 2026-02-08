@@ -27,19 +27,16 @@ def read_sumstats(input_args):
     g, p, in_dir, weight = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
-        index_col = ['CHR','SNP','POS','A1','A2'])
+        index_col = ['SNP'])
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
     
-    n = df['N']
-    w = weight * (n ** 0.5)
-    z = df['BETA'] * w / df['SE']
-    af = df['AF1'] * n
-    n = n.to_frame(name = (g, p))
-    w = w.to_frame(name = (g, p))
-    z = z.to_frame(name = (g, p))
-    af = af.to_frame(name = (g, p))
-    return w, z, af, n
+    n = df['N'].rename((g, p))
+    w = (weight * (n ** 0.5)).rename((g, p))
+    z = (df['BETA'] * w / df['SE']).rename((g, p))
+    af = (df['AF1'] * n).rename((g, p))
+    snpinfo = df[['CHR','POS','A1','A2']]
+    return w, z, af, n, snpinfo
 
 def main(args):
     pheno = find_gwas(args.pheno, dirname = args._in, long = True)
@@ -62,7 +59,15 @@ def main(args):
     parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
     with Pool(16) as pool:
         out = list(tqdm(pool.imap(read_sumstats, parallel_args), total = len(parallel_args), desc = 'Reading summary statistics and aggregating weighted Z-scores'))
-    weight_list, z_list, af_list, n_list = zip(*out)
+    weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
+
+    log.log('Merging variant information across all summary statistics')
+    snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_values(by = ['CHR','POS'])
+    if snpinfo.duplicated(subset = ['CHR','POS']).any(): 
+        raise ValueError('Found unharmonised variants with disagreeing allele order, please run gwa_harmonise.py before calling this script')
+    log.log('Variant information are consistent across all summary statistics, proceeding with meta-analysis')
+
+    log.log('Calculating meta-analytic Z-scores')
     n_total = pd.concat(list(n_list), axis = 1).fillna(0).sum(axis = 1)
     out_z = pd.concat(list(z_list), axis = 1).fillna(0).sum(axis = 1)
     del n_list, z_list
@@ -79,7 +84,7 @@ def main(args):
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
     div_coef = ((weight.values @ gcovint) * weight.values).sum(axis = 1) ** 0.5
     out_z = out_z / div_coef
-    out = pd.concat([af1, out_z, n_total], axis = 1)
+    out = pd.concat([snpinfo, af1, out_z, n_total], axis = 1)
     out['P'] = sts.norm.sf(abs(out_z)) * 2
     out['BETA'] = out_z / n_total / (af1 * (1-af1)) ** 0.5
     out['SE'] = out['BETA'] / out_z
