@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+'''
+Author: Yuankai He
+Correspondence: yh464@cam.ac.uk
+2026-02-08
+
+Python implementation of genomic PCA (Fürtjes et al 2023 https://doi.org/10.1002/hbm.26283) and 
+vanilla n-weighted GWAMA (Baselmans et al 2019 https://doi.org/10.1038/s41588-018-0320-8)
+
+Requires following inputs: 
+    Harmonised GWAS summary statistics in fastGWA format (CHR, SNP, POS, A1, A2, BETA/OR, SE, N, AF1)
+    genetic correlation and heritability estimates (gcorr_batch.py output)
+'''
 
 import os
 import pandas as pd
@@ -41,39 +54,21 @@ def main(args):
     
     log.log('This script assumes all alleles are in the same order across all files. Please run gwa_harmonise.py before calling this script.')
 
-    # weight_list = []
-    # aflist = []
-    # idx = pd.MultiIndex.from_frame(pd.DataFrame(index = [], columns = ['CHR','SNP','POS','A1','A2']))
-    # n_total = pd.Series(name = 'N', index = idx, dtype = float)
-    # out_z = pd.Series(name = 'Z', index = idx, dtype = float)
-    # for g, p in tqdm(pheno, desc = 'Reading summary statistics and aggregating weighted Z-scores'):
-    #     df = pd.read_table(f'{args._in}/{g}/{p}.fastGWA', usecols = 
-    #         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
-    #         index_col = ['CHR','SNP','POS','A1','A2'])
-    #     df.columns = [x.upper() for x in df.columns]
-    #     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
-
-    #     n_total = n_total.add(df['N'], fill_value = 0)
-    #     weight = weights.loc[(g,p)] * (df['N'] ** 0.5).rename((g,p))
-    #     out_z = out_z.add(df['BETA'] * weight / df['SE'], fill_value = 0) # weighted z-score
-    #     weight_list.append(weight)
-    #     aflist.append(df['AF1'].rename((g,p)) * df['N'])
-    
-    # parallelised version of the above loop
+    # read summary stats and aggregate weighted Z-scores
     parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
-    with Pool(cpu_count() * 4) as pool:
+    with Pool(16) as pool:
         out = list(tqdm(pool.imap(read_sumstats, parallel_args), total = len(parallel_args), desc = 'Reading summary statistics and aggregating weighted Z-scores'))
     weight_list, z_list, af_list, n_list = zip(*out)
-    n_total = pd.concat(n_list, axis = 1).fillna(0).sum(axis = 1)
-    out_z = pd.concat(z_list, axis = 1).fillna(0).sum(axis = 1)
+    n_total = pd.concat(list(n_list), axis = 1).fillna(0).sum(axis = 1)
+    out_z = pd.concat(list(z_list), axis = 1).fillna(0).sum(axis = 1)
 
     # adjust AF1
     log.log('Estimating allele frequencies weighted by sample size')
-    af_list = pd.concat(af_list, axis = 1).fillna(0)
+    af_list = pd.concat(list(af_list), axis = 1).fillna(0)
     af1 = af_list.sum(axis = 1).rename('AF1') / n_total
 
     # for each SNP, divide the weighted Z-score by sqrt(weight[:,SNP].T dot gcov_int dot weight[:,SNP])
-    weight = pd.concat(weight_list, axis = 1).fillna(0)
+    weight = pd.concat(list(weight_list), axis = 1).fillna(0)
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
     div_coef = ((weight.values @ gcovint) * weight.values).sum(axis = 1) ** 0.5
     out_z = out_z / div_coef
@@ -82,6 +77,8 @@ def main(args):
     out['BETA'] = out_z / n_total / (af1 * (1-af1)) ** 0.5
     out['SE'] = out['BETA'] / out_z
     out.to_csv(args.out, sep = '\t', index = True, header = True)
+    log.log(f'Output written to {args.out}')
+    log.log('Analysis finished')
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
