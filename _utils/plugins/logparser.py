@@ -112,7 +112,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
     summary = []
     
     from ..path import pair_gwas
-    pairwise = pair_gwas(gwa1, gwa2, force_short = True)
+    pairwise = pair_gwas(gwa1, gwa2, short = True)
     
     for g1, p1s, g2, p2s in pairwise:
         if g1 > g2: 

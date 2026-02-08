@@ -141,13 +141,14 @@ def force_long(pheno):
     assert isinstance(pheno[0][1], list)
     return [(g, p) for g, ps in pheno for p in ps]
 
-def pair_gwas(gwa1, gwa2 = [], self_pair = True, force_short = False, force_long = False):
+def pair_gwas(gwa1, gwa2 = [], self_pair = True, short = False, long = False):
     '''
     Input: gwa1 and gwa2 are both [(group, [pheno1, pheno2,...]),...] lists
     in the same format as find_gwas output, compatible with long = True and False
+    Specify short / long = True to force conversion into short/long formats
     '''
-    if force_short: gwa1 = force_short(gwa1); gwa2 = force_short(gwa2)
-    if force_long: gwa1 = force_long(gwa1); gwa2 = force_long(gwa2)
+    if short: gwa1 = force_short(gwa1); gwa2 = force_short(gwa2)
+    if long: gwa1 = force_long(gwa1); gwa2 = force_long(gwa2)
     pairwise = []
     if len(gwa2) > 0:
         for g1, p1s in gwa1:
