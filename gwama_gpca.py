@@ -10,7 +10,8 @@ from _utils import logger
 from multiprocessing import Pool, cpu_count
 log = logger.logger()
 
-def read_sumstats(g, p, in_dir, weight):
+def read_sumstats(input_args):
+    g, p, in_dir, weight = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
         index_col = ['CHR','SNP','POS','A1','A2'])
@@ -61,7 +62,7 @@ def main(args):
     # parallelised version of the above loop
     parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
     with Pool(cpu_count() * 4) as pool:
-        out = list(tqdm(pool.starmap(read_sumstats, parallel_args), total = len(parallel_args), desc = 'Reading summary statistics and aggregating weighted Z-scores'))
+        out = list(tqdm(pool.imap(read_sumstats, parallel_args), total = len(parallel_args), desc = 'Reading summary statistics and aggregating weighted Z-scores'))
     weight_list, z_list, af_list, n_list = zip(*out)
     n_total = pd.concat(n_list, axis = 1).fillna(0).sum(axis = 1)
     out_z = pd.concat(z_list, axis = 1).fillna(0).sum(axis = 1)
