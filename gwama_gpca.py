@@ -31,10 +31,10 @@ def read_sumstats(input_args):
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
     
-    n = (df['N']).rename((g,p))
-    w = (weight * (n ** 0.5)).rename((g,p))
-    z = (df['BETA'] * w / df['SE']).rename((g,p))
-    af = (df['AF1'] * n).rename((g,p))
+    n = (df['N']).to_frame(name = (g,p))
+    w = (weight * (n ** 0.5)).to_frame(name = (g,p))
+    z = (df['BETA'] * w / df['SE']).to_frame(name = (g,p))
+    af = (df['AF1'] * n).to_frame(name = (g,p))
     return w, z, af, n
 
 def main(args):
