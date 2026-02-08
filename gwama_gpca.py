@@ -27,7 +27,7 @@ def read_sumstats(input_args):
     g, p, in_dir, weight = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
-        index_col = ['SNP', 'A1', 'A2'])
+        index_col = ['SNP']).sort_values(by = ['CHR','POS','A1','A2'])
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
     
@@ -35,7 +35,7 @@ def read_sumstats(input_args):
     w = (weight * (n ** 0.5)).rename((g, p))
     z = (df['BETA'] * w / df['SE']).rename((g, p))
     af = (df['AF1'] * n).rename((g, p))
-    snpinfo = df[['CHR','POS']]
+    snpinfo = df[['CHR','POS','A1','A2']]
     return w, z, af, n, snpinfo
 
 def main(args):
@@ -62,7 +62,13 @@ def main(args):
     weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
 
     log.log('Merging variant information across all summary statistics')
-    snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_values(by = ['CHR','POS'])
+    snpinfo = pd.concat(snpinfo_list, axis = 0).sort_values(by = ['CHR','POS','A1','A2'])
+    if snpinfo.duplicated(['CHR','POS']).any():
+        log.warn(f'{snpinfo.duplicated(["CHR","POS"]).sum()} variants have different alleles across files')
+        snpinfo.loc[snpinfo.duplicated(['CHR','POS'], keep = False), :].to_csv(args.out.replace('.fastGWA', '.missnp'), sep = '\t', index = False)
+        log.log(f'List of variants with inconsistent alleles across files written to {args.out.replace(".fastGWA", ".missnp")}')
+        snpinfo = snpinfo.drop_duplicates(['CHR','POS'], keep = False)
+        log.log(f'{snpinfo.shape[0]} variants with consistent alleles across files retained for meta-analysis')
 
     log.log('Calculating meta-analytic Z-scores')
     n_total = pd.concat(list(n_list), axis = 1).fillna(0).sum(axis = 1)
