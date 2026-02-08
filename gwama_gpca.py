@@ -81,8 +81,7 @@ def main(args):
 
     # adjust AF1
     log.log('Estimating allele frequencies weighted by sample size')
-    af_list = pd.concat(list(af_list), axis = 1, ignore_index = True).fillna(0)
-    af1 = af_list.sum(axis = 1).rename('AF1') / n_total
+    af1 = (pd.concat(list(af_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1) / n_total).rename('AF1')
     del af_list
 
     # for each SNP, divide the weighted Z-score by sqrt(weight[:,SNP].T dot gcov_int dot weight[:,SNP])
