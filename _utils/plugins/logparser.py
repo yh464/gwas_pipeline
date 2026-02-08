@@ -10,6 +10,7 @@ This script is specific to the GWAS pipeline and will not be migrated to _utils
 
 import os, warnings
 from fnmatch import fnmatch
+from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
@@ -74,15 +75,13 @@ def parse_rg_log(file, full = False, gcov = False):
     hdr = ['group1','pheno1','group2','pheno2','rg','se','z','p','h2_obs',
            'h2_obs_se','h2_int','h2_int_se','gcov_int','gcov_int_se']
     all_stats = []
-    tmp = open(file)
+    tmp = open(file).read().splitlines()
     skip = True
-    line = 'placeholder'
-    while len(line) > 0:
-        line = tmp.readline()
-        if line.find('gcov_int_se') > -1: skip = False; continue
-        if line.find('Analysis finished') > -1: skip = True; continue
+    for line in tmp[::-1]: # read from the end since the relevant stats are at the end of the log
+        if line.find('gcov_int_se') > -1: break
+        if line.find('Analysis finished') > -1: skip = False; continue
         if skip: continue
-        tmp_stats = line.replace('\n','').split()
+        tmp_stats = line.split()
         if len(tmp_stats) == 0: continue
         group1 = os.path.basename(os.path.dirname(tmp_stats[0]))
         pheno1 = os.path.basename(tmp_stats[0]).replace('.sumstats','').replace('.gz','')
@@ -122,7 +121,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
         else: flip = False
         if isinstance(p1s, str): p1s = [p1s]
         if isinstance(p2s, str): p2s = [p2s]
-        for p1 in p1s:
+        for p1 in tqdm(p1s, desc = f'Parsing logs for {g1}'):
             if g1 == g2 and h2dir != None: # heritability
                 fname = f'{h2dir}/{g1}/{p1}.h2.log'
                 if not full:
