@@ -93,9 +93,9 @@ def main(args):
     div_coef = ((weight.values @ gcovint) * weight.values).sum(axis = 1) ** 0.5
     out_z = out_z / div_coef
     out = pd.concat([snpinfo, af1, out_z, n_total], axis = 1, join = 'inner').sort_values(['CHR','POS'])
-    out['P'] = sts.norm.sf(abs(out_z)) * 2
-    out['BETA'] = out_z / n_total / (af1 * (1-af1)) ** 0.5
-    out['SE'] = out['BETA'] / out_z
+    out['P'] = sts.norm.sf(abs(out['Z'])) * 2
+    out['BETA'] = out['Z'] / out['N'] / (out['AF1'] * (1-out['AF1'])) ** 0.5
+    out['SE'] = out['BETA'] / out['Z']
     out.to_csv(args.out, sep = '\t', index = True, header = True)
     log.log(f'Output written to {args.out}')
     log.log('Analysis finished')
