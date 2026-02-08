@@ -29,8 +29,8 @@ def main(args):
 
     weight_list = []
     aflist = []
-    n_total = pd.Series(name = 'N', index = [], dtype = float)
-    out_z = pd.Series(name = 'Z', index = [], dtype = float)
+    n_total = pd.Series(name = 'N', index = [], dtype = float); n_total.index.names = ['CHR','SNP','POS','A1','A2']
+    out_z = pd.Series(name = 'Z', index = [], dtype = float); out_z.index.names = ['CHR','SNP','POS','A1','A2']
     for g, p in tqdm(pheno, desc = 'Reading summary statistics and aggregating weighted Z-scores'):
         df = pd.read_table(f'{args._in}/{g}/{p}.fastGWA', usecols = 
             lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
