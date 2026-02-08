@@ -131,7 +131,7 @@ def force_short(pheno):
     assert isinstance(pheno[0][1], str)
     tmp = dict()
     for g, p in pheno:
-        if g not in tmp.keys: tmp[g] = [p]
+        if g not in tmp.keys(): tmp[g] = [p]
         else: tmp[g].append(p)
     return [(g, sorted(ps)) for g, ps in tmp.items()]
 
