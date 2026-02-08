@@ -47,7 +47,7 @@ def main(args):
     rg = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
     gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int')
     if args.pca: # use PCA to estimate weights
-        pc1 = np.linalg.eig(rg.fillna(0).values)[1][:,0]
+        pc1 = np.real(np.linalg.eig(rg.fillna(0).values)[1][:,0])
         weights = pd.Series(pc1, index = rg.index)
     elif args.nw: # use n-weighted meta-analysis
         weights = pd.Series(np.diag(rg.fillna(0).values), index = rg.index) ** 0.5
