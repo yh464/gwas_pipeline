@@ -125,11 +125,29 @@ def find_gwas(*pheno,
     if long: return out_long
     return out
 
-def pair_gwas(gwa1, gwa2 = [], self_pair = True):
+def force_short(pheno):
+    '''Converts a list of [(group, pheno)] pairs into [(group, [pheno1, pheno2,...])] pairs'''
+    if len(pheno) == 0: return []
+    assert isinstance(pheno[0][1], str)
+    tmp = dict()
+    for g, p in pheno:
+        if g not in tmp.keys: tmp[g] = [p]
+        else: tmp[g].append(p)
+    return [(g, sorted(ps)) for g, ps in tmp.items()]
+
+def force_long(pheno):
+    '''Converts a list of [(group, [pheno1, pheno2,...])] pairs into [(group, pheno)] pairs'''
+    if len(pheno) == 0: return []
+    assert isinstance(pheno[0][1], list)
+    return [(g, p) for g, ps in pheno for p in ps]
+
+def pair_gwas(gwa1, gwa2 = [], self_pair = True, force_short = False, force_long = False):
     '''
     Input: gwa1 and gwa2 are both [(group, [pheno1, pheno2,...]),...] lists
     in the same format as find_gwas output, compatible with long = True and False
     '''
+    if force_short: gwa1 = force_short(gwa1); gwa2 = force_short(gwa2)
+    if force_long: gwa1 = force_long(gwa1); gwa2 = force_long(gwa2)
     pairwise = []
     if len(gwa2) > 0:
         for g1, p1s in gwa1:
