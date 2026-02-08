@@ -114,14 +114,14 @@ def crosscorr_parse(gwa1, gwa2 = [],
     from ..path import pair_gwas
     pairwise = pair_gwas(gwa1, gwa2)
     
-    for g1, p1s, g2, p2s in pairwise:
+    for g1, p1s, g2, p2s in tqdm(pairwise):
         if g1 > g2: 
             g1, p1s, g2, p2s = g2, p2s, g1, p1s
             flip = True
         else: flip = False
         if isinstance(p1s, str): p1s = [p1s]
         if isinstance(p2s, str): p2s = [p2s]
-        for p1 in tqdm(p1s, desc = f'Parsing logs for {g1}'):
+        for p1 in p1s:
             if g1 == g2 and h2dir != None: # heritability
                 fname = f'{h2dir}/{g1}/{p1}.h2.log'
                 if not full:
