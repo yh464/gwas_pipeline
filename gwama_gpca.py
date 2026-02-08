@@ -64,6 +64,7 @@ def main(args):
     log.log('Merging variant information across all summary statistics')
     snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_values(by = ['CHR','POS'])
     if snpinfo.duplicated(subset = ['CHR','POS']).any(): 
+        print(snpinfo[snpinfo.duplicated(subset = ['CHR','POS'], keep = False)])
         raise ValueError('Found unharmonised variants with disagreeing allele order, please run gwa_harmonise.py before calling this script')
     log.log('Variant information are consistent across all summary statistics, proceeding with meta-analysis')
 
