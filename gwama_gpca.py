@@ -26,8 +26,8 @@ log = logger.logger()
 def read_sumstats(input_args):
     g, p, in_dir, weight = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
-        lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
-        index_col = ['SNP'])
+        lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
+        index_col = ['SNP', 'A1', 'A2'])
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
     
@@ -35,7 +35,7 @@ def read_sumstats(input_args):
     w = (weight * (n ** 0.5)).rename((g, p))
     z = (df['BETA'] * w / df['SE']).rename((g, p))
     af = (df['AF1'] * n).rename((g, p))
-    snpinfo = df[['CHR','POS','A1','A2']]
+    snpinfo = df[['CHR','POS']]
     return w, z, af, n, snpinfo
 
 def main(args):
@@ -63,10 +63,6 @@ def main(args):
 
     log.log('Merging variant information across all summary statistics')
     snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_values(by = ['CHR','POS'])
-    if snpinfo.duplicated(subset = ['CHR','POS']).any(): 
-        print(snpinfo[snpinfo.duplicated(subset = ['CHR','POS'], keep = False)])
-        raise ValueError('Found unharmonised variants with disagreeing allele order, please run gwa_harmonise.py before calling this script')
-    log.log('Variant information are consistent across all summary statistics, proceeding with meta-analysis')
 
     log.log('Calculating meta-analytic Z-scores')
     n_total = pd.concat(list(n_list), axis = 1).fillna(0).sum(axis = 1)
