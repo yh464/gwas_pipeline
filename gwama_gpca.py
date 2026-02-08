@@ -31,10 +31,14 @@ def read_sumstats(input_args):
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
     
-    n = (df['N']).to_frame(name = (g,p))
-    w = (weight * (n ** 0.5)).to_frame(name = (g,p))
-    z = (df['BETA'] * w / df['SE']).to_frame(name = (g,p))
-    af = (df['AF1'] * n).to_frame(name = (g,p))
+    n = df['N']
+    w = weight * (n ** 0.5)
+    z = df['BETA'] * w / df['SE']
+    af = df['AF1'] * n
+    n = n.to_frame(name = (g, p))
+    w = w.to_frame(name = (g, p))
+    z = z.to_frame(name = (g, p))
+    af = af.to_frame(name = (g, p))
     return w, z, af, n
 
 def main(args):
@@ -61,14 +65,17 @@ def main(args):
     weight_list, z_list, af_list, n_list = zip(*out)
     n_total = pd.concat(list(n_list), axis = 1).fillna(0).sum(axis = 1)
     out_z = pd.concat(list(z_list), axis = 1).fillna(0).sum(axis = 1)
+    del n_list, z_list
 
     # adjust AF1
     log.log('Estimating allele frequencies weighted by sample size')
     af_list = pd.concat(list(af_list), axis = 1).fillna(0)
     af1 = af_list.sum(axis = 1).rename('AF1') / n_total
+    del af_list
 
     # for each SNP, divide the weighted Z-score by sqrt(weight[:,SNP].T dot gcov_int dot weight[:,SNP])
     weight = pd.concat(list(weight_list), axis = 1).fillna(0)
+    del out, weight_list
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
     div_coef = ((weight.values @ gcovint) * weight.values).sum(axis = 1) ** 0.5
     out_z = out_z / div_coef
