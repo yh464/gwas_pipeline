@@ -62,7 +62,7 @@ def main(args):
     weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
 
     log.log('Merging variant information across all summary statistics')
-    snpinfo = pd.concat(snpinfo_list, axis = 0).sort_values(by = ['CHR','POS','A1','A2'])
+    snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_values(by = ['CHR','POS','A1','A2'])
     if snpinfo.duplicated(['CHR','POS']).any():
         log.warn(f'{snpinfo.duplicated(["CHR","POS"]).sum()} variants have different alleles across files')
         snpinfo.loc[snpinfo.duplicated(['CHR','POS'], keep = False), :].to_csv(args.out.replace('.fastGWA', '.missnp'), sep = '\t', index = False)
