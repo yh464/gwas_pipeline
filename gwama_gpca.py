@@ -1,6 +1,7 @@
 
 import os
 import pickle
+from legacy_api_wrap import P
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
@@ -8,7 +9,21 @@ from tqdm import tqdm
 from _utils.path import find_gwas
 from _utils.plugins.logparser import crosscorr_parse
 from _utils import logger
+from multiprocessing import Pool, cpu_count
 log = logger.logger()
+
+def read_sumstats(g, p, in_dir, weight):
+    df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
+        lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
+        index_col = ['CHR','SNP','POS','A1','A2'])
+    df.columns = [x.upper() for x in df.columns]
+    if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
+    
+    n = (df['N']).rename((g,p))
+    w = (weight * (n ** 0.5)).rename((g,p))
+    z = (df['BETA'] * w / df['SE']).rename((g,p))
+    af = (df['AF1'] * n).rename((g,p))
+    return w, z, af, n
 
 def main(args):
     pheno = find_gwas(args.pheno, dirname = args._in, long = True)
@@ -27,28 +42,36 @@ def main(args):
     
     log.log('This script assumes all alleles are in the same order across all files. Please run gwa_harmonise.py before calling this script.')
 
-    weight_list = []
-    aflist = []
-    idx = pd.MultiIndex.from_frame(pd.DataFrame(index = [], columns = ['CHR','SNP','POS','A1','A2']))
-    n_total = pd.Series(name = 'N', index = idx, dtype = float)
-    out_z = pd.Series(name = 'Z', index = idx, dtype = float)
-    for g, p in tqdm(pheno, desc = 'Reading summary statistics and aggregating weighted Z-scores'):
-        df = pd.read_table(f'{args._in}/{g}/{p}.fastGWA', usecols = 
-            lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
-            index_col = ['CHR','SNP','POS','A1','A2'])
-        df.columns = [x.upper() for x in df.columns]
-        if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
+    # weight_list = []
+    # aflist = []
+    # idx = pd.MultiIndex.from_frame(pd.DataFrame(index = [], columns = ['CHR','SNP','POS','A1','A2']))
+    # n_total = pd.Series(name = 'N', index = idx, dtype = float)
+    # out_z = pd.Series(name = 'Z', index = idx, dtype = float)
+    # for g, p in tqdm(pheno, desc = 'Reading summary statistics and aggregating weighted Z-scores'):
+    #     df = pd.read_table(f'{args._in}/{g}/{p}.fastGWA', usecols = 
+    #         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N', 'AF1']),
+    #         index_col = ['CHR','SNP','POS','A1','A2'])
+    #     df.columns = [x.upper() for x in df.columns]
+    #     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
 
-        n_total = n_total.add(df['N'], fill_value = 0)
-        weight = weights.loc[(g,p)] * (df['N'] ** 0.5).rename((g,p))
-        out_z = out_z.add(df['BETA'] * weight / df['SE'], fill_value = 0) # weighted z-score
-        weight_list.append(weight)
-        aflist.append(df['AF1'].rename((g,p)) * df['N'])
+    #     n_total = n_total.add(df['N'], fill_value = 0)
+    #     weight = weights.loc[(g,p)] * (df['N'] ** 0.5).rename((g,p))
+    #     out_z = out_z.add(df['BETA'] * weight / df['SE'], fill_value = 0) # weighted z-score
+    #     weight_list.append(weight)
+    #     aflist.append(df['AF1'].rename((g,p)) * df['N'])
     
+    # parallelised version of the above loop
+    parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
+    with Pool(cpu_count() * 4) as pool:
+        out = list(tqdm(pool.starmap(read_sumstats, parallel_args), total = len(parallel_args), desc = 'Reading summary statistics and aggregating weighted Z-scores'))
+    weight_list, z_list, af_list, n_list = zip(*out)
+    n_total = pd.concat(n_list, axis = 1).fillna(0).sum(axis = 1)
+    out_z = pd.concat(z_list, axis = 1).fillna(0).sum(axis = 1)
+
     # adjust AF1
     log.log('Estimating allele frequencies weighted by sample size')
-    aflist = pd.concat(aflist, axis = 1).fillna(0)
-    af1 = aflist.sum(axis = 1).rename('AF1') / n_total
+    af_list = pd.concat(af_list, axis = 1).fillna(0)
+    af1 = af_list.sum(axis = 1).rename('AF1') / n_total
 
     # for each SNP, divide the weighted Z-score by sqrt(weight[:,SNP].T dot gcov_int dot weight[:,SNP])
     weight = pd.concat(weight_list, axis = 1).fillna(0)
