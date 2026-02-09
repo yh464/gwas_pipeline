@@ -30,7 +30,7 @@ def main(args):
     msg = '\n'.join([f'{i}: {file}' for i, file in enumerate(files)] + 
         ['', 'Please select the MSigDB files to use for pathway-specific PRS calculation, empty line to finish.','',
          'Default: c3.all.v2026.1.Hs.symbols.gmt, c5.go.v2026.1.Hs.symbols.gmt', '',''] +
-        ['Currently selected'] + files_selected)
+        ['Currently selected:',''] + files_selected + ['\n'])
     while len(fid := input(msg)) > 0:
         try: 
             fid = int(fid)
@@ -56,6 +56,7 @@ def main(args):
                '--out', f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}',
                '--msigdb', f'{args.out}/to_analyse.gmt', '--gtf', args.gtf
                ]
+        if 'OR' in open(f'{args._in}/{g}/{p}.fastGWA').readline(): cmd.extend(['--or'])
         submitter.add(' '.join(cmd))
     submitter.submit()
 
@@ -68,7 +69,7 @@ if __name__ == '__main__':
         help = 'Path to PRSice executable directory') # intentionally absolute
     parser.add_argument('--bed', default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/', 
         help = 'Path to PLINK .bed file of target population') # intentionally absolute
-    parser.add_argument('--ref', default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/chr#.bed',
+    parser.add_argument('--ref', default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/chr#',
         help = 'Reference LD panel in PLINK format') # intentionally absolute, with wildcard # for chromosome number
     parser.add_argument('--gtf', default = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt',
         help = 'Path to GTF reference file') # intentionally absolute, with build specified in file name
