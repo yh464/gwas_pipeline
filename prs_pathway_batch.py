@@ -55,7 +55,7 @@ def main(args):
         cmd = [f'{args.prsice}/bin/PRSice', '--base', f'{args._in}/{g}/{p}.fastGWA', '--target', bed,
                '--out', f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}',
                '--msigdb', f'{args.out}/to_analyse.gmt', '--gtf', args.gtf,
-               '--seed', '19260817'
+               '--seed', '19260817', '--thread', 'max'
                ]
         if bed != args.ref: cmd.extend(['--ref', args.ref])
         if 'OR' in open(f'{args._in}/{g}/{p}.fastGWA').readline(): cmd.extend(['--or'])
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         help = 'Path to PLINK .bed file of target population') # intentionally absolute
     parser.add_argument('--ref', default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/chr#',
         help = 'Reference LD panel in PLINK format') # intentionally absolute, with wildcard # for chromosome number
-    parser.add_argument('--gtf', default = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt',
+    parser.add_argument('--gtf', default = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.gz',
         help = 'Path to GTF reference file') # intentionally absolute, with build specified in file name
     parser.add_argument('--build', default = 'hg19', choices = ['hg19', 'hg38'], 
         help = 'Genome build of the reference GTF file, default to hg19')
