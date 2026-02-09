@@ -14,10 +14,13 @@ Inputs:
 '''
 
 import os
+import numpy as np
+import pandas as pd
 from _utils.path import find_gwas, find_bed
 from _utils import logger, cmdhistory
 from _utils.slurm import array_submitter, slurm_parser
-log = logger.logger() 
+log = logger.logger()
+tmpdir = os.path.realpath('../temp'); os.makedirs(tmpdir, exist_ok = True)
 
 def main(args):
     pheno = find_gwas(args.pheno, dirname = args._in, long = True)
@@ -45,17 +48,25 @@ def main(args):
     log.log(f'Selected following MSigDB files for pathway-specific PRS calculation:')
     for file in files_selected: log.log(f'    {file}')
 
+    if os.path.isfile(f'{args.out}/to_analyse.gmt'): os.remove(f'{args.out}/to_analyse.gmt')
     for file in files_selected:
         os.system(f'cat {args.msigdb}/{file} >> {args.out}/to_analyse.gmt')
 
+    if args.target is None:
+        log.warn('No target phenotype file specified, generating a dummy file for PRSice')
+        subjects = pd.read_table(f'{args.bed.replace("chr#","chr1")}.fam', header = None, usecols = [0,1])
+        subjects[2] = np.random.random(subjects.shape[0])
+        subjects.to_csv(f'{tmpdir}/prset_dummy.txt', sep = '\t', header = False, index = False)
+
     for g, p in pheno:
         os.makedirs(f'{args.out}/{g}/{p}', exist_ok = True)
-        target_file = f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}.best'
+        target_file = f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}.all.score'
         if not args.force and os.path.isfile(target_file): continue
-        cmd = [f'{args.prsice}/bin/PRSice', '--base', f'{args._in}/{g}/{p}.fastGWA', '--target', bed,
+        cmd = [f'{args.prsice}/bin/PRSice', '--base', f'{args._in}/{g}/{p}.fastGWA', 
+               '--target', bed, '--pheno', args.target if args.target is not None else f'{tmpdir}/prset_dummy.txt',
                '--out', f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}',
                '--msigdb', f'{args.out}/to_analyse.gmt', '--gtf', args.gtf,
-               '--seed', '19260817', '--thread', 'max'
+               '--all','--seed', '19260817', '--thread', 'max'
                ]
         if bed != args.ref: cmd.extend(['--ref', args.ref])
         if 'OR' in open(f'{args._in}/{g}/{p}.fastGWA').readline(): cmd.extend(['--or'])
@@ -67,11 +78,15 @@ if __name__ == '__main__':
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes to analyse pathway PRS')
     parser.add_argument('-i','--in', dest = '_in', default = '../gwa', help = 'Input directory containing GWAS summary statistics in fastGWA format')
     parser.add_argument('-o','--out', default = '../prs', help = 'Output directory')
+    parser.add_argument('-t','--target', default = None, 
+        help = 'Phenotype file in target cohort, with columns FID, IID, (phenotypes). Will randomly generate a dummy file if not specified.')
     parser.add_argument('--prsice', default = '/rds/project/rds-Nl99R8pHODQ/toolbox/PRSice', 
         help = 'Path to PRSice executable directory') # intentionally absolute
     parser.add_argument('--bed', default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/', 
         help = 'Path to PLINK .bed file of target population') # intentionally absolute
-    parser.add_argument('--ref', default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/chr#',
+    parser.add_argument('--ref', 
+        default = '/rds/project/rds-Nl99R8pHODQ/ref/1000g_eur_ldsc/chr#',              
+        # default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/chr#',
         help = 'Reference LD panel in PLINK format') # intentionally absolute, with wildcard # for chromosome number
     parser.add_argument('--gtf', default = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.gz',
         help = 'Path to GTF reference file') # intentionally absolute, with build specified in file name
@@ -85,7 +100,8 @@ if __name__ == '__main__':
     args.gtf = args.gtf.replace('*build*', args.build)
     for arg in ['_in', 'out', 'prsice', 'bed', 'ref', 'gtf', 'msigdb']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
-    
+    if args.target is not None: args.target = os.path.realpath(args.target)
+
     cmdhistory.log()
     logger.splash(args)
     try: main(args)
