@@ -52,10 +52,12 @@ def main(args):
         os.makedirs(f'{args.out}/{g}/{p}', exist_ok = True)
         target_file = f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}.best'
         if not args.force and os.path.isfile(target_file): continue
-        cmd = [f'{args.prsice}/bin/PRSice', '--base', f'{args._in}/{g}/{p}.fastGWA', '--target', bed, '--ld', args.ref,
+        cmd = [f'{args.prsice}/bin/PRSice', '--base', f'{args._in}/{g}/{p}.fastGWA', '--target', bed,
                '--out', f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}',
-               '--msigdb', f'{args.out}/to_analyse.gmt', '--gtf', args.gtf
+               '--msigdb', f'{args.out}/to_analyse.gmt', '--gtf', args.gtf,
+               '--seed', '19260817'
                ]
+        if bed != args.ref: cmd.extend(['--ref', args.ref])
         if 'OR' in open(f'{args._in}/{g}/{p}.fastGWA').readline(): cmd.extend(['--or'])
         submitter.add(' '.join(cmd))
     submitter.submit()
