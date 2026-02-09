@@ -54,7 +54,7 @@ def main(args):
 
     if args.target is None:
         log.warn('No target phenotype file specified, generating a dummy file for PRSice')
-        subjects = pd.read_table(f'{args.bed.replace("chr#","chr1")}.fam', header = None, usecols = [0,1])
+        subjects = pd.read_table(f'{bed.replace("chr#","chr1")}.fam', header = None, usecols = [0,1])
         subjects[2] = np.random.random(subjects.shape[0])
         subjects.to_csv(f'{tmpdir}/prset_dummy.txt', sep = '\t', header = False, index = False)
 
