@@ -45,7 +45,13 @@ def main(args):
     log.log('Estimating the weights for each trait')
     corr = crosscorr_parse(pheno, full = True)
     rg = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'rg')
-    gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int')
+    h2 = corr.loc[(corr['group1'] == corr['group2']) & (corr['pheno1'] == corr['pheno2']), ['group1','pheno1','rg']].set_index(['group1','pheno1'])['rg'].rename('h2')
+    pheno = h2.loc[h2 > 0].index.tolist() # only include traits with positive heritability
+    log.log('Excluding following phenotypes because of negative heritability estimates:')
+    for g, p in h2.loc[h2 <= 0].index.tolist():
+        log.log(f'    {g} {p} (h2 = {h2.loc[(g,p)]:.4f})')
+    rg = rg.loc[pheno, pheno]
+    gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int').loc[pheno, pheno]
     if args.pca: # use PCA to estimate weights
         pc1 = np.real(np.linalg.eig(rg.fillna(0).values)[1][:,0])
         weights = pd.Series(pc1, index = rg.index)
