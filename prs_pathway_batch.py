@@ -66,9 +66,9 @@ def main(args):
                '--target', bed, '--pheno', args.target if args.target is not None else f'{tmpdir}/prset_dummy.txt',
                '--out', f'{args.out}/{g}/{p}/{p}_prset_{gmt_prefix}',
                '--msigdb', f'{args.out}/to_analyse.gmt', '--gtf', args.gtf,
-               '--all','--seed', '19260817', '--thread', 'max'
+               '--all-score','--seed', '19260817', '--thread', 'max'
                ]
-        if bed != args.ref: cmd.extend(['--ref', args.ref])
+        if bed != args.ref: cmd.extend(['--ld', args.ref])
         if 'OR' in open(f'{args._in}/{g}/{p}.fastGWA').readline(): cmd.extend(['--or'])
         submitter.add(' '.join(cmd))
     submitter.submit()
