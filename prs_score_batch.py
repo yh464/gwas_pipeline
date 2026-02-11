@@ -14,6 +14,7 @@ from _utils import logger
 log = logger.logger()
 
 def format_gwas_4prscs(gwa_file, out_prefix):
+    os.makedirs(os.path.dirname(out_prefix), exist_ok = True)
     if not os.path.isfile(f'{out_prefix}.txt'):
         log.log(f'Formatting GWAS summary statistics for PRScs: {gwa_file}')
         hdr = open(gwa_file).readline().replace('\n','').split()
