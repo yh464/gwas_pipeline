@@ -144,15 +144,17 @@ def crosscorr_parse(gwa1, gwa2 = [],
             rg['fixed_int'] = False
             rg = rg.loc[rg.pheno2.isin(p2s),:] # due to the file structure, some other traits may be present in the rg log
             if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
-            summary.append(rg)
             
             fname_noint = fname.replace('.rg.log','.noint.rg.log')
             if os.path.isfile(fname_noint):
-                rg = parse_rg_log(fname_noint, full = full, gcov = gcov)
-                rg['fixed_int'] = True
-                if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
-                summary.append(rg)
-            
+                rg_noint = parse_rg_log(fname_noint, full = full, gcov = gcov)
+                rg_noint['fixed_int'] = True
+                if flip: rg_noint.iloc[:,[0,1,2,3]] = rg_noint.iloc[:,[2,3,0,1]]
+                na_in_rg = rg.loc[rg.isna().any(axis = 1), ['group1','pheno1','group2','pheno2']]
+                overlap = pd.merge(rg_noint, na_in_rg, on = ['group1','pheno1','group2','pheno2'], how = 'inner')
+                rg = pd.concat([rg.dropna(), overlap]).sort_values(by = ['group1','pheno1','group2','pheno2']).reset_index(drop = True)
+            summary.append(rg)
+
     summary = pd.concat(summary) # creates a long format table
     summary.insert(loc = len(summary.columns), column = 'q', value = np.nan)
     for g1,p1s in gwa1: # FDR correction for each IDP, which are non-independent
