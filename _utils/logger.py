@@ -76,10 +76,14 @@ class logger():
         print(msg, file = self.file)
         if self.echo and self.file != sys.stdout: print(msg)
 
-    def __del__(self):
-        self.log('Analysis finished')
-        self.log(f'    Peak memory usage: {tracemalloc.get_traced_memory()[1] / 1024 ** 2:.2f} MB')
-        self.log(f'    Total time: {time.perf_counter() - self.start_time:.2f} seconds')
-        self.log(f'    CPU time: {time.process_time() - self.cpu_time:.2f} seconds')
-        self.log(f'    CPU usage: {(time.process_time() - self.cpu_time) / (time.perf_counter() - self.start_time) * 100:.2f}%')
-        tracemalloc.stop()
+    def profile(self, func):
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            self.log('Analysis finished')
+            self.log(f'    Peak memory usage: {tracemalloc.get_traced_memory()[1] / 1024 ** 2:.2f} MB')
+            self.log(f'    Total time: {time.perf_counter() - self.start_time:.2f} seconds')
+            self.log(f'    CPU time: {time.process_time() - self.cpu_time:.2f} seconds')
+            self.log(f'    CPU usage: {(time.process_time() - self.cpu_time) / (time.perf_counter() - self.start_time) * 100:.2f}%')
+            tracemalloc.clear_traces()
+            return result
+        return wrapper

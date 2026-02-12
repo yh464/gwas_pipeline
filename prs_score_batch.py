@@ -40,6 +40,7 @@ def format_gwas_4prscs(gwa_file, out_prefix):
     n = int(float(n))
     return n, f'{out_prefix}.txt'
 
+@logger.profile
 def main(args):
     from _utils.path import find_gwas, find_bed
     from _utils.slurm import array_submitter
