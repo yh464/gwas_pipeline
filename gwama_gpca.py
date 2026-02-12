@@ -40,7 +40,7 @@ def read_sumstats(input_args):
     log.check_memory()
     return w, z, af, n, snpinfo
 
-@log.profile()
+@log.profile
 def main(args):
     pheno = find_gwas(args.pheno, dirname = args._in, long = True)
 
