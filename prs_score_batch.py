@@ -77,7 +77,7 @@ def main(args):
                 cmds.append(f'ln -s {efs_dir}/{p}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt {out_dir}/{p}_pst_eff_a1_b0.5_phi{args.phi:.0e}_chr{j+1}.txt')
 
             out_fname = f'{out_dir}/{p}.chr{j+1}'
-            if not os.path.isfile(out_fname+'.sscore') or args.force:
+            if not os.path.isfile(out_fname+'.sscore') or args.force or args.rescore:
                 completed = False
                 cmds.append(f'{args.plink} --bfile {bed_list[j]} --chr {j+1} --score {effsz} 2 4 6 center '+
                     f'cols=fid,denom,dosagesum,scoresums --out {out_fname}')
@@ -122,6 +122,7 @@ if __name__ == '__main__':
       type = float, default = 0.01)
     parser.add_argument('--force','-f', dest = 'force', action = 'store_true',
                         default = False, help = 'force overwrite')
+    parser.add_argument('--rescore', action = 'store_true', help = 'keep effect size and overwrite the score')
     args = parser.parse_args()
     import os
     for arg in ['_in','out','plink','bed','ref','prscs']:

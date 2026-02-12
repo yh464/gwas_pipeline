@@ -8,7 +8,7 @@ Version 2: 2025-12-26
 This is a general utility to print splash screens with input command-line
 arguments and output a log file
 '''
-import os, sys, datetime, inspect
+import os, sys, datetime, inspect, tracemalloc, time
 def splash(args, silent = False):
     msg = []
     msg.append('=' * 100)
@@ -40,31 +40,46 @@ class logger():
     def __init__(self, fname = None, echo = True, **kwargs):
         self.file = open(fname, 'w') if fname is not None else sys.stdout
         self.echo = echo
+        self.start_time = time.perf_counter()
+        self.cpu_time = time.process_time()
+        tracemalloc.start()
         
-    def log(self, msg, warning = False, error = False, calling_file = None):
+    def log(self, msg, warning = False, error = False, info = False, calling_file = None):
         now = datetime.datetime.now().isoformat(sep = ' ')
         if calling_file is None:
             calling_file = os.path.basename(inspect.stack()[2].filename).replace('.py','')
-        if warning: warning_str = '| WARNING '
-        elif error: warning_str = '| ERROR '
+        if error: warning_str = '| ERROR '
+        elif warning: warning_str = '| WARNING '
+        elif info: warning_str = '| INFO '
         else: warning_str = ''
         msg = f'[ {now} | {calling_file} {warning_str}] {msg}'
         print(msg, file = self.file)
         if self.echo and self.file != sys.stdout: print(msg)
     
-    def warn(self, msg, calling_file = None):
-        self.log(msg, warning = True, calling_file = calling_file)
-    
-    def error(self, msg, calling_file = None):
-        self.log(msg, error = True, calling_file = calling_file)
-    
+    def warn(self, msg, calling_file = None): self.log(msg, warning = True, calling_file = calling_file)
+    def error(self, msg, calling_file = None): self.log(msg, error = True, calling_file = calling_file)
+    def info(self, msg, calling_file = None): self.log(msg, info = True, calling_file = calling_file)
+
     def system(self, cmd, calling_file = None):
         out = os.system(cmd)
         self.log(cmd, calling_file = calling_file)
         self.log(f'Exit code: {out}', calling_file = calling_file)
         return out
 
+    def check_memory(self, calling_file = None):
+        mem = tracemalloc.get_traced_memory()[0] / 1024 ** 2 
+        self.log(f'Current memory usage: {mem:.2f} MB', calling_file = calling_file) 
+        return mem
+
     def splash(self, args):
         msg = splash(args, silent = True)
         print(msg, file = self.file)
         if self.echo and self.file != sys.stdout: print(msg)
+
+    def __del__(self):
+        self.log('Analysis finished')
+        self.log(f'    Peak memory usage: {tracemalloc.get_traced_memory()[1] / 1024 ** 2:.2f} MB')
+        self.log(f'    Total time: {time.perf_counter() - self.start_time:.2f} seconds')
+        self.log(f'    CPU time: {time.process_time() - self.cpu_time:.2f} seconds')
+        self.log(f'    CPU usage: {(time.process_time() - self.cpu_time) / (time.perf_counter() - self.start_time) * 100:.2f}%')
+        tracemalloc.stop()

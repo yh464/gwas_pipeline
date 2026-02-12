@@ -37,6 +37,7 @@ def read_sumstats(input_args):
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
     snpinfo = df[['CHR','POS','A1','A2']]
+    log.check_memory()
     return w, z, af, n, snpinfo
 
 def main(args):
