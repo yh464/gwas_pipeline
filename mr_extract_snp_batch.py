@@ -42,7 +42,7 @@ def main(args):
         all_snps = pd.concat(all_snps)['SNP'].unique()
         temp_snps = f'{tmpdir}/{expg}_{args.pval:.0e}.txt'
         with open(temp_snps,'w') as file:
-            for x in all_snps: log.log(x, file=file)
+            for x in all_snps: print(x, file=file)
             file.close()
         
         for p,_ in all_pheno:
