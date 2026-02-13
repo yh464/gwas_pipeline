@@ -41,7 +41,7 @@ class logger():
         self.file = open(fname, 'w') if fname is not None else sys.stdout
         self.echo = echo
         self.calling_file = calling_file if calling_file is not None else \
-            calling_file = os.path.basename(inspect.stack()[2].filename).replace('.py','')
+            os.path.basename(inspect.stack()[2].filename).replace('.py','')
         self.start_time = time.perf_counter()
         self.cpu_time = time.process_time()
         tracemalloc.start()
