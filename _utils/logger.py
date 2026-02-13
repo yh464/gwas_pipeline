@@ -37,17 +37,18 @@ def splash(args, silent = False):
     return '\n'.join(msg)
 
 class logger():
-    def __init__(self, fname = None, echo = True, **kwargs):
+    def __init__(self, fname = None, echo = True, calling_file = None, **kwargs):
         self.file = open(fname, 'w') if fname is not None else sys.stdout
         self.echo = echo
+        self.calling_file = calling_file if calling_file is not None else \
+            calling_file = os.path.basename(inspect.stack()[2].filename).replace('.py','')
         self.start_time = time.perf_counter()
         self.cpu_time = time.process_time()
         tracemalloc.start()
         
     def log(self, msg, warning = False, error = False, info = False, calling_file = None):
         now = datetime.datetime.now().isoformat(sep = ' ')
-        if calling_file is None:
-            calling_file = os.path.basename(inspect.stack()[2].filename).replace('.py','')
+        if calling_file is None: calling_file = self.calling_file
         if error: warning_str = '| ERROR '
         elif warning: warning_str = '| WARNING '
         elif info: warning_str = '| INFO '

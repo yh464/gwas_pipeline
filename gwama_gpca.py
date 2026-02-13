@@ -12,7 +12,7 @@ Requires following inputs:
     genetic correlation and heritability estimates (gcorr_batch.py output)
 '''
 
-import os
+import os, gc
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
@@ -27,17 +27,18 @@ def read_sumstats(input_args):
     g, p, in_dir, weight = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
-        index_col = ['SNP']).copy()
+        index_col = ['SNP'], memory_map = True, dtype = {
+            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': str, 'A2': str,
+            'BETA': np.float32, 'OR': np.float32, 'SE': np.float64, 'N': np.float32, 'AF1': np.float32
+        })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
-    
     n = df['N']
     w = (weight * (n ** 0.5))
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
     snpinfo = df[['CHR','POS','A1','A2']]
-    log.check_memory()
     return w, z, af, n, snpinfo
 
 @log.profile
@@ -67,7 +68,9 @@ def main(args):
     # read summary stats and aggregate weighted Z-scores
     parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
     with Pool(min(16, len(parallel_args))) as pool:
-        out = list(tqdm(pool.imap(read_sumstats, parallel_args), total = len(parallel_args), desc = 'Reading summary statistics and aggregating weighted Z-scores'))
+        out = list(tqdm(pool.imap(read_sumstats, parallel_args), 
+            total = len(parallel_args), 
+            desc = 'Reading summary statistics and aggregating weighted Z-scores'))
     weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
     del out
 
@@ -97,7 +100,7 @@ def main(args):
     weight.columns = pd.MultiIndex.from_tuples(pheno, names = ['group','pheno'])
     del weight_list
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
-    div_coef = ((weight.values @ gcovint) * weight.values).sum(axis = 1) ** 0.5
+    div_coef = np.einsum('ij, jk, ik -> i', weight.values, gcovint, weight.values, optimize = 'optimal') ** 0.5
     out_z = out_z / div_coef
     out = pd.concat([snpinfo, af1, out_z, n_total], axis = 1, join = 'inner').sort_values(['CHR','POS'])
     out['P'] = sts.norm.sf(abs(out['Z'])) * 2
