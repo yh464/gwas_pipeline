@@ -126,7 +126,7 @@ def main(args):
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
             parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)], gcovint) for g, p in pheno]
-            out = list(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args)), 
+            out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
                 total = len(parallel_args), 
                 desc = f'Processing chromosome {chrom}'))
             weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
