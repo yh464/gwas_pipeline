@@ -53,7 +53,8 @@ def read_sumstats(input_args):
                 'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
     elif os.path.isfile(f'{in_dir}/{g}/{p}.parquet'):
-        df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet').set_index('SNP')
+        df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet')
+        df.index.name = 'SNP'
         df = df.astype({
             'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
