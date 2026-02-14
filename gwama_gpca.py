@@ -26,9 +26,9 @@ log = logger.logger()
 
 def sep_chr(input_args):
     g, p, in_dir, tmpdir = input_args
-    if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.fastGWA') for chrom in range(1,23)]):
-        if os.path.exists(f'{tmpdir}/23/{g}/{p}.fastGWA'): return list(range(1,24))
-        elif os.path.exists(f'{tmpdir}/X/{g}/{p}.fastGWA'): return list(range(1,23)) + ['X']
+    if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet') for chrom in range(1,23)]):
+        if os.path.exists(f'{tmpdir}/23/{g}/{p}.parquet'): return list(range(1,24))
+        elif os.path.exists(f'{tmpdir}/X/{g}/{p}.parquet'): return list(range(1,23)) + ['X']
         else: return list(range(1,23))
         
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
@@ -53,8 +53,7 @@ def read_sumstats(input_args):
                 'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
     elif os.path.isfile(f'{in_dir}/{g}/{p}.parquet'):
-        df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet', columns = 
-            ['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']).set_index('SNP')
+        df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet').set_index('SNP')
         df = df.astype({
             'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
