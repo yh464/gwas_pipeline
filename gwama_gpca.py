@@ -25,6 +25,11 @@ log = logger.logger()
 
 def sep_chr(input_args):
     g, p, in_dir, tmpdir = input_args
+    if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.fastGWA') for chrom in range(1,23)]):
+        if os.path.exists(f'{tmpdir}/23/{g}/{p}.fastGWA'): return list(range(1,24))
+        elif os.path.exists(f'{tmpdir}/X/{g}/{p}.fastGWA'): return list(range(1,23)) + ['X']
+        else: return list(range(1,23))
+        
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
         index_col = ['SNP'], dtype = {
@@ -37,7 +42,7 @@ def sep_chr(input_args):
     gc.collect()
     return df['CHR'].unique().tolist()
 
-def read_sumstats_snpinfo(input_args):
+def read_sumstats(input_args):
     g, p, in_dir, weight, = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
@@ -121,9 +126,9 @@ def main(args):
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
             parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)], gcovint) for g, p in pheno]
-            out = list(pool.imap(read_sumstats_snpinfo, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
+            out = list(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args)), 
                 total = len(parallel_args), 
-                desc = f'Processing chromosome {chrom}')
+                desc = f'Processing chromosome {chrom}'))
             weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
             out_chr, missnp_chr = gwama(weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
             out.append(out_chr)
@@ -133,7 +138,7 @@ def main(args):
 
     else:
         parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
-        out = list(tqdm(pool.imap(read_sumstats_snpinfo, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
+        out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
             total = len(parallel_args), 
             desc = 'Reading summary statistics and aggregating weighted Z-scores'))
         weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
