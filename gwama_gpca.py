@@ -108,6 +108,7 @@ def main(args):
     if args.low_memory:
         parallel_args = [(g, p, args._in) for g, p in pheno]
         with Pool(min(args.threads, len(parallel_args))) as pool:
+            log.log(f'Starting parallel pool using {min(args.threads, len(parallel_args))} threads')
             snpinfo_list = list(tqdm(pool.imap(read_snpinfo, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
                 total = len(parallel_args), 
                 desc = 'Reading variant information from summary statistics'))
@@ -133,8 +134,9 @@ def main(args):
         del out
 
     else:
-        parallel_args = [(g, p, args._in, weights.loc[(g,p)],) for g, p in pheno]
+        parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
         with Pool(min(args.threads, len(parallel_args))) as pool:
+            log.log(f'Starting parallel pool using {min(args.threads, len(parallel_args))} threads')
             out = list(tqdm(pool.imap(read_sumstats_snpinfo, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
                 total = len(parallel_args), 
                 desc = 'Reading summary statistics and aggregating weighted Z-scores'))
