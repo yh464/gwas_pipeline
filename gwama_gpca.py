@@ -28,7 +28,7 @@ def read_snpinfo(input_args):
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2']),
         index_col = ['SNP'], dtype = {
-            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': str, 'A2': str
+            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category'
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
@@ -63,7 +63,7 @@ def read_sumstats_snpinfo(input_args):
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
         index_col = ['SNP'], dtype = {
-            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': str, 'A2': str,
+            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float64, 'N': np.float32, 'AF1': np.float32
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
