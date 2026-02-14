@@ -39,7 +39,6 @@ def sep_chr(input_args):
     })
     for chrom, df_chr in df.groupby('CHR'):
         os.makedirs(f'{tmpdir}/{chrom}/{g}', exist_ok = True)
-        df_chr.to_csv(f'{tmpdir}/{chrom}/{g}/{p}.fastGWA', sep = '\t', index = True, header = True)
         df_chr.to_parquet(f'{tmpdir}/{chrom}/{g}/{p}.parquet', index = True)
     gc.collect()
     return df['CHR'].unique().tolist()
