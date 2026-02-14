@@ -102,8 +102,8 @@ def main(args):
         raise ValueError('Please specify a method to estimate weights: --pca or --nw')
     
     log.log('This script assumes all alleles are in the same order across all files. Please run gwa_harmonise.py before calling this script.')
-    pool = Pool(min(args.threads, len(parallel_args)))
-    log.log(f'Starting parallel pool using {min(args.threads, len(parallel_args))} threads')
+    pool = Pool(min(args.threads, len(pheno)))
+    log.log(f'Starting parallel pool using {min(args.threads, len(pheno))} threads')
 
     # read SNP info for each trait
     if args.low_memory:
