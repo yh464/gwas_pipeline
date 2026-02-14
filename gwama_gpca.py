@@ -12,7 +12,7 @@ Requires following inputs:
     genetic correlation and heritability estimates (gcorr_batch.py output)
 '''
 
-from genericpath import isfile
+from hashlib import sha256
 import os, gc
 import pandas as pd
 import numpy as np
@@ -79,6 +79,7 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
         out_missnp = snpinfo.loc[snpinfo.duplicated(['CHR','POS'], keep = False), :]
         snpinfo = snpinfo.drop_duplicates(['CHR','POS'], keep = False)
         log.log(f'{snpinfo.shape[0]} variants with consistent alleles across files retained for meta-analysis')
+    else: out_missnp = pd.DataFrame(columns = snpinfo.columns)
     del snpinfo_list
     gc.collect()
 
@@ -135,15 +136,26 @@ def main(args):
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
             parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)]) for g, p in pheno]
-            out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
-                total = len(parallel_args), 
-                desc = f'Processing chromosome {chrom}'))
-            weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
-            out_chr, missnp_chr = gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
-            out.append(out_chr)
-            out_missnp.append(missnp_chr)
-            del weight_list, z_list, af_list, n_list, snpinfo_list
-            gc.collect()
+            chr_temp = f'{tmpdir}/{chrom}/{sha256(str(pheno).encode()).hexdigest()[:12]}'
+            if os.path.isfile(f'{chr_temp}.ss.parquet') and os.path.isfile(f'{chr_temp}.missnp.parquet'):
+                log.log(f'Chromosome {chrom}: found existing processed files, loading from disk')
+                out_chr = pd.read_parquet(f'{chr_temp}.ss.parquet')
+                missnp_chr = pd.read_parquet(f'{chr_temp}.missnp.parquet')
+                out.append(out_chr)
+                out_missnp.append(missnp_chr)
+            else:
+                chr_out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
+                    total = len(parallel_args), 
+                    desc = f'Processing chromosome {chrom}'))
+                weight_list, z_list, af_list, n_list, snpinfo_list = zip(*chr_out)
+                out_chr, missnp_chr = gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
+                
+                out.append(out_chr)
+                out_missnp.append(missnp_chr)
+                out_chr.to_parquet(f'{chr_temp}.ss.parquet')
+                missnp_chr.to_parquet(f'{chr_temp}.missnp.parquet')
+                del weight_list, z_list, af_list, n_list, snpinfo_list, chr_out
+                gc.collect()
         out = pd.concat(out, axis = 0).sort_values(['CHR','POS'])
         out_missnp = pd.concat(out_missnp, axis = 0)
 
