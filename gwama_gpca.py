@@ -49,6 +49,8 @@ def read_sumstats(input_args):
     w = (weight * (n ** 0.5))
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
+    del df
+    gc.collect()
     return w, z, af, n
 
 def read_sumstats_snpinfo(input_args):
@@ -66,7 +68,10 @@ def read_sumstats_snpinfo(input_args):
     w = (weight * (n ** 0.5))
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
-    return w, z, af, n, df[['CHR','POS','A1','A2']]
+    snpinfo = df[['CHR','POS','A1','A2']]
+    del df
+    gc.collect()
+    return w, z, af, n, snpinfo
 
 @log.profile
 def main(args):
@@ -95,8 +100,8 @@ def main(args):
     # read SNP info for each trait
     if args.low_memory:
         parallel_args = [(g, p, args._in) for g, p in pheno]
-        with Pool(min(16, len(parallel_args))) as pool:
-            snpinfo_list = list(tqdm(pool.imap(read_snpinfo, parallel_args, chunksize = min(16, len(parallel_args))), 
+        with Pool(min(args.threads, len(parallel_args))) as pool:
+            snpinfo_list = list(tqdm(pool.imap(read_snpinfo, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
                 total = len(parallel_args), 
                 desc = 'Reading variant information from summary statistics'))
         
@@ -122,8 +127,8 @@ def main(args):
 
     else:
         parallel_args = [(g, p, args._in, weights.loc[(g,p)],) for g, p in pheno]
-        with Pool(min(16, len(parallel_args))) as pool:
-            out = list(tqdm(pool.imap(read_sumstats_snpinfo, parallel_args, chunksize = min(16, len(parallel_args))), 
+        with Pool(min(args.threads, len(parallel_args))) as pool:
+            out = list(tqdm(pool.imap(read_sumstats_snpinfo, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
                 total = len(parallel_args), 
                 desc = 'Reading summary statistics and aggregating weighted Z-scores'))
         weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
@@ -172,6 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--pca', action = 'store_true', help = 'Use PCA to estimate weights')
     parser.add_argument('--nw', action = 'store_true', help = 'Use n-weighted meta-analysis to estimate weights')
     parser.add_argument('--low_memory', action = 'store_true', help = 'Use low-memory mode')
+    parser.add_argument('--threads', type = int, default = 16, help = 'Number of threads to use for parallel processing')
     parser.add_argument('-o','--out', help = 'Output file name', required = True)
     args = parser.parse_args()
     

@@ -54,8 +54,8 @@ class logger():
         elif info: warning_str = '| INFO '
         else: warning_str = ''
         msg = f'[ {now} | {calling_file} {warning_str}] {msg}'
-        print(msg, file = self.file)
-        if self.echo and self.file != sys.stdout: print(msg)
+        print(msg, file = self.file, flush = True)
+        if self.echo and self.file != sys.stdout: print(msg, flush = True)
     
     def warn(self, msg, calling_file = None): self.log(msg, warning = True, calling_file = calling_file)
     def error(self, msg, calling_file = None): self.log(msg, error = True, calling_file = calling_file)
