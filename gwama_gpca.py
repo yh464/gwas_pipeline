@@ -12,6 +12,7 @@ Requires following inputs:
     genetic correlation and heritability estimates (gcorr_batch.py output)
 '''
 
+from genericpath import isfile
 import os, gc
 import pandas as pd
 import numpy as np
@@ -39,15 +40,24 @@ def sep_chr(input_args):
     for chrom, df_chr in df.groupby('CHR'):
         os.makedirs(f'{tmpdir}/{chrom}/{g}', exist_ok = True)
         df_chr.to_csv(f'{tmpdir}/{chrom}/{g}/{p}.fastGWA', sep = '\t', index = True, header = True)
+        df_chr.to_parquet(f'{tmpdir}/{chrom}/{g}/{p}.parquet', index = True)
     gc.collect()
     return df['CHR'].unique().tolist()
 
 def read_sumstats(input_args):
     g, p, in_dir, weight, = input_args
-    df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
-        lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
-        index_col = ['SNP'], dtype = {
-            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
+    if os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA'):
+        df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
+            lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
+            index_col = ['SNP'], dtype = {
+                'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
+                'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
+        })
+    elif os.path.isfile(f'{in_dir}/{g}/{p}.parquet'):
+        df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet', columns = 
+            ['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']).set_index('SNP')
+        df = df.astype({
+            'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
@@ -133,7 +143,7 @@ def main(args):
             out_chr, missnp_chr = gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
             out.append(out_chr)
             out_missnp.append(missnp_chr)
-            del out, weight_list, z_list, af_list, n_list, snpinfo_list
+            del weight_list, z_list, af_list, n_list, snpinfo_list
             gc.collect()
         out = pd.concat(out, axis = 0).sort_values(['CHR','POS'])
         out_missnp = pd.concat(out_missnp, axis = 0)
