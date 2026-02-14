@@ -33,6 +33,7 @@ def read_snpinfo(input_args):
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
     gc.collect()
+    log.log(f'The memory usage of the dataframe of {g}/{p} is {df.memory_usage(deep = True).sum() / 1024 ** 2:.2f} MB')
     log.log(f'Finished reading variant information for {g}/{p}')
     return df
 
@@ -72,7 +73,7 @@ def read_sumstats_snpinfo(input_args):
     w = (weight * (n ** 0.5))
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
-    snpinfo = df[['CHR','POS','A1','A2']]
+    snpinfo = df[['CHR','POS','A1','A2']].copy()
     log.log(f'The memory usage of the dataframe of {g}/{p} is {df.memory_usage(deep = True).sum() / 1024 ** 2:.2f} MB')
     del df
     gc.collect()
