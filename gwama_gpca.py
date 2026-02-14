@@ -27,7 +27,7 @@ def read_snpinfo(input_args):
     g, p, in_dir = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2']),
-        index_col = ['SNP'], memory_map = True, dtype = {
+        index_col = ['SNP'], dtype = {
             'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': str, 'A2': str
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
@@ -38,7 +38,7 @@ def read_sumstats(input_args):
     g, p, in_dir, weight, use_snp = input_args
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['SNP','BETA','OR','SE','N','AF1']),
-        index_col = ['SNP'], memory_map = True, dtype = {
+        index_col = ['SNP'], dtype = {
             'SNP': str, 'BETA': np.float32, 'OR': np.float32, 'SE': np.float64, 'N': np.float32, 'AF1': np.float32
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
@@ -50,6 +50,23 @@ def read_sumstats(input_args):
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
     return w, z, af, n
+
+def read_sumstats_snpinfo(input_args):
+    g, p, in_dir, weight, = input_args
+    df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
+        lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
+        index_col = ['SNP'], dtype = {
+            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': str, 'A2': str,
+            'BETA': np.float32, 'OR': np.float32, 'SE': np.float64, 'N': np.float32, 'AF1': np.float32
+        })
+    df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
+    df.columns = [x.upper() for x in df.columns]
+    if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
+    n = df['N']
+    w = (weight * (n ** 0.5))
+    z = (df['BETA'] * w / df['SE'])
+    af = (df['AF1'] * n)
+    return w, z, af, n, df[['CHR','POS','A1','A2']]
 
 @log.profile
 def main(args):
@@ -76,32 +93,50 @@ def main(args):
     log.log('This script assumes all alleles are in the same order across all files. Please run gwa_harmonise.py before calling this script.')
 
     # read SNP info for each trait
-    parallel_args = [(g, p, args._in) for g, p in pheno]
-    with Pool(min(16, len(parallel_args))) as pool:
-        snpinfo_list = list(tqdm(pool.imap(read_snpinfo, parallel_args), 
-            total = len(parallel_args), 
-            desc = 'Reading variant information from summary statistics'))
-    
-    log.log('Merging variant information across all summary statistics')
-    snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_index()
-    if snpinfo.duplicated(['CHR','POS']).any():
-        log.warn(f'{snpinfo.duplicated(["CHR","POS"]).sum()} variants have different alleles across files')
-        snpinfo.loc[snpinfo.duplicated(['CHR','POS'], keep = False), :].to_csv(args.out.replace('.fastGWA', '.missnp'), sep = '\t', index = False)
-        log.log(f'List of variants with inconsistent alleles across files written to {args.out.replace(".fastGWA", ".missnp")}')
-        snpinfo = snpinfo.drop_duplicates(['CHR','POS'], keep = False)
-        log.log(f'{snpinfo.shape[0]} variants with consistent alleles across files retained for meta-analysis')
-    del snpinfo_list
-    gc.collect()
+    if args.low_memory:
+        parallel_args = [(g, p, args._in) for g, p in pheno]
+        with Pool(min(16, len(parallel_args))) as pool:
+            snpinfo_list = list(tqdm(pool.imap(read_snpinfo, parallel_args), 
+                total = len(parallel_args), 
+                desc = 'Reading variant information from summary statistics'))
+        
+            log.log('Merging variant information across all summary statistics')
+            snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_index()
+            if snpinfo.duplicated(['CHR','POS']).any():
+                log.warn(f'{snpinfo.duplicated(["CHR","POS"]).sum()} variants have different alleles across files')
+                snpinfo.loc[snpinfo.duplicated(['CHR','POS'], keep = False), :].to_csv(args.out.replace('.fastGWA', '.missnp'), sep = '\t', index = False)
+                log.log(f'List of variants with inconsistent alleles across files written to {args.out.replace(".fastGWA", ".missnp")}')
+                snpinfo = snpinfo.drop_duplicates(['CHR','POS'], keep = False)
+                log.log(f'{snpinfo.shape[0]} variants with consistent alleles across files retained for meta-analysis')
+            del snpinfo_list
+            gc.collect()
 
-    # read summary stats and aggregate weighted Z-scores
-    log.log('Reading summary statistics and aggregating weighted Z-scores')
-    parallel_args = [(g, p, args._in, weights.loc[(g,p)], snpinfo.index) for g, p in pheno]
-    with Pool(min(16, len(parallel_args))) as pool:
-        out = list(tqdm(pool.imap(read_sumstats, parallel_args), 
-            total = len(parallel_args), 
-            desc = 'Reading summary statistics and aggregating weighted Z-scores'))
-    weight_list, z_list, af_list, n_list = zip(*out)
-    del out
+            # read summary stats and aggregate weighted Z-scores
+            log.log('Reading summary statistics and aggregating weighted Z-scores')
+            parallel_args = [(g, p, args._in, weights.loc[(g,p)], snpinfo.index) for g, p in pheno]
+            out = list(tqdm(pool.imap(read_sumstats, parallel_args), 
+                total = len(parallel_args), 
+                desc = 'Reading summary statistics and aggregating weighted Z-scores'))
+        weight_list, z_list, af_list, n_list = zip(*out)
+        del out
+
+    else:
+        parallel_args = [(g, p, args._in, weights.loc[(g,p)],) for g, p in pheno]
+        with Pool(min(16, len(parallel_args))) as pool:
+            out = list(tqdm(pool.imap(read_sumstats_snpinfo, parallel_args), 
+                total = len(parallel_args), 
+                desc = 'Reading summary statistics and aggregating weighted Z-scores'))
+        weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
+        log.log('Merging variant information across all summary statistics')
+        snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_index()
+        if snpinfo.duplicated(['CHR','POS']).any():
+            log.warn(f'{snpinfo.duplicated(["CHR","POS"]).sum()} variants have different alleles across files')
+            snpinfo.loc[snpinfo.duplicated(['CHR','POS'], keep = False), :].to_csv(args.out.replace('.fastGWA', '.missnp'), sep = '\t', index = False)
+            log.log(f'List of variants with inconsistent alleles across files written to {args.out.replace(".fastGWA", ".missnp")}')
+            snpinfo = snpinfo.drop_duplicates(['CHR','POS'], keep = False)
+            log.log(f'{snpinfo.shape[0]} variants with consistent alleles across files retained for meta-analysis')
+        del snpinfo_list
+        gc.collect()
 
     log.log('Calculating meta-analytic Z-scores')
     n_total = pd.concat(list(n_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('N')
@@ -136,6 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', default = '../gwa', help = 'Directory of input GWAS summary statistics')
     parser.add_argument('--pca', action = 'store_true', help = 'Use PCA to estimate weights')
     parser.add_argument('--nw', action = 'store_true', help = 'Use n-weighted meta-analysis to estimate weights')
+    parser.add_argument('--low_memory', action = 'store_true', help = 'Use low-memory mode')
     parser.add_argument('-o','--out', help = 'Output file name', required = True)
     args = parser.parse_args()
     
