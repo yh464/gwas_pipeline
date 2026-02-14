@@ -32,6 +32,9 @@ def read_snpinfo(input_args):
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
+    gc.collect()
+    log.log(f'Finished reading variant information for {g}/{p}')
+    log.check_memory()
     return df
 
 def read_sumstats(input_args):
@@ -51,6 +54,8 @@ def read_sumstats(input_args):
     af = (df['AF1'] * n)
     del df
     gc.collect()
+    log.log(f'Finished reading summary statistics for {g}/{p}')
+    log.check_memory()
     return w, z, af, n
 
 def read_sumstats_snpinfo(input_args):
@@ -71,6 +76,8 @@ def read_sumstats_snpinfo(input_args):
     snpinfo = df[['CHR','POS','A1','A2']]
     del df
     gc.collect()
+    log.log(f'Finished reading summary statistics for {g}/{p}')
+    log.check_memory()
     return w, z, af, n, snpinfo
 
 @log.profile
