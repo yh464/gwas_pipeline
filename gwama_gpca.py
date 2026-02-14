@@ -62,7 +62,7 @@ def read_sumstats(input_args):
     gc.collect()
     return w, z, af, n, snpinfo
 
-def gwama(weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
+def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
     log.log('Merging variant information across all summary statistics')
     snpinfo = pd.concat(snpinfo_list, axis = 0).drop_duplicates().sort_index()
     if snpinfo.duplicated(['CHR','POS']).any():
@@ -130,9 +130,11 @@ def main(args):
                 total = len(parallel_args), 
                 desc = f'Processing chromosome {chrom}'))
             weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
-            out_chr, missnp_chr = gwama(weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
+            out_chr, missnp_chr = gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
             out.append(out_chr)
             out_missnp.append(missnp_chr)
+            del out, weight_list, z_list, af_list, n_list, snpinfo_list
+            gc.collect()
         out = pd.concat(out, axis = 0).sort_values(['CHR','POS'])
         out_missnp = pd.concat(out_missnp, axis = 0)
 
@@ -142,7 +144,7 @@ def main(args):
             total = len(parallel_args), 
             desc = 'Reading summary statistics and aggregating weighted Z-scores'))
         weight_list, z_list, af_list, n_list, snpinfo_list = zip(*out)
-        out, out_missnp = gwama(weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
+        out, out_missnp = gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
     out.to_csv(args.out, sep = '\t', index = True, header = True)
     if out_missnp.shape[0] > 0:
         log.warn(f'{out_missnp.shape[0]} variants have different alleles across files, written to {args.out.replace(".fastGWA", ".missnp")}')
