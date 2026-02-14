@@ -33,8 +33,6 @@ def read_snpinfo(input_args):
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
     gc.collect()
-    log.log(f'The memory usage of the dataframe of {g}/{p} is {df.memory_usage(deep = True).sum() / 1024 ** 2:.2f} MB')
-    log.log(f'Finished reading variant information for {g}/{p}')
     return df
 
 def read_sumstats(input_args):
@@ -42,7 +40,7 @@ def read_sumstats(input_args):
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['SNP','BETA','OR','SE','N','AF1']),
         index_col = ['SNP'], dtype = {
-            'SNP': str, 'BETA': np.float32, 'OR': np.float32, 'SE': np.float64, 'N': np.float32, 'AF1': np.float32
+            'SNP': str, 'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df = df.loc[df.index.intersection(use_snp),:]
@@ -52,10 +50,8 @@ def read_sumstats(input_args):
     w = (weight * (n ** 0.5))
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
-    log.log(f'The memory usage of the dataframe of {g}/{p} is {df.memory_usage(deep = True).sum() / 1024 ** 2:.2f} MB')
     del df
     gc.collect()
-    log.log(f'Finished reading summary statistics for {g}/{p}')
     return w, z, af, n
 
 def read_sumstats_snpinfo(input_args):
@@ -64,7 +60,7 @@ def read_sumstats_snpinfo(input_args):
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
         index_col = ['SNP'], dtype = {
             'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
-            'BETA': np.float32, 'OR': np.float32, 'SE': np.float64, 'N': np.float32, 'AF1': np.float32
+            'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
@@ -74,10 +70,8 @@ def read_sumstats_snpinfo(input_args):
     z = (df['BETA'] * w / df['SE'])
     af = (df['AF1'] * n)
     snpinfo = df[['CHR','POS','A1','A2']].copy()
-    log.log(f'The memory usage of the dataframe of {g}/{p} is {df.memory_usage(deep = True).sum() / 1024 ** 2:.2f} MB')
     del df
     gc.collect()
-    log.log(f'Finished reading summary statistics for {g}/{p}')
     return w, z, af, n, snpinfo
 
 @log.profile
