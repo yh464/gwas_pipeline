@@ -55,10 +55,6 @@ def read_sumstats(input_args):
     elif os.path.isfile(f'{in_dir}/{g}/{p}.parquet'):
         df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet')
         df.index.name = 'SNP'
-        df = df.astype({
-            'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category',
-            'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
-        })
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
