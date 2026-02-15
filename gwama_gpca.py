@@ -27,9 +27,9 @@ log = logger.logger()
 def sep_chr(input_args):
     g, p, in_dir, tmpdir = input_args
     if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet') for chrom in range(1,23)]):
-        if os.path.exists(f'{tmpdir}/23/{g}/{p}.parquet'): return [str(x) for x in range(1,24)]
-        elif os.path.exists(f'{tmpdir}/X/{g}/{p}.parquet'): return [str(x) for x in range(1,23)] + ['X']
-        else: return [str(x) for x in range(1,23)]
+        if os.path.exists(f'{tmpdir}/23/{g}/{p}.parquet'): return list(range(1,24))
+        elif os.path.exists(f'{tmpdir}/X/{g}/{p}.parquet'): return list(range(1,23)) + ['X']
+        else: return list(range(1,23))
         
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
@@ -127,7 +127,7 @@ def main(args):
         chroms = list(tqdm(pool.imap(sep_chr, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
             total = len(parallel_args), 
             desc = 'Separating chromosomes for each trait'))
-        chroms = list(sorted(set([chrom for sublist in chroms for chrom in sublist])))
+        chroms = list(set([chrom for sublist in chroms for chrom in sublist]))
 
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
