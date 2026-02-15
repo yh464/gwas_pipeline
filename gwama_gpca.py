@@ -27,6 +27,7 @@ log = logger.logger()
 def sep_chr(input_args):
     g, p, in_dir, tmpdir = input_args
     if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet') for chrom in range(1,23)]):
+        log.log(f'{g}/{p} already separated into chromosomes')
         if os.path.exists(f'{tmpdir}/23/{g}/{p}.parquet'): return list(range(1,24))
         elif os.path.exists(f'{tmpdir}/X/{g}/{p}.parquet'): return list(range(1,23)) + ['X']
         else: return list(range(1,23))
