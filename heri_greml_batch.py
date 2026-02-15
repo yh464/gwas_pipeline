@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory',
       default = '../pheno/ukb/')
     parser.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-      default = '../toolbox/gcta/gcta-1.94.1')
+      default = '../toolbox/gcta/gcta64')
     parser.add_argument('-o','--out',dest  = 'out', help = 'Output directory',
       default = '../gwa/')
     parser.add_argument('--cov',dest = 'cov', help = 'DISCRETE covariate file',
