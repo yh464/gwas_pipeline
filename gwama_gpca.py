@@ -27,10 +27,8 @@ log = logger.logger()
 def sep_chr(input_args):
     g, p, in_dir, tmpdir = input_args
     if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet') for chrom in range(1,23)]):
-        log.log(f'{g}/{p} already separated into chromosomes')
         if os.path.exists(f'{tmpdir}/23/{g}/{p}.parquet'): return list(range(1,24))
         elif os.path.exists(f'{tmpdir}/X/{g}/{p}.parquet'): return list(range(1,23)) + ['X']
-        else: return list(range(1,23))
         
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
@@ -39,6 +37,7 @@ def sep_chr(input_args):
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
     })
     for chrom, df_chr in df.groupby('CHR'):
+        if os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet'): continue
         os.makedirs(f'{tmpdir}/{chrom}/{g}', exist_ok = True)
         df_chr.to_parquet(f'{tmpdir}/{chrom}/{g}/{p}.parquet', index = True)
     gc.collect()
