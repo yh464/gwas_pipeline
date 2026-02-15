@@ -104,7 +104,7 @@ if __name__ == '__main__':
   io.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file',
     default = '../params/ukb_qcov.txt')
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
-    default = '../params/bed_files_ukb.txt')
+    default = '../params/bed')
   io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
     default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/sp0.05_grm')
   

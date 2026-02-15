@@ -13,8 +13,8 @@ Requires following inputs:
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-i','--in', dest = '_in', help = 'Input file')
-parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
-  default = '../params/bed_files_ukb.txt')
+parser.add_argument('-b','--bed', dest = 'bed', help = 'BED file list',
+  default = '../params/bed')
 parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
   default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
 parser.add_argument('-o','--out', dest = 'out', help = 'Output directory')     # defaults to input dir
@@ -25,11 +25,12 @@ parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
 args = parser.parse_args()
 
 import os
-for arg in ['_in','out','bfile']:
+for arg in ['_in','out','bed']:
     setattr(args, arg, os.path.realpath(getattr(args, arg)))
 if type(args.out) == type(None): args.out = args._in
 
 from _utils import logger
+from _utils.path import find_bed
 logger.splash(args)
 log = logger.logger()
 
@@ -40,7 +41,7 @@ def main(args):
     
     tic = time.perf_counter()
     idx = 0
-    blist = np.loadtxt(args.bfile,dtype = 'U')
+    blist = find_bed(args.bed)
     prefix = '.'.join(os.path.basename(args._in).split('.')[:-1])
     out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
     
@@ -63,7 +64,7 @@ def main(args):
     df_sig.to_csv(out.replace('clumped','siglist'), sep = '\t',index = False)      # export top few snps
     
     tmp_flist = []                                                                 # list of temp files
-    chrs = df_sig['CHR'].unique().astype(int)
+    chrs = df_sig['CHR'].replace('X',23).unique().astype(int)
     idx = 0
     
     out_df = []

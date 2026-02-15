@@ -95,14 +95,12 @@ if __name__ == '__main__':
       # 'Data_Genetics/Genetic_data/Neuroimaging_samples/full_grm')
       # 'Data_Users/yh464/params/sp0.05_grm')
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yg330/GRM_chr_merged/full_grm')
-    parser.add_argument('--mb',dest = 'mb', help = 'List of PLINK2 files',
-      default = '../params/bed_files_ukb.txt')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, const = True, action = 'store_const')
     
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','gcta','cov','qcov','grm','mb']:
+    for arg in ['_in','out','gcta','cov','qcov','grm']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path
