@@ -36,12 +36,17 @@ def sep_chr(input_args):
             'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
     })
+    chroms = df['CHR'].unique().tolist()
+    if any([chrom not in list(range(1,23)) + ['X','Y','XY','MT'] for chrom in chroms]):
+        log.warn(f'Found unexpected chromosomes for {g}/{p}: {chroms}')
+    if any([x not in chroms for x in list(range(1,23))]):
+        log.warn(f'Not all autosomes found for {g}/{p}, found chromosomes: {chroms}')
     for chrom, df_chr in df.groupby('CHR'):
         os.makedirs(f'{tmpdir}/{chrom}/{g}', exist_ok = True)
         if os.path.isfile(f'{tmpdir}/{chrom}/{g}/{p}.parquet'): continue
         df_chr.to_parquet(f'{tmpdir}/{chrom}/{g}/{p}.parquet', index = True)
     gc.collect()
-    return df['CHR'].unique().tolist()
+    return chroms
 
 def read_sumstats(input_args):
     g, p, in_dir, weight, = input_args
@@ -61,7 +66,7 @@ def read_sumstats(input_args):
                   pd.Series(dtype = np.float32), 
                   pd.Series(dtype = np.float32), 
                   pd.Series(dtype = np.float32), 
-                  pd.DataFrame(columns = ['CHR','POS','A1','A2'], index = [], dtype = {
+                  pd.DataFrame(columns = ['CHR','POS','A1','A2'], index = []).astype({
                       'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category'}))
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
@@ -114,6 +119,7 @@ def main(args):
     log.log('Excluding following phenotypes because of negative heritability estimates:')
     for g, p in h2.loc[h2 <= 0].index.tolist():
         log.log(f'    {g} {p} (h2 = {h2.loc[(g,p)]:.4f})')
+    log.log(f'{len(pheno)} phenotypes with positive heritability estimates retained for analysis')
     rg = rg.loc[pheno, pheno]
     gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int').loc[pheno, pheno]
     if args.pca: # use PCA to estimate weights
