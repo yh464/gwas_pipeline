@@ -55,6 +55,14 @@ def read_sumstats(input_args):
     elif os.path.isfile(f'{in_dir}/{g}/{p}.parquet'):
         df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet')
         df.index.name = 'SNP'
+    else: 
+        log.warn(f'File not found for {in_dir}/{g}/{p}, returning empty dataframes')
+        return (pd.Series(dtype = np.float32), 
+                  pd.Series(dtype = np.float32), 
+                  pd.Series(dtype = np.float32), 
+                  pd.Series(dtype = np.float32), 
+                  pd.DataFrame(columns = ['CHR','POS','A1','A2'], index = [], dtype = {
+                      'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category'}))
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
