@@ -55,7 +55,7 @@ if __name__ == '__main__':
     parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
       default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
     parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
-      default = '../params/bed_files_ukb.txt')
+      default = '../params/bed')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output directory',
       default = '../clump/')
     parser.add_argument('-p', '--pval',help = 'p-value threshold',
