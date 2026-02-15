@@ -37,8 +37,8 @@ def sep_chr(input_args):
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
     })
     for chrom, df_chr in df.groupby('CHR'):
-        if os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet'): continue
         os.makedirs(f'{tmpdir}/{chrom}/{g}', exist_ok = True)
+        if os.path.isfile(f'{tmpdir}/{chrom}/{g}/{p}.parquet'): continue
         df_chr.to_parquet(f'{tmpdir}/{chrom}/{g}/{p}.parquet', index = True)
     gc.collect()
     return df['CHR'].unique().tolist()
@@ -136,6 +136,10 @@ def main(args):
             total = len(parallel_args), 
             desc = 'Separating chromosomes for each trait'))
         chroms = list(set([chrom for sublist in chroms for chrom in sublist]))
+        if len(chroms) > 23: 
+            log.warn('Found unexpected chromosomes')
+            for chrom in set(chroms) - set(list(range(1,23)) + ['X','Y','XY','MT']):
+                log.warn(f'    {chrom}')
 
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
