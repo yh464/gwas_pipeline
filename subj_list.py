@@ -14,7 +14,7 @@ def main(args):
     
     # progress check
     fout = f'{args.out}.txt'
-    errlog = args.out.replace('.txt','_not_found.txt')
+    errlog = f'{args.out}_not_found.txt'
     if os.path.isfile(fout) and not args.force: 
         log.log('subj list already generated')
         return
