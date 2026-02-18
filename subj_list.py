@@ -28,10 +28,10 @@ def main(args):
         target = args.target.replace('%subj',subj) # target file path
         if os.path.isfile(target):
             found += 1
-            log.log(subj.replace('UKB',''), file = fout)
+            print(subj.replace('UKB',''), file = fout)
         else:
             not_found += 1
-            log.log(subj.replace('UKB',''), file = errlog)
+            print(subj.replace('UKB',''), file = errlog)
     
     log.log(f'Total {found + not_found} subjects')
     log.log(f'Found imaging profiles for {found} subjects')
