@@ -87,10 +87,8 @@ def main(args):
   submitter.submit()
 
 if __name__ == '__main__':
-  import argparse
-  from _utils.slurm import parser_config
-  # argument input
-  parser = argparse.ArgumentParser(description=
+  from _utils.slurm import slurm_parser
+  parser = slurm_parser(description=
     'This programme runs GWA for any phenotype given as the 1st positional argument')
   parser.add_argument('pheno', help = 'Phenotype file in TXT format - please supply ONLY ONE')
   
