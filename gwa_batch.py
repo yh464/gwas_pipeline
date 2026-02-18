@@ -12,29 +12,17 @@ Requires following inputs:
     PLINK bed binaries
     covariates files in FID IID *** format
 '''
-
-
+from _utils.logger import logger
+log = logger()
+import os, fnmatch
+import pandas as pd
 
 def main(args):
-  from _utils.logger import logger
-  log = logger()
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'gwa_{args.pheno}',timeout = 90)
+  submitter = array_submitter(name = 'gwa_'+ '_'.join(args.pheno),timeout = 90)
   
-  # locate phenotype file
-  import os
-  import fnmatch
-  flist = []
-  for f in os.listdir(args._in):
-    if fnmatch.fnmatch(f,f'*{args.pheno}*') and not(os.path.isdir(f)):       # search for all files matching args.pheno
-      flist.append(f'{args._in}/{f}')
-  if len(flist) != 1: raise ValueError('Please give only ONE phenotype file')
-  
-  # temp and log
-  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'                                 # temporatory dir
-  if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
-  
+  # general args
   force = '-f' if args.force else ''
   xchr = '' if args.xchr else '--nox'
   if len(args.extract) > 0:
@@ -43,47 +31,50 @@ def main(args):
       snp_file = f'{submitter.tmpdir}/snps_to_extract.txt'
       with open(snp_file, 'w') as f:
         for snp in args.extract:
-          log.log(snp, file = f)
+          print(snp, file = f)
       extract = f'--extract {snp_file} '
   else: extract = ''
 
-  # check validity of the phenotype file
-  import pandas as pd
-  f = flist[0]
-  if not fnmatch.fnmatch(f,'*.txt'): raise ValueError('Phenotype file should be in TXT format')
-  os.system(f'head {f} -n 5 > {tmpdir}/temp_{args.pheno}.txt')
-  df = pd.read_csv(f'{tmpdir}/temp_{args.pheno}.txt',sep = '\s+')
-  c = df.columns.values
-  if c[0] != 'FID' or c[1] != 'IID':
-    raise ValueError('Phenotype file should be in the format: FID IID *pheno')
-  os.remove(f'{tmpdir}/temp_{args.pheno}.txt')
-  
-  # create output folder
-  outdir = f'{args.out}/{os.path.basename(f)}/'.replace('.txt','')
-  log.log(outdir)
-  if not os.path.isdir(outdir):
-    os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
-  
-  # phenotypes to be analysed
-  c = c[2:]
-  log.log('Following traits are to be GWA-analysed:')
-  for i in c: log.log(i)
-  
-  # for each phenotype
-  for i in range(c.size):
-    mpheno = i+1
-    trait = c[i]
-    out_fname = outdir + trait
-    # check existing files
-    if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
-      log.log(f'Trait already analysed for: {trait}')
+  # locate phenotype file
+  for pheno in args.pheno:
+    flist = []
+    for f in os.listdir(args._in):
+      if fnmatch.fnmatch(f,f'*{pheno}*.txt') and not(os.path.isdir(f)):       # search for all files matching pheno
+        flist.append(f'{args._in}/{f}')
+    if len(flist) != 1: log.warn(f'Please give only ONE phenotype file for {pheno}'); continue
+    f = flist[0]
+
+    # check validity of the phenotype file
+    hdr = open(f).readline().replace('\n','').split()
+    if hdr[0] != 'FID' or hdr[1] != 'IID':
+      log.warn('Phenotype file should be in the format: FID IID *pheno')
       continue
     
-    submitter.add(
-      f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov} '+
-      f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
-      f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
-      )
+    # create output folder
+    outdir = f'{args.out}/{os.path.basename(f)}/'.replace('.txt','')
+    log.log(outdir)
+    if not os.path.isdir(outdir):
+      os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
+    
+    # phenotypes to be analysed
+    c = hdr[2:]
+    log.log(f'Following traits are to be GWA-analysed for {pheno}:')
+    for i in c: log.log(f'    {i}')
+    
+    # for each phenotype
+    for i, trait in enumerate(c):
+      mpheno = i+1
+      out_fname = outdir + trait
+      # check existing files
+      if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
+        log.log(f'Trait already analysed for: {trait}')
+        continue
+      
+      submitter.add(
+        f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov} '+
+        f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+        f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
+        )
   submitter.submit()
 
 if __name__ == '__main__':

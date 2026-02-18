@@ -36,7 +36,7 @@ def main(args):
         for y in os.listdir(args.bed):
           if fnmatch(y.lower(), f'*chr{j+1}.bed'): 
             bed_list.append(f'{args.bed}/{y[:-4]}')
-            log.log(bed_list[-1], file = f)
+            print(bed_list[-1], file = f)
     bfile = f'--mbfile {temp_blist} --autosome'
   else: raise FileNotFoundError('Please supply a valid BED file prefix')
   
@@ -51,7 +51,7 @@ def main(args):
     xbfile = f'--bfile {args.xbed[:-4]}'
   elif os.path.isfile(f'{args.xbed}.bed'):
     xbfile = f'--bfile {args.xbed}'
-  else: args.xchr = False; log.log('skipping X chromosome because no bed file found', warning = True)
+  else: args.xchr = False; log.warn('skipping X chromosome because no bed file found')
 
   if not os.path.isfile(f'{args.out}.fastGWA') or args.force:
     os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
