@@ -23,8 +23,9 @@ Changelog:
 '''
 
 import pandas as pd
+import os
 def read_file(file):
-    subj = file.replace('.txt','')
+    subj = os.path.basename(file).replace('.txt','')
     df = pd.read_table(file, index_col = 0)
     df['pheno'] = df.index
     df = df.melt(id_vars = 'pheno', var_name = 'pheng')
@@ -32,14 +33,13 @@ def read_file(file):
     return df
 
 def main(args):
-    import os
     from tqdm import tqdm
     from multiprocessing import Pool
     from fnmatch import fnmatch
     os.chdir(args._in)
     pool = Pool(64)
     for x in args.pheno:
-        files = [y for y in os.listdir(x) if fnmatch(y, '*.txt')]
+        files = [f'{x}/{y}' for y in os.listdir(x) if fnmatch(y, '*.txt')]
         dflist = list(tqdm(pool.imap(read_file, files), total = len(files), desc = f'Processing {x}'))
         df = pd.concat(dflist)
         pheno_groups = df['pheng'].unique()
