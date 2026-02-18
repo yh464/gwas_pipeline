@@ -84,13 +84,11 @@ def main(args):
         
     out_df = pd.concat([comb_df, out_df], axis = 1)
     out_df.to_csv(f'{args._in}/neff_'+'_'.join(args.pheno)+'.txt', sep = '\t', index   = False, header = True)
-    
-    # with open(args.out,'w') as f:
-    #   log.log(f'Effective # variables by old method Nyholt DR (2004): {neff_abs}', file = f)
-    #   log.log(f'Bonferroni corrected threshold: {1-0.95**(1/neff_abs)}', file = f)
-    #   log.log(file = f)
-    #   log.log(f'Effective # variables by new method Nyholt DR (2004): {neff_pos}', file = f)
-    #   log.log(f'Bonferroni corrected threshold: {1-0.95**(1/neff_pos)}', file = f)
+
+    log.log(f'Effective # variables by old method Nyholt DR (2004): {neff_abs}')
+    log.log(f'Bonferroni corrected threshold: {1-0.95**(1/neff_abs)}')
+    log.log(f'Effective # variables by new method Nyholt DR (2004): {neff_pos}')
+    log.log(f'Bonferroni corrected threshold: {1-0.95**(1/neff_pos)}')
       
 if __name__ == '__main__':
     import argparse

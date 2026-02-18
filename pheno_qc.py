@@ -36,12 +36,11 @@ def main(args):
         naflag.append(True)
       else:
         naflag.append(False)
-
       
     with open(args.out,'w') as f:
       nalist = subjs[naflag]
       for i in nalist:
-        print (i, file = f)
+        print(i, file = f)
     
 if __name__ == '__main__':
     # input argument processing
