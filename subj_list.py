@@ -5,6 +5,7 @@ This script screens subjects with a valid imaging profile
 def main(args):
     import os
     from _utils import logger
+    from tqdm import tqdm
     log = logger.logger()
     
     # fail-safe
@@ -24,7 +25,7 @@ def main(args):
     fout = open(fout,'w')
     errlog = open(errlog,'w')
     base = args.target.split('%subj')[0]
-    for subj in os.listdir(base):
+    for subj in tqdm(os.listdir(base)):
         target = args.target.replace('%subj',subj) # target file path
         if os.path.isfile(target):
             found += 1
