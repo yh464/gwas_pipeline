@@ -81,7 +81,7 @@ if __name__ == '__main__':
   from _utils.slurm import slurm_parser
   parser = slurm_parser(description=
     'This programme runs GWA for any phenotype given as the 1st positional argument')
-  parser.add_argument('pheno', help = 'Phenotype file in TXT format - please supply ONLY ONE')
+  parser.add_argument('pheno', nargs = '+', help = 'Phenotype file in TXT format - please supply ONLY ONE')
   
   io = parser.add_argument_group(title = 'input and output options')
   io.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory',
