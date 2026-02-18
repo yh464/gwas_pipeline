@@ -21,21 +21,26 @@ Output:
 Changelog:
     changed input format so that index = phenotype name, columns = phenotype group name
 '''
+
+import pandas as pd
+def read_file(file):
+    subj = file.replace('.txt','')
+    df = pd.read_table(file, index_col = 0)
+    df['pheno'] = df.index
+    df = df.melt(id_vars = 'pheno', var_name = 'pheng')
+    df.insert(0, column = 'EID', value = subj)
+    return df
+
 def main(args):
-    import pandas as pd
     import os
+    from tqdm import tqdm
+    from multiprocessing import Pool
     from fnmatch import fnmatch
     os.chdir(args._in)
+    pool = Pool(64)
     for x in args.pheno:
-        dflist = []
-        for y in os.listdir(x):
-            if not fnmatch(y, '*.txt'): continue
-            subj = y.replace('.txt','')
-            df = pd.read_table(f'{x}/{y}', index_col = 0)
-            df['pheno'] = df.index
-            df = df.melt(id_vars = 'pheno', var_name = 'pheng')
-            df.insert(0, column = 'EID', value = subj)
-            dflist.append(df)
+        files = [y for y in os.listdir(x) if fnmatch(y, '*.txt')]
+        dflist = list(tqdm(pool.imap(read_file, files), total = len(files), desc = f'Processing {x}'))
         df = pd.concat(dflist)
         pheno_groups = df['pheng'].unique()
         for pg in pheno_groups:
