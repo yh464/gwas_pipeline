@@ -41,7 +41,7 @@ def main(args):
     if 'sex' not in dcov.columns: raise ValueError('Covariate file should contain a "sex" column for sex-specific analyses')
     for sex in [0,1]:
       sex_dcov = dcov.loc[dcov['sex'] == sex,:].drop(columns = 'sex')
-      sex_qcov = qcov.loc[sex_dcov.index, ~qcov.columns.str.contains('sex')]
+      sex_qcov = qcov.loc[sex_dcov.index.intersection(qcov.index), ~qcov.columns.str.contains('sex')]
       sex_dcov_file = args.dcov.replace('.txt',f'_sex_{sex}.txt')
       sex_qcov_file = args.qcov.replace('.txt',f'_sex_{sex}.txt')
       sex_dcov.to_csv(sex_dcov_file, sep = '\t')
@@ -96,7 +96,7 @@ def main(args):
             f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
             f'--keep {args.keep} --nox {extract} {force}'
           )
-          
+
   submitter.submit()
 
 if __name__ == '__main__':
