@@ -137,7 +137,7 @@ if __name__ == '__main__':
   xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
       default = True, action = 'store_false')
   xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
-      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chr23')
   
   parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
     default = False, action = 'store_true')

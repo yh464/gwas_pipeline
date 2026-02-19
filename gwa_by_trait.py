@@ -11,13 +11,15 @@ Requires following inputs:
     PLINK bed binaries
     covariants files in FID IID *** format
 '''
+import os
 
 def main(args):
   import pandas as pd
   from fnmatch import fnmatch
   from _utils.logger import logger
   log = logger()
-  
+  os.makedirs(os.path.dirname(args.out), exist_ok = True)
+
   # parse bed files
   if fnmatch(args.bed, '*.bed'):
     bfile = f'--bfile {args.bed[:-4]} --autosome'
@@ -106,12 +108,11 @@ if __name__ == '__main__':
   xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
       default = True, action = 'store_false')
   xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
-      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chr23')
   
   parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
     default = False, action = 'store_true')
   args = parser.parse_args()
-  import os
   for arg in ['_in','out','gcta','dcov','qcov','grm','bed','xbed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
