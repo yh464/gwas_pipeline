@@ -35,6 +35,18 @@ def main(args):
       extract = f'--extract {snp_file} '
   else: extract = ''
 
+  if args.bysex:
+    dcov = pd.read_table(args.dcov, index_col = [0,1])
+    qcov = pd.read_table(args.qcov, index_col = [0,1])
+    if 'sex' not in dcov.columns: raise ValueError('Covariate file should contain a "sex" column for sex-specific analyses')
+    for sex in [0,1]:
+      sex_dcov = dcov.loc[dcov['sex'] == sex,:].drop(columns = 'sex')
+      sex_qcov = qcov.loc[sex_dcov.index, ~qcov.columns.str.contains('sex')]
+      sex_dcov_file = args.dcov.replace('.txt',f'_sex_{sex}.txt')
+      sex_qcov_file = args.qcov.replace('.txt',f'_sex_{sex}.txt')
+      sex_dcov.to_csv(sex_dcov_file, sep = '\t')
+      sex_qcov.to_csv(sex_qcov_file, sep = '\t')
+
   # locate phenotype file
   for pheno in args.pheno:
     flist = []
@@ -51,7 +63,7 @@ def main(args):
       continue
     
     # create output folder
-    outdir = f'{args.out}/{os.path.basename(f)}/'.replace('.txt','')
+    outdir = f'{args.out}/{os.path.basename(f)}'.replace('.txt','')
     log.log(outdir)
     if not os.path.isdir(outdir):
       os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
@@ -64,7 +76,7 @@ def main(args):
     # for each phenotype
     for i, trait in enumerate(c):
       mpheno = i+1
-      out_fname = outdir + trait
+      out_fname = f'{outdir}/{trait}'
       # check existing files
       if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
         log.log(f'Trait already analysed for: {trait}')
@@ -75,6 +87,16 @@ def main(args):
         f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
         f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
         )
+      
+      if args.bysex:
+        for sex in [0,1]:
+          out_fname = f'{outdir}_sex_{sex}/{trait}'
+          submitter.add(
+            f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov.replace(".txt",f"_sex_{sex}.txt")} '+
+            f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+            f'--keep {args.keep} --nox {extract} {force}'
+          )
+          
   submitter.submit()
 
 if __name__ == '__main__':
@@ -106,7 +128,8 @@ if __name__ == '__main__':
     default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
   params.add_argument('--extract', nargs='*', help = 'SNPs to extract from input files', default = [])
   
-  xchr = parser.add_argument_group(title = 'X chromosome GWAS options')
+  xchr = parser.add_argument_group(title = 'Sex-related analyses')
+  xchr.add_argument('--bysex', action = 'store_true', help = 'Conduct GWAS separately for males and females')
   xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
       default = True, action = 'store_false')
   xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
