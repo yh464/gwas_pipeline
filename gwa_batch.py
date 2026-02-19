@@ -51,6 +51,7 @@ def main(args):
   for pheno in args.pheno:
     flist = []
     for f in os.listdir(args._in):
+      if f == f'{pheno}.txt': flist = [f'{args._in}/{f}']; break
       if fnmatch.fnmatch(f,f'*{pheno}*.txt') and not(os.path.isdir(f)):       # search for all files matching pheno
         flist.append(f'{args._in}/{f}')
     if len(flist) != 1: log.warn(f'Please give only ONE phenotype file for {pheno}'); continue
