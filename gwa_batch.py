@@ -79,6 +79,18 @@ def main(args):
       mpheno = i+1
       out_fname = f'{outdir}/{trait}'
       # check existing files
+      if args.bysex:
+        for sex in [0,1]:
+          out_fname = f'{outdir}_sex_{sex}/{trait}'
+          if os.path.isfile(out_fname+'.fastGWA') and not args.force:
+            log.log(f'Trait already analysed for: {trait} in sex {sex}')
+            continue
+          submitter.add(
+            f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov.replace(".txt",f"_sex_{sex}.txt")} '+
+            f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+            f'--keep {args.keep} --nox {extract} {force}'
+          )
+
       if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
         log.log(f'Trait already analysed for: {trait}')
         continue
@@ -88,15 +100,6 @@ def main(args):
         f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
         f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
         )
-      
-      if args.bysex:
-        for sex in [0,1]:
-          out_fname = f'{outdir}_sex_{sex}/{trait}'
-          submitter.add(
-            f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov.replace(".txt",f"_sex_{sex}.txt")} '+
-            f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
-            f'--keep {args.keep} --nox {extract} {force}'
-          )
 
   submitter.submit()
 
