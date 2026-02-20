@@ -77,7 +77,6 @@ def main(args):
     # for each phenotype
     for i, trait in enumerate(c):
       mpheno = i+1
-      out_fname = f'{outdir}/{trait}'
       # check existing files
       if args.bysex:
         for sex in [0,1]:
@@ -91,10 +90,10 @@ def main(args):
             f'--keep {args.keep} --nox {extract} {force}'
           )
 
+      out_fname = f'{outdir}/{trait}'
       if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
         log.log(f'Trait already analysed for: {trait}')
         continue
-      
       submitter.add(
         f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov} '+
         f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
