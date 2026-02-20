@@ -81,6 +81,9 @@ def parse_rg_log(file, full = False, gcov = False):
         if line.find('gcov_int_se') > -1: break
         if line.find('Analysis finished') > -1: skip = False; continue
         if skip: continue
+        if line.find('Error') > -1: 
+            _logger.log(f'Error found in {file}:\n{line}\n')
+            return pd.DataFrame(data = [], index = [], columns = hdr)
         tmp_stats = line.split()
         if len(tmp_stats) == 0: continue
         group1 = os.path.basename(os.path.dirname(tmp_stats[0]))
@@ -90,7 +93,9 @@ def parse_rg_log(file, full = False, gcov = False):
         tmp_stats = [group1, pheno1, group2, pheno2] + [floatna(x) for x in tmp_stats[2:]]
         all_stats.append(tmp_stats)
     
-    if len(all_stats) == 0: return pd.DataFrame(data = [], index = [], columns = hdr)
+    if len(all_stats) == 0: 
+        _logger.warn(f'No valid rg found in {file}')
+        return pd.DataFrame(data = [], index = [], columns = hdr)
     all_stats = pd.DataFrame(data = all_stats, columns = hdr)
     all_stats.loc[all_stats.rg > 1, 'rg'] = 1
     all_stats.loc[all_stats.rg < -1, 'rg'] = -1

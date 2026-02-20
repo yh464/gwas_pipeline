@@ -16,6 +16,9 @@ Changelog:
     Applied a wide- and long-format tabular output
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     from _utils.path import normaliser, find_gwas
@@ -58,6 +61,8 @@ def main(args):
     from _plots import corr_heatmap
     fig = corr_heatmap(summary, annot = 'Heritability')
     fig.savefig(f'{fout}.pdf', bbox_inches = 'tight')
+    log.log(f'Figure output saved to {fout}.pdf')
+    log.log(f'Tabular output saved to {fout}.txt and {fout}.wide.txt')
     
 if __name__ == '__main__':
     import argparse
