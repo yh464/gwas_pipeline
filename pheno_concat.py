@@ -24,6 +24,9 @@ Changelog:
 
 import pandas as pd
 import os
+from _utils.logger import logger
+log = logger()
+
 def read_file(file):
     subj = os.path.basename(file).replace('.txt','')
     df = pd.read_table(file, index_col = 0)
@@ -40,13 +43,15 @@ def main(args):
     pool = Pool(64)
     for x in args.pheno:
         files = [f'{x}/{y}' for y in os.listdir(x) if fnmatch(y, '*.txt')]
-        dflist = list(tqdm(pool.imap(read_file, files), total = len(files), desc = f'Processing {x}'))
+        dflist = list(tqdm(pool.imap(read_file, files, chunksize = 64), total = len(files), desc = f'Processing {x}'))
         df = pd.concat(dflist)
         pheno_groups = df['pheng'].unique()
         for pg in pheno_groups:
             tmp = df.loc[df.pheng == pg, :]
             tmp = tmp.pivot_table(columns = 'pheno', index = 'EID', values = 'value')
+            tmp.to_csv(f'{pg}.unstd.txt', sep = '\t', index = False)
             for c in tmp.columns:
+                if tmp[c].std() <= 0: log.warn(f'Phenotype {c} has zero variance in group {pg} and will not be scaled'); continue
                 tmp[c] /= tmp[c].std()
             tmp.insert(0, column = 'FID', value = tmp.index)
             tmp.insert(1, column = 'IID', value = tmp.index)
