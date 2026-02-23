@@ -48,7 +48,7 @@ def main(args):
         snp_file = f'{submitter.tmpdir}/snps_to_extract.txt'
         with open(snp_file, 'w') as f:
           for snp in args.extract:
-            log.log(snp, file = f)
+            print(snp, file = f)
         cmd += f'--extract {snp_file} '
     cmd += f'--metal {args.metal} --plink {args.plink} -o {out} {force}'
     submitter.add(cmd)

@@ -46,8 +46,8 @@ def main(args):
     
     # phenotypes to be analysed
     c = c[2:]
-    log.log('Following traits are to be GWA-analysed:', file = logout)
-    for i in c: log.log(i, file = logout)
+    log.log('Following traits are to be GWA-analysed:')
+    for i in c: log.log(i)
     
     # for each phenotype
     for i in range(c.size):
@@ -58,7 +58,7 @@ def main(args):
       # check existing files
       if os.path.isfile(f'{out_fname}.greml.hsq'):
         skip = True
-        log.log(f'Trait already analysed for: {trait}', file = logout)
+        log.log(f'Trait already analysed for: {trait}')
       
       if skip and (not args.force):
         continue

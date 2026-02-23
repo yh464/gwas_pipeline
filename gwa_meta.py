@@ -45,29 +45,29 @@ def main(args):
     mts = open(mts, 'w')
     
     # standard metal settings
-    log.log('marker SNP', file = mts)
-    log.log('allele A1 A2', file = mts)
-    log.log('pvalue P', file = mts)
-    log.log('freq AF1', file = mts)
-    log.log('averagefreq on', file = mts)
+    print('marker SNP', file = mts)
+    print('allele A1 A2', file = mts)
+    print('pvalue P', file = mts)
+    print('freq AF1', file = mts)
+    print('averagefreq on', file = mts)
     if args.extract != None and os.path.isfile(args.extract):
       extract = open(args.extract).read().strip().split()
       while '' in extract: extract.remove('')
-      log.log('addfilter SNP IN (' + ','.join(extract) + ')', file = mts)
+      print('addfilter SNP IN (' + ','.join(extract) + ')', file = mts)
     
     # specify output
-    log.log(f'out {out_prefix}_ .fastGWA', file = mts)
+    print(f'out {out_prefix}_ .fastGWA', file = mts)
     
     # specify input
     for x, b in zip(args._in, binary):
-      if b == True: log.log('effect log(OR)', file = mts)
-      elif not b: log.log('effect BETA', file = mts)
+      if b == True: print('effect log(OR)', file = mts)
+      elif not b: print('effect BETA', file = mts)
       elif b == 'Warning':
         Warning('Meta-analysis requires BETA or OR as effect size, skipping'); continue
-      log.log(f'process {x}', file = mts)
+      print(f'process {x}', file = mts)
         
-    log.log('analyze heterogeneity', file = mts)
-    log.log('quit', file = mts)
+    print('analyze heterogeneity', file = mts)
+    print('quit', file = mts)
     mts.close() # IMPORTANT!
     
     os.system(f'{args.metal} {tmpdir}/'+ '_'.join(finfo) + '.metal')
@@ -93,7 +93,7 @@ def main(args):
     metal_df['A1x'] = metal_df['A1x'].str.upper()
     metal_df = metal_df[['SNP','A1x','AF1','AF1SE','N','DIR',
                           'HET_I2','HET_CHI2','HET_DF','HET_P']]
-    log.log(metal_df.head())
+    print(metal_df.head())
     # estimate BETA and SE from PLINK output
     plink_df = pd.read_table(plink_out, sep = '\s+')
     if 'OR' in plink_df.columns: plink_df['BETA'] = np.log(plink_df['OR'])
@@ -102,7 +102,7 @@ def main(args):
     plink_df['SE'] = abs(plink_df['BETA'] / sts.norm.ppf(plink_df['P']/2))
     plink_df['Z'] = plink_df['BETA']/plink_df['SE']
     plink_df.dropna(inplace=True)
-    log.log(plink_df.head())
+    print(plink_df.head())
     # harmonise allele frequencies
     df = pd.merge(plink_df, metal_df, on = ['SNP'])
     df.loc[df['A1x'] != df['A1'], 'AF1'] = 1 - df.loc[df['A1x'] != df['A1'], 'AF1']

@@ -35,15 +35,14 @@ def main(args):
     
     # log and temp
     log = open(f'/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwama_{args.prefix}.log','w')
-    log.log('Traits analysed in n-weighted GWAMA', file = log)
+    log.log('Traits analysed in n-weighted GWAMA')
     for x in prefix:
-      log.log(x, file = log)
+      log.log(x)
     tmp = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
     if not os.path.isdir(tmp): os.mkdir(tmp)
     
     # extract data
-    log.log(file = log)
-    log.log('Extracting data for analysis', file = log)
+    log.log('Extracting data for analysis')
     
     # load cache
     cache = f'{tmp}gwama_{args.prefix}_cache.pickle'
@@ -51,7 +50,7 @@ def main(args):
       for k, v in pickle.load(open(cache,'rb')).items():
         globals()[k] = v # dflist, ref, h2, cti
       toc = time.perf_counter()-tic
-      log.log(f'Loaded prepared data from cache. time = {toc:.3f} seconds', file = log)
+      log.log(f'Loaded prepared data from cache. time = {toc:.3f} seconds')
       
     # compile cache
     else:
@@ -98,7 +97,6 @@ def main(args):
         
         toc = time.perf_counter() - tic
         log.log(f'Processed {prefix_x} ({i+1}/{n}), time = {toc:.3f} seconds')
-        log.log(f'Processed {prefix_x} ({i+1}/{n}), time = {toc:.3f} seconds', file = log)
       
       ref = df[['CHR', 'SNP', 'POS', 'A1', 'A2', 'AF1']]
       
@@ -119,7 +117,6 @@ def main(args):
     nsnp = ref.shape[0]
     wz_total = np.zeros(nsnp)
     neff = np.zeros(nsnp)
-    log.log('Calculating Neff for each SNP x trait', file = log)
     log.log('Calculating Neff for each SNP x trait')
     for i in range(n):
       neff += dflist[i]['N']
@@ -129,7 +126,6 @@ def main(args):
       log.log(dflist[i].head())
       wz_total += dflist[i]['wZ']
     
-    log.log('Calculating the weighted z-score for each SNP', file = log)
     log.log('Calculating the weighted z-score for each SNP')
     w = np.array(w) # n rows, nsnp columns
     log.log(w.shape)
@@ -140,7 +136,6 @@ def main(args):
         log.log(f'WARNING: {ref.SNP[i]} has zero coefficient')
       wz_total[i] /= coef**0.5
     
-    log.log('Calculating the p-values for each SNP', file = log)
     log.log('Calculating the p-values for each SNP')
     p_total = 1-sts.chi2.cdf(wz_total**2, df = 1)
     
@@ -148,7 +143,6 @@ def main(args):
     
     # calculate beta and SE where se sqrt(1/neff^2 / maf / (1-maf))
     log.log('Calculating beta values for each SNP')
-    log.log('Calculating beta values for each SNP', file = log)
     beta_total = wz_total / neff / (ref.AF1 * (1-ref.AF1))**0.5
     se_total = beta_total / wz_total
     out = ref
@@ -159,12 +153,11 @@ def main(args):
     
     # write output
     toc = time.perf_counter() - tic
-    log.log(f'Writing file to {args.out}/{args.prefix}.gwama, time = {toc:.3f} seconds', file = log)
+    log.log(f'Writing file to {args.out}/{args.prefix}.gwama, time = {toc:.3f} seconds')
     out.to_csv(f'{args.out}/{args.prefix}.gwama', sep = '\t', index = False)
     
     toc = time.perf_counter() - tic
     msg = f'Analysis finished at {toc:.3f} seconds. {nsnp} SNPs were included'
-    log.log(msg, file = log)
     log.log(msg)
     
     # Manhattan and qqplot
@@ -187,7 +180,6 @@ def main(args):
       plt.savefig(f'{args.out}/{args.prefix}.gwama.qqplot.png')
       plt.close()
     toc = time.perf_counter()-tic
-    log.log(f'Fig plotted, time = {toc:.3f} seconds.', file = log)
     log.log(f'Fig plotted, time = {toc:.3f} seconds.')
     
 if __name__ == '__main__':

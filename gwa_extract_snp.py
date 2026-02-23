@@ -90,7 +90,7 @@ def main(args):
     else:
         patterns = f'{tmpdir}/snp_list.txt'
         with open(patterns,'w') as tmpfile:
-            for snp in args.snp: log.log(snp, file = tmpfile)
+            for snp in args.snp: print(snp, file = tmpfile)
             tmpfile.close()
     
     temp = [search_snp(x, tmpdir, args) for x in args.pheno]
