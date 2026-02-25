@@ -202,6 +202,7 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
   res = res %>% add_column(F_min = min(harm$F.statistic), F_med = median(harm$F.statistic))
   write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
   print(res)
+  print(paste0('Saving results to ',prefix, '_results.txt'))
   
   # tabular outputs for QC tests
   write.table(het, paste0(prefix, '_heterogeneity.txt'), sep = '\t')
@@ -249,12 +250,6 @@ getr = function(harm, meta){
     model = 'logit', correction = T
   ) else harm$r.exposure = get_r_from_bsen(harm$beta.exposure, harm$se.exposure, harm$samplesize.exposure)
   harm$F.statistic = (harm$samplesize.exposure-2) * harm$r.exposure^2 / (1-harm$r.exposure^2)
-  F_filter = harm$F.statistic > 10
-  if (! all(F_filter)){
-    cat(paste0('Filtering out ',sum(!F_filter),' weak instruments with F < 10'))
-    print(harm[!F_filter,])
-    harm = harm[F_filter,]
-  }
   if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
     lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
     ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),
@@ -386,10 +381,26 @@ main = function(args){
   ldsc_params = list(lambda = args$gcovint, lambda_se = args$gcintse)
   ldsc_params_fwd = c(ldsc_params, list(h2_exp = args$h21, h2se_exp = args$h2se1))
   ldsc_params_rev = c(ldsc_params, list(h2_exp = args$h22, h2se_exp = args$h2se2))
+  
+  if (! all(mr_fwd_harm$F.statistic > 10)){
+    mr_fwd_harm_weak = mr_fwd_harm
+    print(paste0(sum(mr_fwd_harm$F.statistic < 10),' variants have F < 10'))
+    mr_fwd_harm = mr_fwd_harm[mr_fwd_harm$F.statistic > 10,]
+  }
   all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), ldsc_params_fwd, apss_fwd)
+  if (! all(mr_fwd_harm$F.statistic > 10)) all_mr_results(
+    mr_fwd_harm_weak, paste0(out_prefix,'_mr_forward_weak'), ldsc_params_fwd, apss_fwd)
   toc = proc.time()
   print(paste0('Finished forward direction MR, time = ',toc[3]))
+  
+  if (! all(mr_rev_harm$F.statistic > 10)){
+    mr_rev_harm_weak = mr_rev_harm
+    print(paste0(sum(mr_rev_harm$F.statistic < 10),' variants have F < 10'))
+    mr_rev_harm = mr_rev_harm[mr_rev_harm$F.statistic > 10,]
+  }
   all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), ldsc_params_rev, apss_rev)
+  if (! all(mr_rev_harm$F.statistic > 10)) all_mr_results(
+    mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), ldsc_params_rev, apss_rev)
   toc = proc.time()
   print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }
