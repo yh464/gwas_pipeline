@@ -36,7 +36,7 @@ def parse_mr_results(prefix):
     pleio = pleio[['outcome','exposure','egger_intercept','se','pval']]
     pleio.columns = ['outcome','exposure','egger_intercept','se','egger_p']
     pleio['rssobs'] = presso.iloc[-1,-2]
-    pleio['presso_p'] = presso.iloc[-1,-1]
+    pleio['presso_p'] = presso.iloc[-1,-1] if presso.iloc[-1,-1] != '<0.001' else 0
     
     # merge main and presso results to create the causal output summary table
     main_mr = main_mr.iloc[:,2:].copy() # removes id.exposure and id.outcome
@@ -51,6 +51,9 @@ def parse_mr_results(prefix):
     if np.isnan(presso.loc[2, 'pval']): presso.loc[1, ['F_min','F_med']] = main_mr.loc[1, ['F_min','F_med']].tolist()
     presso.loc[3, 'b'] = presso.loc[3, 't']
     presso = presso.drop('t', axis = 'columns')
+    presso_p = presso['pval'].tolist()
+    presso_p = [0 if p == '<0.001' else p for p in presso_p]
+    presso['pval'] = presso_p
     presso = presso[main_mr.columns.intersection(presso.columns)]
     causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
     
@@ -81,9 +84,7 @@ def stratified_fdr(df,label, pvalues):
     for l in labels:
         group = grouped.get_group(l)
         for pcol in pvalues:
-            p = group[pcol].to_numpy()
-            p[p=='<0.001'] = '0' # MR-PRESSO outputs may output <0.001
-            p = p.astype(np.float64)
+            p = group[pcol].to_numpy().astype(np.float64)
             q = np.zeros(p.size)
             q[~group[pcol].isna().to_numpy()] = fdr(p[~group[pcol].isna().to_numpy()])
             q[group[pcol].isna().to_numpy()] = np.nan
