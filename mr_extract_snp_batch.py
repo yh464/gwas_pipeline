@@ -34,32 +34,23 @@ def main(args):
     log.log('Trying to find genetic instruments for all exposure phenotypes')
     for expg, expp in exposures:
         log.log(f'    {expg}: {len(expp)} phenotypes')
-        # first screen for p-value thresholds
-        pvals = []
+        all_snps = []
+        # read trait-wise clump files
         for x in expp:
-            try: clump, pval = find_clump(expg, x, args.clump, args.pval)
+            try: clump,_ = find_clump(expg, x, args.clump, args.pval)
             except: log.log(f'No clump file for {x} at pval {args.pval:.0e}'); continue
-            pvals.append(pval)
-        log.log(f'    {len(set(pvals))} clumping thresholds found for {expg} for >= 5 SNPs per phenotype:' + ' '.join([f'{pval:.0e}' for pval in sorted(set(pvals))]))
+            all_snps.append(pd.read_table(clump, sep = '\\s+', usecols = ['SNP']))
+        all_snps = pd.concat(all_snps)['SNP'].unique()
+        temp_snps = f'{tmpdir}/{expg}_{args.pval:.0e}.txt'
+        with open(temp_snps,'w') as file:
+            for x in all_snps: print(x, file=file)
+            file.close()
         
-        for pval in sorted(set(pvals)):
-            log.log(f'    {expg} at pval {pval:.0e}')
-            all_snps = []
-            for x in expp:
-                try: clump, _ = find_clump(expg, x, args.clump, pval, strict = True)
-                except: log.log(f'No clump file for {x} at pval {pval:.0e}'); continue
-                all_snps.append(pd.read_table(clump, sep = '\\s+', usecols = ['SNP']))
-            all_snps = pd.concat(all_snps)['SNP'].unique()
-            temp_snps = f'{tmpdir}/{expg}_{pval:.0e}.txt'
-            with open(temp_snps,'w') as file:
-                for x in all_snps: print(x, file=file)
-                file.close()
-            
-            for p,_ in all_pheno:
-                out_file = f'{args.out}/{p}_clumped_for_{expg}_{pval:.0e}.txt'
-                if os.path.isfile(out_file) and not args.force: continue
-                cmd = f'python gwa_extract_snp.py {temp_snps} -p {p} -o {out_file} {force}'
-                submitter.add(cmd)
+        for p,_ in all_pheno:
+            out_file = f'{args.out}/{p}_clumped_for_{expg}_{args.pval:.0e}.txt'
+            if os.path.isfile(out_file) and not args.force: continue
+            cmd = f'python gwa_extract_snp.py {temp_snps} -p {p} -o {out_file} {force}'
+            submitter.add(cmd)
     submitter.submit()
     
     return submitter
