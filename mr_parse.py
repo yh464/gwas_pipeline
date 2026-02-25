@@ -173,6 +173,7 @@ def main(args):
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
         norm.normalise(pd.concat(all_compare)).to_csv(
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
+        log.log(f'Parsed MR results for {g1} and {g2} saved to {args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt and all_{g1}_{g2}_mr_reverse.txt')
     log.log('Missing MR results:')
     for m in missing: log.log(m)
 
