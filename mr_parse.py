@@ -40,15 +40,19 @@ def parse_mr_results(prefix):
     
     # merge main and presso results to create the causal output summary table
     main_mr = main_mr.iloc[:,2:] # removes id.exposure and id.outcome
+    main_mr.loc[main_mr.method == 'MR Egger', ['intercept','se_intercept','p_intercept']] = pleio.loc[0, ['egger_intercept','se','egger_p']]
+
     presso.columns = ['method','b','se','t','pval']
     presso['outcome'] = main_mr['outcome']
     presso['exposure'] = main_mr['exposure']
     presso['nsnp'] = main_mr['nsnp']
     presso['method'] = ['MR-PRESSO raw','MR-PRESSO outlier-corrected','MR-PRESSO global']
-    presso = presso.drop('t', axis = 'columns') #NB this step also drops the RSSobs estimate
-    presso = presso[main_mr.columns]
-    causal = pd.concat((main_mr, presso.iloc[:-1,:]), axis = 'index')
-    causal['p'] = causal['pval']; causal = causal.drop('pval', axis = 1)
+    presso = presso.assign(F_min = np.nan, F_med = np.nan)
+    if presso.loc[1, 'pval'].isna(): presso.loc[0, ['F_min','F_med']] = main_mr.loc[0, ['F_min','F_med']]
+    presso.loc[1, 'b'] = presso.loc[1, 't']
+    presso = presso.drop('t', axis = 'columns')
+    presso = presso[main_mr.columns.intersection(presso.columns)]
+    causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
     
     causal['correct_dir'] = dirtest.iloc[0,-2]
     causal['dirtest_p'] = dirtest.iloc[0,-1]
@@ -178,15 +182,12 @@ if __name__ == '__main__':
     parser.add_argument('-g','--gwa', dest = 'gwa', 
                         help = 'input GWA directory, assumes both groups of pheno to be in the same dir',
                         default = '../gwa')
-    parser.add_argument('-p1','--pheno1', dest = 'p1', 
-                        help = 'Phenotypes group 1 (reserved for IDPs)', nargs = '*',
-                        default=['deg_local','degi_local','degc_local',
-                                 'clu_local','eff_local','mpl_local'])
+    parser.add_argument('-p1','--pheno1', dest = 'p1', default = [], nargs = '*',
+                        help = 'Phenotypes group 1 (reserved for IDPs)')
     parser.add_argument('-e1','--ext1', dest = 'ext1', help = 'Extension for phenotype group 1',
                         default = 'fastGWA')
-    parser.add_argument('-p2','--pheno2', dest = 'p2', 
-                        help = 'Phenotypes group 2 (reserved for correlates)', nargs = '*', 
-                        default = ['disorders_for_mr']) # require manual fiddling, so create new dir
+    parser.add_argument('-p2','--pheno2', dest = 'p2', default = [], nargs = '*',
+                        help = 'Phenotypes group 2 (reserved for correlates)')
     parser.add_argument('-e2','--ext2', dest = 'ext2', help = 'Extension for phenotype group 2',
                         default = 'fastGWA')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory, should be the output of mr_batch.py',
