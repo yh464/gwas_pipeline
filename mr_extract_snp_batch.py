@@ -37,7 +37,8 @@ def main(args):
         all_snps = []
         # read trait-wise clump files
         for x in expp:
-            clump,_ = find_clump(expg, x, args.clump, args.pval)
+            try: clump,_ = find_clump(expg, x, args.clump, args.pval)
+            except: log.log(f'No clump file for {x} at pval {args.pval:.0e}'); continue
             all_snps.append(pd.read_table(clump, sep = '\\s+', usecols = ['SNP']))
         all_snps = pd.concat(all_snps)['SNP'].unique()
         temp_snps = f'{tmpdir}/{expg}_{args.pval:.0e}.txt'
