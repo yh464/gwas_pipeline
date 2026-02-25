@@ -21,7 +21,7 @@ log = logger()
 
 def find_clump(group, pheno, 
                dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
-               pval = 5e-8):
+               pval = 5e-8, strict = False):
     '''
     Find PLINK clump files for a specific trait
     Quality controls to find strictest p-value threshold with >5 SNP
@@ -30,6 +30,12 @@ def find_clump(group, pheno,
     pval: p-value
     '''
     dirname = f'{dirname}/{group}'
+    if strict:
+        if os.path.isfile(f'{dirname}/{pheno}_{pval:.0e}.clumped'):
+            if len(open(f'{dirname}/{pheno}_{pval:.0e}.clumped').read().splitlines()) <= 5:
+                log.log(f'{pheno} has <5 SNPs at pval {pval:.0e}', calling_file = 'find_clump')
+            return f'{dirname}/{pheno}_{pval:.0e}.clumped', pval
+        else: raise FileNotFoundError(f'No clump found for {pheno} at pval {pval:.0e}')
     if os.path.isfile(f'{dirname}/{pheno}_{pval:.0e}.clumped'):
         # min 5 SNPs
         if len(open(f'{dirname}/{pheno}_{pval:.0e}.clumped').read().splitlines()) > 5:
