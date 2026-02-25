@@ -40,7 +40,7 @@ def main(args):
             try: clump, pval = find_clump(expg, x, args.clump, args.pval)
             except: log.log(f'No clump file for {x} at pval {args.pval:.0e}'); continue
             pvals.append(pval)
-        log.log(f'    {len(pvals)} clumping thresholds found for {expg} for >= 5 SNPs per phenotype')
+        log.log(f'    {len(set(pvals))} clumping thresholds found for {expg} for >= 5 SNPs per phenotype:' + ' '.join([f'{pval:.0e}' for pval in sorted(set(pvals))]))
         
         for pval in sorted(set(pvals)):
             log.log(f'    {expg} at pval {pval:.0e}')
