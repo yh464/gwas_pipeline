@@ -92,7 +92,7 @@ def main(args):
                 clump2, pval2 = find_clump(g2, p2, args.clump, args.pval)
                 clump002, _ = find_clump(g2, p2, args.clump, 0.001)
             except: log.log(f'{g2} missing clumped GWAS sumstats'); continue
-            # pval_thr = max([pval1, pval2])
+            pval_thr = max([pval1, pval2])
             
             # find instruments
             instruments = []
