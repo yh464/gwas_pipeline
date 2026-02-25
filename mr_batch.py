@@ -92,16 +92,16 @@ def main(args):
                 clump2, pval2 = find_clump(g2, p2, args.clump, args.pval)
                 clump002, _ = find_clump(g2, p2, args.clump, 0.001)
             except: log.log(f'{g2} missing clumped GWAS sumstats'); continue
-            pval_thr = max([pval1, pval2])
+            # pval_thr = max([pval1, pval2])
             
             # find instruments
             instruments = []
             for i,_ in exposures:
                 for j,_ in outcomes:
-                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{pval_thr:.0e}.txt')
-                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{pval_thr:.0e}.txt')
-                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{pval_thr:.0e}.txt')
-                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{pval_thr:.0e}.txt')
+                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{pval2:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{pval1:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{pval2:.0e}.txt')
+                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{pval1:.0e}.txt')
 
             # check progress and QC output
             out_prefix = f'{args.out}/{g2}/{p2}/{g1}_{p1}_{p2}'
