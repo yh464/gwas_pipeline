@@ -26,14 +26,26 @@ def main(args):
     from _utils.path import find_clump, find_gwas
     from _utils.plugins.logparser import crosscorr_parse
     
+    # find clumping instrument threshold to extract SNPs
+    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True, clump = True)
+    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True, clump = True)
+    pvals = []
+    for g, ps in exposures + outcomes:
+        for p in ps:
+            try: _, pval = find_clump(g, p, args.clump, args.pval)
+            except: log.log(f'No clump file for {g}/{p} at pval {args.pval:.0e}'); continue
+            pvals.append(pval)
+    if len(set(pvals)) == 0: log.log('No clump files found for any phenotype at specified p-value threshold'); return
+    max_pval = max(pvals)
+
     # array submitter
     from mr_extract_snp_batch import api
     log.log('Try running following command to force re-extraction of instruments')
     log.log(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
-    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
+    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump, pval = max_pval, force = args.force)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter)
+        n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter, partition = 'sapphire')
     submitter_lcv = array_submitter(name = 'mr_lcv_'+'_'.join(args.p2), env = 'gentoolsr', n_cpu = 2, timeout = 30)
     submitter_cause = array_submitter(name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',n_cpu = 3, timeout = 30)
     
@@ -41,8 +53,6 @@ def main(args):
     if not os.path.isdir(args.out): os.mkdir(args.out)
 
     # genetic correlations
-    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True)
-    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True)
     exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg, full = True)
 
     # general command args for mr_master
@@ -98,10 +108,10 @@ def main(args):
             instruments = []
             for i,_ in exposures:
                 for j,_ in outcomes:
-                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{pval2:.0e}.txt')
-                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{pval1:.0e}.txt')
-                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{pval2:.0e}.txt')
-                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{pval1:.0e}.txt')
+                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{max_pval:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{max_pval:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{max_pval:.0e}.txt')
+                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{max_pval:.0e}.txt')
 
             # check progress and QC output
             out_prefix = f'{args.out}/{g2}/{p2}/{g1}_{p1}_{p2}'
