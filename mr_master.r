@@ -196,6 +196,7 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
   
   #### tabular outputs ####
   # tabular output
+  res = res %>% add_column(F_stat = harm$F.statistic)
   write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
   print(res)
   
@@ -235,6 +236,22 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
     writeLines(c('Distortion Coefficient:','Distortion P-value:','','','Outliers:',''),
                con = outlier_log)
   })
+}
+
+### Estimate F statistic ####
+getr = function(harm, meta){
+  if (!is.na(meta$nca[1]) & !is.na(meta$nco[1])) harm$r.exposure = get_r_from_lor(
+    lor = harm$beta.exposure, af = harm$eaf.exposure, ncase = meta$nca[1],
+    ncontrol = meta$nco[1], prevalence = meta$nca[1]/(meta$nca[1]+meta$nco[1]),
+    model = 'logit', correction = T
+  ) else harm$r.exposure = get_r_from_bsen(harm$beta.exposure, harm$se.exposure, harm$samplesize.exposure)
+  harm$F.statistic = (harm$samplesize.exposure-2) * harm$r.exposure^2 / (1-harm$r.exposure^2)
+  if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
+    lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
+    ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),
+    model = 'logit', correction = T
+  ) else harm$r.outcome = get_r_from_bsen(harm$beta.outcome, harm$se.outcome, harm$samplesize.outcome)
+  return(harm)
 }
 
 #### main MR execution block ####
@@ -313,19 +330,6 @@ main = function(args){
   if (is.na(metadata$n[2])) metadata$n[2] = max(gwa2_rev$N)
   
   #### harmonise data for 2-sample MR ####
-  getr = function(harm, meta){
-    if (!is.na(meta$nca[1]) & !is.na(meta$nco[1])) harm$r.exposure = get_r_from_lor(
-      lor = harm$beta.exposure, af = harm$eaf.exposure, ncase = meta$nca[1],
-      ncontrol = meta$nco[1], prevalence = meta$nca[1]/(meta$nca[1]+meta$nco[1]),
-      model = 'logit', correction = T
-    ) else harm$r.exposure = get_r_from_pn(harm$pval.outcome, harm$samplesize.outcome)
-    if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
-      lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
-      ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),
-      model = 'logit', correction = T
-    ) else harm$r.outcome = get_r_from_pn(harm$pval.outcome, harm$samplesize.outcome)
-    return(harm)
-  }
   # harmonise data for forward direction
   exp1$samplesize.exposure = metadata$n[1]
   out2$samplesize.outcome = metadata$n[2]
