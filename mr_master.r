@@ -195,8 +195,11 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
   remove(loo_plot)
   
   #### tabular outputs ####
+  # a copy of the harmonised data
+  write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
+  
   # tabular output
-  res = res %>% add_column(F_stat = harm$F.statistic)
+  res = res %>% add_column(F_min = min(harm$F.statistic), F_med = median(harm$F.statistic))
   write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
   print(res)
   
@@ -246,6 +249,12 @@ getr = function(harm, meta){
     model = 'logit', correction = T
   ) else harm$r.exposure = get_r_from_bsen(harm$beta.exposure, harm$se.exposure, harm$samplesize.exposure)
   harm$F.statistic = (harm$samplesize.exposure-2) * harm$r.exposure^2 / (1-harm$r.exposure^2)
+  F_filter = harm$F.statistic > 10
+  if (! all(F_filter)){
+    cat(paste0('Filtering out ',sum(!F_filter),' weak instruments with F < 10'))
+    print(harm[!F_filter,])
+    harm = harm[F_filter,]
+  }
   if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
     lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
     ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),
