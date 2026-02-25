@@ -47,13 +47,13 @@ def parse_mr_results(prefix):
     presso['exposure'] = main_mr['exposure']
     presso['nsnp'] = main_mr['nsnp']
     presso['method'] = ['MR-PRESSO raw','MR-PRESSO outlier-corrected','MR-PRESSO global']
+    presso_p = presso['pval'].tolist()
+    presso_p = [0 if p == '<0.001' else float(p) for p in presso_p]
+    presso['pval'] = presso_p
     presso = presso.assign(F_min = np.nan, F_med = np.nan)
     if np.isnan(presso.loc[2, 'pval']): presso.loc[1, ['F_min','F_med']] = main_mr.loc[1, ['F_min','F_med']].tolist()
     presso.loc[3, 'b'] = presso.loc[3, 't']
     presso = presso.drop('t', axis = 'columns')
-    presso_p = presso['pval'].tolist()
-    presso_p = [0 if p == '<0.001' else p for p in presso_p]
-    presso['pval'] = presso_p
     presso = presso[main_mr.columns.intersection(presso.columns)]
     causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
     
