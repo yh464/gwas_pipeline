@@ -39,8 +39,8 @@ def parse_mr_results(prefix):
     pleio['presso_p'] = presso.iloc[-1,-1]
     
     # merge main and presso results to create the causal output summary table
-    main_mr = main_mr.iloc[:,2:] # removes id.exposure and id.outcome
-    main_mr.loc[main_mr.method == 'MR Egger', ['intercept','se_intercept','p_intercept']] = pleio.loc[0, ['egger_intercept','se','egger_p']]
+    main_mr = main_mr.iloc[:,2:].copy() # removes id.exposure and id.outcome
+    main_mr.loc[main_mr.method == 'MR Egger', ['intercept','se_intercept','p_intercept']] = pleio.loc[1, ['egger_intercept','se','egger_p']].tolist()
 
     presso.columns = ['method','b','se','t','pval']
     presso['outcome'] = main_mr['outcome']
@@ -48,8 +48,8 @@ def parse_mr_results(prefix):
     presso['nsnp'] = main_mr['nsnp']
     presso['method'] = ['MR-PRESSO raw','MR-PRESSO outlier-corrected','MR-PRESSO global']
     presso = presso.assign(F_min = np.nan, F_med = np.nan)
-    if presso.loc[1, 'pval'].isna(): presso.loc[0, ['F_min','F_med']] = main_mr.loc[0, ['F_min','F_med']]
-    presso.loc[1, 'b'] = presso.loc[1, 't']
+    if np.isnan(presso.loc[2, 'pval']): presso.loc[1, ['F_min','F_med']] = main_mr.loc[1, ['F_min','F_med']].tolist()
+    presso.loc[3, 'b'] = presso.loc[3, 't']
     presso = presso.drop('t', axis = 'columns')
     presso = presso[main_mr.columns.intersection(presso.columns)]
     causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
