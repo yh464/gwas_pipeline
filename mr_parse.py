@@ -77,12 +77,8 @@ def stratified_fdr(df,label, pvalues):
     from scipy.stats import false_discovery_control as fdr
     
     # df is a dataframe, label is a column that stratifies data, pvalues are column names that specify p-values
-    labels = df[label].unique()
     groups_list = []
-    grouped = df.groupby(label)
-    
-    for l in labels:
-        group = grouped.get_group(l)
+    for _, group in df.groupby(label):
         for pcol in pvalues:
             p = group[pcol].to_numpy().astype(np.float64)
             q = np.zeros(p.size)
@@ -92,7 +88,7 @@ def stratified_fdr(df,label, pvalues):
             q = pd.DataFrame(data = q, index = group.index, columns =[qcol])
             group = pd.concat([group, q],axis = 1)
         groups_list.append(group)
-    out = pd.concat(groups_list)
+    out = pd.concat(groups_list).sort_index()
     return out
 
 def main(args):
@@ -138,7 +134,6 @@ def main(args):
             try:
                 results_fwd = pd.concat(results_fwd)
                 results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
-                results_fwd_corrected.sort_values(by = 'q', inplace = True)
                 all_fwd.append(results_fwd_corrected)
                 results_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward.txt', sep = '\t', index = False)
                 pleio_fwd = pd.concat(pleio_fwd)
@@ -151,7 +146,6 @@ def main(args):
             try:
                 results_rev = pd.concat(results_rev)
                 results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
-                results_rev_corrected.sort_values(by = 'q', inplace = True)
                 all_rev.append(results_rev_corrected)
                 results_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
                 pleio_rev = pd.concat(pleio_rev)
@@ -167,9 +161,9 @@ def main(args):
                 all_compare.append(results_compare)
             except: pass
         
-        norm.normalise(pd.concat(all_fwd).sort_values(by = 'q')).to_csv(
+        norm.normalise(pd.concat(all_fwd)).to_csv(
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt', sep = '\t', index = False)
-        norm.normalise(pd.concat(all_rev).sort_values(by = 'q')).to_csv(
+        norm.normalise(pd.concat(all_rev)).to_csv(
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
         norm.normalise(pd.concat(all_compare)).to_csv(
             f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
