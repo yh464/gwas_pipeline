@@ -57,18 +57,11 @@ def parse_mr_results(prefix):
     presso = presso[main_mr.columns.intersection(presso.columns)]
     causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
     
-    causal['correct_dir'] = dirtest.iloc[0,-2]
-    causal['dirtest_p'] = dirtest.iloc[0,-1]
-    try:
-        cause = pd.read_table(f'{prefix}_cause_results.txt')
-        causal['cause_p'] = cause.iloc[-1,-1]
-    except: causal['cause_p'] = np.nan
-    try:
-        lcv = f'{prefix}_lcv_results.txt'.replace('_forward','').replace('_reverse','')
-        lcv = pd.read_table(lcv)
-        causal['lcv_p'] = lcv.loc['p','x']
-    except: causal['lcv_p'] = np.nan
-    
+    try: cause = pd.read_table(f'{prefix}_cause_results.txt').iloc[-1,-1]
+    except: cause = np.nan
+    try: lcv = pd.read_table(f'{prefix}_lcv_results.txt').loc['p','x']
+    except: lcv = np.nan
+    causal = causal.assign(correct_dir = dirtest.iloc[0,-2], dirtest_p = dirtest.iloc[0,-1], cause_p = cause, lcv_p = lcv)
     return causal, pleio
 
 def stratified_fdr(df,label, pvalues):

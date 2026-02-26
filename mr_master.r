@@ -118,7 +118,7 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
     res = res %>% rbind(data.frame(
       id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
       outcome = res$outcome[1], exposure = res$exposure[1],
-      method = 'Steiger-filtered IVW', nsnp = nrow(harm_filtered),
+      method = 'Steiger-filtered IVW', nsnp = sum(harm$mr_keep),
       b = res_filtered$b, se = res_filtered$se, pval = res_filtered$pval
     ))
   }
