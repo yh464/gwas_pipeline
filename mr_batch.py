@@ -42,7 +42,7 @@ def main(args):
     from mr_extract_snp_batch import api
     log.log('Try running following command to force re-extraction of instruments')
     log.log(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
-    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump, pval = max_pval, force = args.force)
+    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump, pval = max_pval)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
         n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter, partition = 'sapphire')
