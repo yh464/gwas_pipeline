@@ -102,7 +102,6 @@ def main(args):
                 clump2, pval2 = find_clump(g2, p2, args.clump, args.pval)
                 clump002, _ = find_clump(g2, p2, args.clump, 0.001)
             except: log.log(f'{g2} missing clumped GWAS sumstats'); continue
-            pval_thr = max([pval1, pval2])
             
             # find instruments
             instruments = []
@@ -133,8 +132,8 @@ def main(args):
                 not os.path.isfile(rev_presso) or args.force:
                 cmd = ['Rscript mr_master.r','--p1', f'{g1}/{p1}', '--p2', f'{g2}/{p2}',
                     '-i', ':'.join(instruments), '--c1', clump1, '--c2', clump2,
-                    '--g1', gwa1, '--g2', gwa2, '--pval', str(pval_thr), '--h21', str(h21),
-                    '--h2se1', str(h2se1), '--h22', str(h22), '--h2se2', str(h2se2),
+                    '--g1', gwa1, '--g2', gwa2, '--pval1', str(pval1), '--pval2', str(pval2),
+                    '--h21', str(h21), '--h2se1', str(h2se1), '--h22', str(h22), '--h2se2', str(h2se2),
                     '--gcovint', str(rginfo.gcov_int.values[0]), '--gcintse', str(rginfo.gcov_int_se.values[0]),
                     force, '--ldsc', args.ldsc,'-o', f'{args.out}/{g2}/{p2}'] + cmdargs
                 submitter_main.add(' '.join(cmd))
