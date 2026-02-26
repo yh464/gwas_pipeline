@@ -161,9 +161,9 @@ def main(args):
                 all_compare.append(results_compare)
             except: pass
         
-        all_fwd = stratified_fdr(pd.concat(all_fwd).drop(columns = ['q','cause_q']),'method',['p','cause_p'])
+        all_fwd = stratified_fdr(pd.concat(all_fwd).drop(columns = ['q','cause_q']).reset_index(drop = True),'method',['p','cause_p'])
         norm.normalise(all_fwd).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt', sep = '\t', index = False)
-        all_rev = stratified_fdr(pd.concat(all_rev).drop(columns = ['q','cause_q']),'method',['p','cause_p'])
+        all_rev = stratified_fdr(pd.concat(all_rev).drop(columns = ['q','cause_q']).reset_index(drop = True),'method',['p','cause_p'])
         norm.normalise(all_rev).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
         norm.normalise(pd.concat(all_compare)).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
         log.log(f'Parsed MR results for {g1} and {g2} saved to {args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt and all_{g1}_{g2}_mr_reverse.txt')
