@@ -18,6 +18,7 @@ def check_ancestry(reported, pc1, pc2, target):
 def main(args):
   from time import perf_counter as t
   from fnmatch import fnmatch
+  import numpy as np
   import os
   tic = t()
   idx = 0
@@ -95,7 +96,8 @@ def main(args):
       print(f'read {idx} subjects. time = {toc:.2f} seconds')
       
     # split columns
-    line = line.replace('\n','').split('\t')
+    line = np.array(line.replace('\n','').split('\t'), dtype = 'U')
+    qc_cols = line[qc_col_ids]
     
     if len(line) != n_cols:
         log.log(f'{line[0]}: length does not match header, {len(line)} columns')
@@ -105,16 +107,16 @@ def main(args):
     
     if not args.noqc:
       # first QC subjects
-      if not line[qc_col_ids[0]] == line[qc_col_ids[2]]: sex += 1; continue # genetic sex ~ self-reported
-      if not fnmatch(line[qc_col_ids[5]],'[Nn][Aa]'): het += 1; continue # heterozygosity, must be NA
+      if not qc_cols[0] == qc_cols[2]: sex += 1; continue # genetic sex ~ self-reported
+      if not fnmatch(qc_cols[5],'[Nn][Aa]'): het += 1; continue # heterozygosity, must be NA
       
-      if line[qc_col_ids[3]] == 'NA': continue
-      pc1 = float(line[qc_col_ids[3]])
-      if line[qc_col_ids[4]] == 'NA': continue
-      pc2 = float(line[qc_col_ids[4]])
+      if qc_cols[3] == 'NA': continue
+      pc1 = float(qc_cols[3])
+      if qc_cols[4] == 'NA': continue
+      pc2 = float(qc_cols[4])
       if not check_ancestry(line[qc_col_ids[1]], pc1, pc2, args.ethnicity): eth += 1; continue
     # if QC is passed, then write out to output file
-    line_out = [line[i] for i in valid_col_ids]
+    line_out = line[valid_col_ids].tolist()
     print('\t'.join(line_out), file = fout)
     count += 1
   
