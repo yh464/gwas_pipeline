@@ -27,9 +27,10 @@ def main(args):
   tic = t()
   if args.subj != 'all': 
       subj = open(args.subj,'r').read().splitlines()
+      if subj[0][:3].lower() in ['fid','iid','eid']: subj = subj[1:] # remove header if present
       for i in range(len(subj)):
           if subj[i][:3] == 'UKB': subj[i] = subj[i][3:]
-      subj = [int(s) for s in subj]
+      subj = [int(s.split()[0]) for s in subj]
   else: subj = 'all'
   if len(args.pheno) > 0 and os.path.isfile(args.pheno[0]): pheno = open(args.pheno[0],'r').read().splitlines()
   else: pheno = args.pheno
