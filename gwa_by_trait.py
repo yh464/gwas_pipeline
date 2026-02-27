@@ -93,15 +93,15 @@ if __name__ == '__main__':
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
     default = '../params/bed')
   io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
-    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/sp0.05_grm')
-  
+    default = '../params/bed/ukb_img_eur.sp')
+
   params = parser.add_argument_group(title = 'parameters for GCTA')
   params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
     default = '../toolbox/gcta/gcta64')
   params.add_argument('--maf', dest = 'maf', help = 'Filter by minor allele frequency',
     default = '0.01', type = str)
   params.add_argument('--keep', dest = 'keep', help = 'Subjects to keep', # intentionally absolute
-    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/subjlist_ukb_img_2025.txt')
   params.add_argument('--extract', help = 'SNPs to extract from input files')
 
   xchr = parser.add_argument_group(title = 'X chromosome GWAS options')
