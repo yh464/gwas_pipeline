@@ -29,6 +29,7 @@ def main(args):
       subj = open(args.subj,'r').read().splitlines()
       for i in range(len(subj)):
           if subj[i][:3] == 'UKB': subj[i] = subj[i][3:]
+      subj = [int(s) for s in subj]
   else: subj = 'all'
   if len(args.pheno) > 0 and os.path.isfile(args.pheno[0]): pheno = open(args.pheno[0],'r').read().splitlines()
   else: pheno = args.pheno
