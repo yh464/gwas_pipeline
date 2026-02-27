@@ -64,7 +64,9 @@ def main(args):
   if not os.path.isfile(f'{args.out}_X.fastGWA') or args.force:
       xkeep_file = args.keep.replace('.txt','_X.txt')
       if not os.path.isfile(xkeep_file):
-          xkeep = pd.read_table(args.keep)
+          xkeep = pd.read_table(args.keep, header = None)
+          xkeep.columns = ['FID','IID']
+          if xkeep.iloc[0,0] == 'FID': xkeep = xkeep.iloc[1:,:]
           xfam = pd.read_table(f'{xbfile}.fam'.replace('--bfile ',''), header = None, usecols = [0,1], sep = '\\s+')
           xfam.columns = ['FID','IID']
           xkeep = pd.merge(xkeep, xfam)
