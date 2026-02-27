@@ -65,7 +65,7 @@ def main(args):
       xkeep_file = args.keep.replace('.txt','_X.txt')
       if not os.path.isfile(xkeep_file):
           xkeep = pd.read_table(args.keep)
-          xfam = pd.read_table(f'{xbfile}.fam'.replace('--bfile ',''), header = None, usecols = [0,1])
+          xfam = pd.read_table(f'{xbfile}.fam'.replace('--bfile ',''), header = None, usecols = [0,1], sep = '\\s+')
           xfam.columns = ['FID','IID']
           xkeep = pd.merge(xkeep, xfam)
           xkeep.to_csv(xkeep_file, sep = '\t', index = False)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     default = '../params/quantitative_covars.txt')
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
     default = '../params/bed')
-  io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
+  io.add_argument('--grm', dest = 'grm', help = 'Genetic relatedness matrix',
     default = '../params/bed/ukb_img_eur.sp')
 
   params = parser.add_argument_group(title = 'parameters for GCTA')

@@ -119,7 +119,7 @@ if __name__ == '__main__':
     default = '../params/ukb_qcov.txt')
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
     default = '../params/bed')
-  io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
+  io.add_argument('--grm', dest = 'grm', help = 'Genetic relatedness matrix',
     default = '../params/bed/ukb_img_eur.sp')
   
   params = parser.add_argument_group(title = 'parameters for GCTA')
