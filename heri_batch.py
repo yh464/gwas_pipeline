@@ -45,8 +45,8 @@ def main(args):
         else: raise ValueError('No valid summary statistics found in the input file')
 
         cmds.append(f'python {args.ldsc}/munge_sumstats.py --sumstats {sumstats_file} '+ \
-                    f'--merge-alleles {args.ldsc}/ukb_snp_info.txt ' if args.complete else \
-                    f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt '+
+                    (f'--merge-alleles {args.ldsc}/ukb_snp_info.txt ' if args.complete else \
+                    f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt ')+
                     f'--signed-sumstats {ss} '+
                     f'--out {out_prefix} --chunksize 50000')
     
