@@ -23,7 +23,7 @@ def main(args):
   
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10, env = args.ldsc, partition = 'sapphire')
+  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10 if not args.complete else 60, env = args.ldsc, partition = 'sapphire')
   
   from _utils.path import find_gwas
   pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
@@ -45,7 +45,7 @@ def main(args):
         else: raise ValueError('No valid summary statistics found in the input file')
 
         cmds.append(f'python {args.ldsc}/munge_sumstats.py --sumstats {sumstats_file} '+ \
-                    ('' if args.complete else \
+                    (f'--merge-alleles {args.ldsc}/ukb_snp_info.txt ' if args.complete else \
                     f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt ')+
                     f'--signed-sumstats {ss} '+
                     f'--out {out_prefix} --chunksize 50000')
