@@ -12,12 +12,13 @@ Requires following inputs:
     covariants files in FID IID *** format
 '''
 import os
+from _utils.logger import logger
+log = logger()
 
+@log.profile
 def main(args):
   import pandas as pd
   from fnmatch import fnmatch
-  from _utils.logger import logger
-  log = logger()
   os.makedirs(os.path.dirname(args.out), exist_ok = True)
 
   # parse bed files
@@ -47,6 +48,8 @@ def main(args):
   else: ft = ''
   if args.extract != None and os.path.isfile(args.extract):
     ft += f' --extract {os.path.realpath(args.extract)}'
+    args.xchr = False 
+    log.info('SNP list provided, skipping X chromosome analysis to avoid potential mismatches')
   
   # read X chromosome bed file
   if fnmatch(args.xbed, '*.bed'):
