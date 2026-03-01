@@ -30,7 +30,7 @@ def main(args):
 
   for g, p in pheno:
     os.makedirs(f'{args.out}/{g}/', exist_ok = True)
-    out_prefix = f'{args.out}/{g}/{p}'
+    out_prefix = f'{args.out}/{g}/{p}' if not args.complete else f'{args.out}/{g}_complete/{p}'
 
     cmds = []
     sumstats_file = f'{args._in}/{g}/{p}.fastGWA'
