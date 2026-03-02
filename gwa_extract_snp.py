@@ -103,7 +103,7 @@ def main(args):
     # flip strands so that all SNPs are in the same direction (A1 is the effect allele)
     out = []
     for snp, df_snp in all_files.groupby('SNP'):
-        ref_a1 = df_snp.loc[df_snp.N.idxmax(),'A1']
+        ref_a1 = df_snp.loc[df_snp.N.idxmax(),'A1'].iloc[0]
         df_snp.loc[df_snp.A1 != ref_a1, ['A1','A2']] = df_snp.loc[df_snp.A1 != ref_a1, ['A2','A1']].values
         if 'BETA' in df_snp.columns: df_snp.loc[df_snp.A1 != ref_a1, ['BETA']] = -df_snp.loc[df_snp.A1 != ref_a1, ['BETA']].values
         if 'OR' in df_snp.columns: df_snp.loc[df_snp.A1 != ref_a1, ['OR']] = 1/df_snp.loc[df_snp.A1 != ref_a1, ['OR']].values
