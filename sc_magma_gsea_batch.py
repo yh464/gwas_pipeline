@@ -38,14 +38,14 @@ def main(args = None, **kwargs):
         cell_types = [x.split()[0] for x in open(gset).read().splitlines()]
         cell_type_cols = []
         for label in args.cond:
-            cell_type_cols += [x for x in cell_types if x.find(label) != -1 or label == '*']
+            cell_type_cols += [x for x in cell_types if x.find(label) != -1 or label == 'all']
         cond_cols[gset] = cell_type_cols
 
     for gscore,_ in gscores:
         hdr = open(gscore).readline().strip().split()
         cell_type_cols = []
         for label in args.cond:
-            cell_type_cols.append([x for x in hdr if x.find(label) != -1 or label == '*'])
+            cell_type_cols.append([x for x in hdr if x.find(label) != -1 or label == 'all'])
         cond_cols[gscore] = max(cell_type_cols, key = len) if len(cell_type_cols) > 0 else []
 
     # identify phenotypes
