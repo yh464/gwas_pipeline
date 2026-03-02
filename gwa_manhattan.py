@@ -13,6 +13,8 @@ parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
 parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
   default = '../gwa/manhattan/')
 parser.add_argument('-p','--pval', help = 'p-value threshold', type = float, default = 5e-8)
+parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
+  default = False, action = 'store_true')
 parser.add_argument('-f','--force',dest = 'force', help = 'force output',
   default = False, action = 'store_true')
 args = parser.parse_args()
@@ -45,6 +47,7 @@ _,ax = plt.subplots(figsize = (6,2), constrained_layout = True)
 
 if (not os.path.isfile(out_fname)) or args.force:
   df = pd.read_table(x).sort_values(by = ['CHR','POS'])
+  if args.autosome_only: df = df.loc[~df.CHR.isin([23,24,'X','Y']),:]
   sig = df.loc[df.P < 1e-3,:]
   nsig = (df.P < 5e-8).sum()
   # truncated Manhattan plot, pdf
