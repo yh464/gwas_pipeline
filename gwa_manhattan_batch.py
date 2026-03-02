@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
       default = '../gwa/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../gwa/manhattan/')
+      default = '../manhattan/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     parser.add_argument('-p','--pval', help = 'p-value threshold', type = float, default = 5e-8)
