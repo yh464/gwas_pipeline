@@ -111,11 +111,13 @@ def main(args):
 
         # for comparison across replication GWAS
         compare_df = []
-        compare_df.append(df_snp[['SNP','Phenotype','CHR','POS','A1','A2']].drop_duplicates('Phenotype').set_index(
-            ['SNP','Phenotype']).rename(columns = lambda x: ('SNP_info', x)))
+        snpinfo = df_snp[['SNP','Phenotype','CHR','POS','A1','A2']].drop_duplicates('Phenotype').set_index(['SNP','Phenotype'])
+        snpinfo.columns = pd.MultiIndex.from_product([['SNP_info'], snpinfo.columns])
+        compare_df.append(snpinfo)
         for group, df_group in df_snp.groupby('Group'):
-            df_group = df_group.set_index(['SNP','Phenotype'])
-            compare_df.append(df_group.loc[:,['BETA','SE','P','N','AF1']].rename(columns = lambda x: (group, x)))
+            df_group = df_group.set_index(['SNP','Phenotype']).loc[:,['BETA','SE','P','N','AF1']]
+            df_group.columns = pd.MultiIndex.from_product([[group], df_group.columns])
+            compare_df.append(df_group)
         compare_df = pd.concat(compare_df, axis = 1)
         out.append(compare_df)
 
