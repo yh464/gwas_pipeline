@@ -49,6 +49,7 @@ def main(args):
                     f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt ')+
                     f'--signed-sumstats {ss} '+
                     f'--out {out_prefix} --chunksize 50000')
+        cmds.append(f'[ if -f {out_prefix}.sumstats.gz ]; then gunzip -f {out_prefix}.sumstats.gz; fi ]')
     
     if args.force or (not os.path.isfile(h2_log)):
         cmds.append(f'python {args.ldsc}/ldsc.py '+
