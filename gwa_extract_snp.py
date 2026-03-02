@@ -99,6 +99,18 @@ def main(args):
         if type(x) != type(None): all_files.append(x)
     
     all_files = pd.concat(all_files).sort_values(by = ['Group','Phenotype','SNP'])
+
+    # flip strands so that all SNPs are in the same direction (A1 is the effect allele)
+    out = []
+    for snp, df_snp in all_files.groupby('SNP'):
+        ref_a1 = df_snp.loc[df_snp.N.idxmax(),'A1']
+        df_snp.loc[df_snp.A1 != ref_a1, ['A1','A2']] = df_snp.loc[df_snp.A1 != ref_a1, ['A2','A1']].values
+        if 'BETA' in df_snp.columns: df_snp.loc[df_snp.A1 != ref_a1, ['BETA']] = -df_snp.loc[df_snp.A1 != ref_a1, ['BETA']].values
+        if 'OR' in df_snp.columns: df_snp.loc[df_snp.A1 != ref_a1, ['OR']] = 1/df_snp.loc[df_snp.A1 != ref_a1, ['OR']].values
+        df_snp.loc[df_snp.A1 != ref_a1, ['AF1']] = 1 - df_snp.loc[df_snp.A1 != ref_a1, ['AF1']].values
+        out.append(df_snp)
+    all_files = pd.concat(out)
+
     if args.out != None: 
         all_files.to_csv(args.out, sep = '\t', index = False)
     norm.normalise(all_files).to_clipboard(index = False)
