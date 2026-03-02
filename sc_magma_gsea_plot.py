@@ -17,6 +17,7 @@ Changelog:
     Changed the heatmap to a scatterplot-style heatmap
 '''
 
+from ast import parse
 import os
 from fnmatch import fnmatch
 import pandas as pd
@@ -32,6 +33,26 @@ import warnings
 from _utils import logger
 log = logger.logger()
 
+def parse_gset_name(df, gset, gset_file):
+    gset_df = df.cell_type.str.split('.', expand = True)
+    if gset_df.shape[1] == 1: df.insert(0,'gene_set', value = gset) # no annotation
+    elif gset_df.shape[0] == 2 and gset_df.iloc[:,0].unique().size < gset_df.iloc[:,1].unique().size: 
+        df.insert(0,'gene_set', value = gset + '.' + gset_df.iloc[:,0].iloc[0]) # gene sets are annotated as <annotation>.<cell_type>
+        df['cell_type_parsed'] = gset_df.iloc[:,1] # cell type is in the second column
+    elif gset_df.shape[1] == 3 and gset_df.iloc[:,0].unique().size == 1:
+        df.insert(0,'gene_set', value = gset + '.' + gset_df.iloc[:,1].iloc[0]) # gene sets are annotated as <method>.<annotation>.<cell_type>
+        df['cell_type_parsed'] = gset_df.iloc[:,2] # cell type is in the third column
+    else: df.insert(0,'gene_set', value = gset) # fallback to no annotation
+
+    if os.path.isfile(f'{gset_file}.label'):
+        labels = pd.read_table(f'{gset_file}.label', dtype = str)
+        if 'label' in df.columns: df = df.rename(columns = {'label':'_orig_label'})
+        df = df.merge(labels, how = 'left', on = 'cell_type')
+    else: df['label'] = df['gene_set']
+    df['label'] = df['label'].fillna(df['gene_set'])
+    df = df.drop(columns = ['cell_type']).rename(columns = {'cell_type_parsed':'cell_type'})
+    return df
+
 def process_pheno(gsets, g, p, args):
     all_gsets = []
     most_sig = []
@@ -44,21 +65,8 @@ def process_pheno(gsets, g, p, args):
         if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE
         df['cell_type'] = df['cell_type'].fillna(df.VARIABLE)
 
-        if df['TYPE'].iloc[0] == 'SET': df.insert(0,'gene_set', value = gset)
-        else: # gene score columns are named: <method>.<annotation>.<cell_type>
-            gset_col = gset + '.' + df.cell_type.str.split('.', expand = True).iloc[:,1]
-            df.insert(0,'gene_set', value = gset_col)
-
-        # for 'clusters' and 'subclusters', map to the respective cell type term
-        if os.path.isfile(f'{gset_file}.label'):
-            labels = pd.read_table(f'{gset_file}.label', dtype = str)
-            if 'label' in df.columns: df = df.rename(columns = {'label':'_orig_label'})
-            df = df.merge(labels, how = 'left', on = 'cell_type')
-        else: df['label'] = df['gene_set']
-        df['label'] = df['label'].fillna(df['gene_set'])
-
-        if df['TYPE'].iloc[0] != 'SET':
-            df.loc[:,'cell_type'] = ['.'.join(x.split('.')[2:]) for x in df.cell_type]
+        # parse gene set names
+        df = parse_gset_name(df, gset, gset_file)
         df.insert(0,'phenotype', value = p)
         df.insert(0,'group', value = g)
 
@@ -75,11 +83,12 @@ def process_pheno(gsets, g, p, args):
         if not os.path.isfile(cond_output): continue
         df = pd.read_table(cond_output, sep = '\\s+', comment = '#')
         df = df.rename(columns = {'VARIABLE':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
-        df['analysed_cell_type'] = ['.'.join(x.split('.')[2:]) for x in df['cell_type']]
-        df['conditioned_on'] = ''
-        for idx, row in df.iterrows():
-            pair = df.loc[df.MODEL == row.MODEL,'analysed_cell_type'].values
-            df.loc[idx, 'conditioned_on'] = pair[pair != row.analysed_cell_type][0]
+        df = parse_gset_name(df, gset, gset_file)
+        df['analysed_cell_type'] = df['cell_type']
+        # reorder cell types 1, 0, 3, 2, 5, 4, ... to get the cell types being conditioned on
+        reorder = np.arange(df.shape[0])
+        reorder = np.stack([reorder[1::2], reorder[0::2]]).T.reshape(-1) 
+        df['conditioned_on'] = df['cell_type'].iloc[reorder].values
         df['tmp1'] = 'conditioned_on'; df['tmp2'] = 'analysed_cell_type'
         # FDR correction with respect to each trait being conditioned on
         fig = corr_heatmap(df[['tmp1','conditioned_on','tmp2','analysed_cell_type','beta','p']])
