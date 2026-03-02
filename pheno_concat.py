@@ -51,13 +51,8 @@ def main(args):
             tmp = df.loc[df.pheng == pg, :]
             tmp = tmp.pivot_table(columns = 'pheno', index = 'EID', values = 'value')
             tmp.to_csv(f'{pg}.unstd.txt', sep = '\t', index = False)
-            for c in tmp.columns:
-                if (tmp[c] == np.inf).any():
-                    log.warn(f'Phenotype {pg}/{c} has infinite values, setting to NaN')
-                    tmp[c] = tmp[c].replace(np.inf, np.nan)
-                if tmp[c].std() <= 0: log.warn(f'Phenotype {pg}/{c} has zero variance and will not be scaled'); continue
-            tmp = tmp.copy()
-            tmp /= tmp.std(axis = 0)
+            tmp = tmp.replace([np.inf, -np.inf], np.nan)
+            tmp = tmp.div(tmp.std(axis = 0), axis = 1)
             tmp.insert(0, column = 'FID', value = tmp.index)
             tmp.insert(1, column = 'IID', value = tmp.index)
             tmp.to_csv(f'{pg}.txt', index = False, sep = '\t')

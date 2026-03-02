@@ -59,9 +59,10 @@ def main(args):
   else: args.xchr = False; log.warn('skipping X chromosome because no bed file found')
 
   if not os.path.isfile(f'{args.out}.fastGWA') or args.force:
-    os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
+    exit_code = os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
       f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
       f' {ft} --keep {args.keep} --out {args.out}')
+    if exit_code != 0: raise RuntimeError('fastGWA failed, please check the input files and parameters')
 
   if not args.xchr: return
   if not os.path.isfile(f'{args.out}_X.fastGWA') or args.force:
@@ -75,9 +76,10 @@ def main(args):
           xkeep = pd.merge(xkeep, xfam)
           xkeep.to_csv(xkeep_file, sep = '\t', index = False)
       
-      os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
+      exit_code = os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
           f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
           f' {ft} --keep {xkeep_file} --model-only --out {args.out}_Xmodel')
+      if exit_code != 0: raise RuntimeError('X chromosome model fitting failed')
       os.system(f'{args.gcta} {xbfile} --load-model {args.out}_Xmodel.fastGWA --geno 0.1 --out {args.out}_X')
       os.system(f'tail -n +2 {args.out}_X.fastGWA >> {args.out}.fastGWA')
 
