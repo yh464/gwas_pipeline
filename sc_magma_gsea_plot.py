@@ -138,23 +138,28 @@ def main(args):
     # all_phenos.to_csv(f'{out_prefix}.txt', sep = '\t', index = False)
 
     # miami-like bar plot
-    for gset in tqdm(all_phenos.gene_set.unique()):
-      tmp = all_phenos.loc[all_phenos.gene_set == gset,:]
-      tmp.to_csv(f'{out_prefix}.{gset}.txt', sep = '\t', index = False)
-      if tmp.cell_type.unique().size < 1: continue
-      tmp = tmp.assign(**{'-log(fdr)': (-np.log10(tmp.q) * (tmp['beta'] > 0))})
-      if tmp.cell_type.unique().size < 100:
-        fig1, ax1 = plt.subplots(tmp.cell_type.unique().size, 1, figsize = (len(pheno), 3*tmp.cell_type.unique().size), sharex = True, squeeze = False)
+    for gset, gset_df in tqdm(all_phenos.groupby('gene_set'), total = all_phenos.gene_set.unique().size):
+      if gset.find('GO') >= 0: # for GO terms, just report significant terms in a table
+        gset_df = gset_df.loc[gset_df.p < 0.05,:]
+        gset_df = gset_df.sort_values('p').reset_index(drop = True)
+        gset_df.to_csv(f'{out_prefix}.{gset}.txt', sep = '\t', index = False)
+        continue
+
+      gset_df.to_csv(f'{out_prefix}.{gset}.txt', sep = '\t', index = False)
+      if gset_df.cell_type.unique().size < 1: continue
+      gset_df = gset_df.assign(**{'-log(fdr)': (-np.log10(gset_df.q) * (gset_df['beta'] > 0))})
+      if gset_df.cell_type.unique().size < 100:
+        fig1, ax1 = plt.subplots(gset_df.cell_type.unique().size, 1, figsize = (len(pheno), 3*gset_df.cell_type.unique().size), sharex = True, squeeze = False)
         ax1 = ax1[::-1,0] # invert y axis
-        for i, ct in enumerate(tmp.cell_type.unique()):
-            sns.barplot(tmp.loc[tmp.cell_type == ct, :], x = 'phenotype', y = '-log(fdr)', hue = 'group', ax = ax1[i], legend = False)
+        for i, ct in enumerate(gset_df.cell_type.unique()):
+            sns.barplot(gset_df.loc[gset_df.cell_type == ct, :], x = 'phenotype', y = '-log(fdr)', hue = 'group', ax = ax1[i], legend = False)
             if i > 0: ax1[i].set_xlabel('')
             ax1[i].axhline(-np.log10(0.05), color = 'k')
             ax1[i].axhline(np.log10(0.05), color = 'k')
         fig1.savefig(f'{out_prefix}.{gset}.barplot.pdf', bbox_inches = 'tight')
         plt.close(fig1)
-      if tmp.cell_type.unique().size < 500: 
-        fig = corr_heatmap(tmp[['group','phenotype','label','cell_type','beta','p','q']])
+      if gset_df.cell_type.unique().size < 500: 
+        fig = corr_heatmap(gset_df[['group','phenotype','label','cell_type','beta','p','q']])
         fig.savefig(f'{out_prefix}.{gset}.pdf', bbox_inches = 'tight')
         plt.close(fig)
       
