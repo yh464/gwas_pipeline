@@ -18,6 +18,7 @@ Changelog:
 '''
 
 import os
+from fnmatch import fnmatch
 import pandas as pd
 import scipy.stats as sts
 import numpy as np
@@ -91,13 +92,13 @@ def process_pheno(gsets, g, p, args):
     normaliser().normalise(all_gsets).to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
     return all_gsets, most_sig
 
-def main(args):
-    norm = normaliser()
-    
+def main(args):   
     # find gene set files
-    import os
     gsets = [(f'{args.gset}/{x[:-4]}', x[:-4]) for x in os.listdir(args.gset) if x[-4:] == '.txt']
     gscores = [(f'{args.gscore}/{x[:-4]}', x[:-4]) for x in os.listdir(args.gscore) if x[-4:] == '.txt']
+    if len(args.subset) > 0:
+        gsets = [x for x in gsets if any([fnmatch(x[1], f'*{s}*') for s in args.subset])]
+        gscores = [x for x in gscores if any([fnmatch(x[1], f'*{s}*') for s in args.subset])]
     log.log(f'Found {len(gsets)} gene sets and {len(gscores)} gene scores to process')
     for _, x in gsets + gscores:
         log.log(f'    {x}')
@@ -149,6 +150,7 @@ if __name__ == '__main__':
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'MAGMA output directory',
       default = '../sc/magma_gsea')
+    parser.add_argument('-s', '--subset', help = 'Subset of gene sets and gene scores to analyse', nargs = '*', default = [])
     parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG_10kb')
     parser.add_argument('--gset', dest = 'gset', help = 'Gene sets to study enrichment, scans directory',
         default = '../multiomics/gene_set')
