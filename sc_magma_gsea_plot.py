@@ -35,14 +35,18 @@ log = logger.logger()
 
 def parse_gset_name(df, gset, gset_file):
     gset_df = df.cell_type.str.split('.', expand = True)
-    if gset_df.shape[1] == 1: df.insert(0,'gene_set', value = gset) # no annotation
+    if gset_df.shape[1] == 1: 
+        df.insert(0,'gene_set', value = gset) # no annotation
+        df['cell_type_parsed'] = df['cell_type']
     elif gset_df.shape[0] == 2 and gset_df.iloc[:,0].unique().size < gset_df.iloc[:,1].unique().size: 
         df.insert(0,'gene_set', value = gset + '.' + gset_df.iloc[:,0].iloc[0]) # gene sets are annotated as <annotation>.<cell_type>
         df['cell_type_parsed'] = gset_df.iloc[:,1] # cell type is in the second column
     elif gset_df.shape[1] == 3 and gset_df.iloc[:,0].unique().size == 1:
         df.insert(0,'gene_set', value = gset + '.' + gset_df.iloc[:,1].iloc[0]) # gene sets are annotated as <method>.<annotation>.<cell_type>
         df['cell_type_parsed'] = gset_df.iloc[:,2] # cell type is in the third column
-    else: df.insert(0,'gene_set', value = gset) # fallback to no annotation
+    else: 
+        df.insert(0,'gene_set', value = gset) # fallback to no annotation
+        df['cell_type_parsed'] = df['cell_type']
 
     if os.path.isfile(f'{gset_file}.label'):
         labels = pd.read_table(f'{gset_file}.label', dtype = str)
