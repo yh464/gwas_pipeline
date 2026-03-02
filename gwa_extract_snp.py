@@ -83,7 +83,8 @@ def main(args):
 
     norm = normaliser()
     all_files = []
-    tmpdir = tempfile.mkdtemp()
+    # tmpdir = tempfile.mkdtemp()
+    tmpdir = os.path.realpath('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/single_snp')
     
     if os.path.isfile(args.snp[0]) and len(args.snp) == 1:
         patterns = args.snp[0]
