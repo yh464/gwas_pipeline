@@ -46,7 +46,13 @@ def main(args):
   # parse MAF
   if args.maf != 'raw': ft = f'--maf {args.maf}'
   else: ft = ''
+
+  exact = ''
   if args.extract != None and os.path.isfile(args.extract):
+    n_extract = len([x for x in open(args.extract).read().splitlines() if x.strip() != ''])
+    if n_extract < 2500:
+      log.warn('Using exact fastGWA because there are not enough SNPs to tune parameters')
+      exact = '-exact'
     ft += f' --extract {os.path.realpath(args.extract)}'
     args.xchr = False 
     log.info('SNP list provided, skipping X chromosome analysis to avoid potential mismatches')
@@ -59,7 +65,7 @@ def main(args):
   else: args.xchr = False; log.warn('skipping X chromosome because no bed file found')
 
   if not os.path.isfile(f'{args.out}.fastGWA') or args.force:
-    exit_code = os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
+    exit_code = os.system(f'{args.gcta} --fastGWA-mlm{exact} {bfile} --grm-sparse {args.grm} '+
       f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
       f' {ft} --keep {args.keep} --out {args.out}')
     if exit_code != 0: raise RuntimeError('fastGWA failed, please check the input files and parameters')
@@ -76,7 +82,7 @@ def main(args):
           xkeep = pd.merge(xkeep, xfam)
           xkeep.to_csv(xkeep_file, sep = '\t', index = False)
       
-      exit_code = os.system(f'{args.gcta} --fastGWA-mlm {bfile} --grm-sparse {args.grm} '+
+      exit_code = os.system(f'{args.gcta} --fastGWA-mlm{exact} {bfile} --grm-sparse {args.grm} '+
           f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
           f' {ft} --keep {xkeep_file} --model-only --out {args.out}_Xmodel')
       if exit_code != 0: raise RuntimeError('X chromosome model fitting failed')
