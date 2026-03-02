@@ -16,11 +16,14 @@ from _utils.logger import logger
 log = logger()
 import os, fnmatch
 import pandas as pd
+from hashlib import sha256
 
 def main(args):
   # array submitter
   from _utils.slurm import array_submitter
   submitter = array_submitter(name = 'gwa_'+ '_'.join(args.pheno),timeout = 90)
+  tmpdir = os.path.realpath('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/_snp_list')
+  os.makedirs(tmpdir, exist_ok = True)
   
   # general args
   force = '-f' if args.force else ''
@@ -28,7 +31,7 @@ def main(args):
   if len(args.extract) > 0:
     if os.path.isfile(args.extract[0]): extract = f'--extract {os.path.realpath(args.extract[0])} '
     else:
-      snp_file = f'{submitter.tmpdir}/snps_to_extract.txt'
+      snp_file = f'{tmpdir}/{sha256(" ".join(args.extract).encode()).hexdigest()[:6]}.txt'
       with open(snp_file, 'w') as f:
         for snp in args.extract:
           print(snp, file = f)
