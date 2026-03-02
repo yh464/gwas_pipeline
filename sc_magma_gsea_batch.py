@@ -14,6 +14,8 @@ Requires following inputs:
 
 import os
 from fnmatch import fnmatch
+from _utils.logger import logger
+log = logger()
 
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
@@ -31,6 +33,9 @@ def main(args = None, **kwargs):
     if len(args.subset) > 0:
         gsets = [x for x in gsets if any([fnmatch(x[1], f'*{s}*') for s in args.subset])]
         gscores = [x for x in gscores if any([fnmatch(x[1], f'*{s}*') for s in args.subset])]
+    log.log(f'Found {len(gsets)} gene sets and {len(gscores)} gene scores to process')
+    for _, x in gsets + gscores:
+        log.log(f'    {x}')
 
     # find column names for conditional analysis
     cond_cols = {}
@@ -91,12 +96,12 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing gene-level summary statistics',
         default = '../annot/magma')
     parser.add_argument('-s', '--subset', help = 'Subset of gene sets and gene scores to analyse', nargs = '*', default = [])
-    parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG_10kb')
+    parser.add_argument('-a', '--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG_10kb')
     parser.add_argument('--gset', dest = 'gset', help = 'Gene sets to study enrichment, scans directory',
         default = '../multiomics/gene_set')
     parser.add_argument('--gscore', help = 'Directory containing gene scores', default = '../multiomics/gene_score')
     parser.add_argument('--magma', dest = 'magma', help = 'MAGMA executable', default = '../toolbox/magma/magma')
-    parser.add_argument('--cond', nargs = '*', help = 'Cell type annotation used for conditional analysis',
+    parser.add_argument('-c', '--cond', nargs = '*', help = 'Cell type annotation used for conditional analysis',
         default = ['supercluster_term', 'Type']) # siletti, wang
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/magma_gsea')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')

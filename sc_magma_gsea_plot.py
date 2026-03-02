@@ -92,6 +92,7 @@ def process_pheno(gsets, g, p, args):
     normaliser().normalise(all_gsets).to_csv(f'{args._in}/{g}/{p}.{args.annot}.enrichments.txt', sep = '\t', index = False)
     return all_gsets, most_sig
 
+@log.profile
 def main(args):   
     # find gene set files
     gsets = [(f'{args.gset}/{x[:-4]}', x[:-4]) for x in os.listdir(args.gset) if x[-4:] == '.txt']
@@ -151,11 +152,11 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'MAGMA output directory',
       default = '../sc/magma_gsea')
     parser.add_argument('-s', '--subset', help = 'Subset of gene sets and gene scores to analyse', nargs = '*', default = [])
-    parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG_10kb')
+    parser.add_argument('-a', '--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG_10kb')
     parser.add_argument('--gset', dest = 'gset', help = 'Gene sets to study enrichment, scans directory',
         default = '../multiomics/gene_set')
     parser.add_argument('--gscore', help = 'Directory containing gene scores', default = '../multiomics/gene_score')
-    # no need for 'force'
+    # always overwrites
     args = parser.parse_args()
     # path normalisation
     args.pheno.sort()
