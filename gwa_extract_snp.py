@@ -104,11 +104,20 @@ def main(args):
     out = []
     for snp, df_snp in all_files.groupby('SNP'):
         ref_a1 = df_snp.loc[df_snp.N.idxmax(),'A1'].iloc[0]
-        df_snp.loc[df_snp.A1 != ref_a1, ['A1','A2']] = df_snp.loc[df_snp.A1 != ref_a1, ['A2','A1']].values
-        if 'BETA' in df_snp.columns: df_snp.loc[df_snp.A1 != ref_a1, ['BETA']] = -df_snp.loc[df_snp.A1 != ref_a1, ['BETA']].values
-        if 'OR' in df_snp.columns: df_snp.loc[df_snp.A1 != ref_a1, ['OR']] = 1/df_snp.loc[df_snp.A1 != ref_a1, ['OR']].values
+        df_snp.loc[df_snp.A1 != ref_a1, ['BETA']] = -df_snp.loc[df_snp.A1 != ref_a1, ['BETA']].values
         df_snp.loc[df_snp.A1 != ref_a1, ['AF1']] = 1 - df_snp.loc[df_snp.A1 != ref_a1, ['AF1']].values
-        out.append(df_snp)
+        df_snp.loc[df_snp.A1 != ref_a1, ['A1','A2']] = df_snp.loc[df_snp.A1 != ref_a1, ['A2','A1']].values
+        if not args.compare: out.append(df_snp); continue
+
+        # for comparison across replication GWAS
+        compare_df = []
+        compare_df.append(df_snp[['SNP','Phenotype','CHR','POS','A1','A2']].drop_duplicates('Phenotype').set_index(['SNP','Phenotype']))
+        for _, df_group in df_snp.groupby('Group'):
+            df_group = df_group.set_index(['SNP','Phenotype'])
+            compare_df.append(df_group.loc[:,['BETA','SE','P','N','AF1']])
+        compare_df = pd.concat(compare_df, axis = 1)
+        out.append(compare_df)
+
     all_files = pd.concat(out)
 
     if args.out != None: 
@@ -130,6 +139,8 @@ if __name__ == '__main__':
         help = 'Directory containing all GWA summary statistics',
         default = '../gwa/')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output list file')
+    parser.add_argument('-c','--compare', action = 'store_true', 
+        help = 'formats output for comparison across multiple groups of replication GWAS')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
         default = False, help = 'force overwrite')
     args = parser.parse_args()
