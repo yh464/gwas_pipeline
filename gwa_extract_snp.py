@@ -104,9 +104,10 @@ def main(args):
     out = []
     for snp, df_snp in all_files.groupby('SNP'):
         ref_a1 = df_snp.loc[df_snp.N.idxmax(),'A1'].iloc[0]
-        df_snp.loc[df_snp.A1 != ref_a1, ['BETA']] = -df_snp.loc[df_snp.A1 != ref_a1, ['BETA']].values
-        df_snp.loc[df_snp.A1 != ref_a1, ['AF1']] = 1 - df_snp.loc[df_snp.A1 != ref_a1, ['AF1']].values
-        df_snp.loc[df_snp.A1 != ref_a1, ['A1','A2']] = df_snp.loc[df_snp.A1 != ref_a1, ['A2','A1']].values
+        flip = (df_snp.A1 != ref_a1).copy()
+        df_snp.loc[flip, ['BETA']] = -df_snp.loc[flip, ['BETA']].values
+        df_snp.loc[flip, ['AF1']] = 1 - df_snp.loc[flip, ['AF1']].values
+        df_snp.loc[flip, ['A1','A2']] = df_snp.loc[flip, ['A2','A1']].values
         if not args.compare: out.append(df_snp); continue
 
         # for comparison across replication GWAS
@@ -119,7 +120,7 @@ def main(args):
             df_group.columns = pd.MultiIndex.from_product([[group], df_group.columns])
             compare_df.append(df_group)
         compare_df = pd.concat(compare_df, axis = 1)
-        out.append(compare_df)
+        out.append(compare_df.reset_index())
 
     all_files = pd.concat(out)
 
