@@ -100,13 +100,8 @@ if __name__ == '__main__':
   for arg in ['_in','out','dcov','qcov','bed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
-  from _utils import cmdhistory, path, logger
+  from _utils import cmdhistory, logger
   logger.splash(args)
   cmdhistory.log()
-  proj = path.project()
-  proj.add_var('/%pheng',r'.+', 'phenotype group')
-  proj.add_var('/%pheno',r'.+', 'phenotype')
-  proj.add_input(args._in+'/%pheng.txt', __file__)
-  proj.add_output(args.out+'/%pheng/%pheno.fastGWA', __file__)
   try: main(args)
   except: cmdhistory.errlog()
