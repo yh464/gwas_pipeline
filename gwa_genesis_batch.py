@@ -99,7 +99,6 @@ if __name__ == '__main__':
   import os
   for arg in ['_in','out','dcov','qcov','bed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
-  if args.extract != None: args.extract = os.path.realpath(args.extract)
   
   from _utils import cmdhistory, path, logger
   logger.splash(args)
