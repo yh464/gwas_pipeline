@@ -91,7 +91,7 @@ main = function(args){
                    A2 = getAlleleB(genodata))
   assoc %>% as_tibble() %>% select(-MAC) %>% rename(SNP = variant.id, CHR = chr, POS = pos, 
     N = n.obs, AF1 = freq, BETA = Est, SE = Est.SE, P = Score.pval) %>% inner_join(alleles) %>%
-    mutate(N = N/2) %>% write_tsv(paste0(out_prefix, '.fastGWA'))
+    write_tsv(paste0(out_prefix, '.fastGWA'))
   cat('Wrote GWAS output, time =', proc.time()[3],'\n')
 }
 
