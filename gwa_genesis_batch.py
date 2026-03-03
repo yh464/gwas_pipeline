@@ -81,12 +81,12 @@ if __name__ == '__main__':
   from _utils.slurm import slurm_parser
   parser = slurm_parser(description = 'This script batch runs GWAS by GENESIS')
   parser.add_argument('pheno', help = 'Phenotype group file name, format FID IID ***', nargs = '*')
-  parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory', default = '../pheno/abcd/')
+  parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory', default = '../pheno/ukb/')
   parser.add_argument('-o','--out', dest  = 'out', help = 'Output directory', default = '../gwa')
-  parser.add_argument('-d','--dcov',dest = 'dcov', help = 'DISCRETE covariance file', default = '../params/abcd_dcov.txt')
-  parser.add_argument('-q','--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file', default = '../params/abcd_qcov.txt')
+  parser.add_argument('-d','--dcov',dest = 'dcov', help = 'DISCRETE covariance file', default = '../params/ukb_dcov_all_non_eur.txt')
+  parser.add_argument('-q','--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file', default = '../params/ukb_qcov_all_non_eur.txt')
   parser.add_argument('-b','--bed', help = 'PLINK bed file PREFIX, needs all autosomes',
-    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed_abcd/abcd_eur')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed_mixed_eth/sas/autosomes')
   parser.add_argument('-s','--snp', 
     help = 'SNP information table from larger population as GENESIS is used for small sample size, requires SNP and AF1 columns',
     default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukb_snp_info.txt')
