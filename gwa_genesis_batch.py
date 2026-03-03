@@ -20,8 +20,9 @@ import os
 def main(args):
   # array submitter
   from _utils.slurm import array_submitter
-  grm_submitter = array_submitter(name = f'grm_pcrelate_{args.pheno}', timeout = 360, n_cpu = 4, env = 'gentoolsr')
-  submitter = array_submitter(name = f'gwa_genesis_{args.pheno}', timeout = 240, n_cpu = int(args.n_threads/3), 
+  jobname = sha256(repr(args).encode()).hexdigest()[:6]
+  grm_submitter = array_submitter(name = f'grm_pcrelate_{jobname}', timeout = 360, n_cpu = 4, env = 'gentoolsr')
+  submitter = array_submitter(name = f'gwa_genesis_{jobname}', timeout = 240, n_cpu = int(args.n_threads/3), 
     env = 'gentoolsr', dependency = [grm_submitter])
   
   # compile SNP list
