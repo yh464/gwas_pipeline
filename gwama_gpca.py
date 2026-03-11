@@ -107,6 +107,7 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
     n_total = pd.concat(list(n_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('N')
     af1 = (pd.concat(list(af_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1) / n_total).rename('AF1')
     weight = pd.concat(list(weight_list), axis = 1, ignore_index = True).fillna(0)
+    print(pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0))
     out_z = (pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0) * weight.values).sum(axis = 1).rename('Z')
     weight.columns = pd.MultiIndex.from_tuples(pheno, names = ['group','pheno'])
     print(weight)
