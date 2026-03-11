@@ -49,7 +49,7 @@ def sep_chr(input_args):
     return chroms
 
 def read_sumstats(input_args):
-    g, p, in_dir, weight, = input_args
+    g, p, in_dir, weight, extract = input_args
     if os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA'):
         df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
             lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
@@ -68,6 +68,7 @@ def read_sumstats(input_args):
                   pd.Series(dtype = np.float32), 
                   pd.DataFrame(columns = ['CHR','POS','A1','A2'], index = []).astype({
                       'CHR': 'category', 'POS': np.int32, 'A1': 'category', 'A2': 'category'}))
+    if len(extract) > 0: df = df.loc[df.index.intersection(extract), :]
     df = df.loc[~df.index.duplicated(keep = False), :].sort_index()
     df.columns = [x.upper() for x in df.columns]
     if 'OR' in df.columns and not 'BETA' in df.columns: df['BETA'] = np.log(df['OR'])
@@ -110,6 +111,7 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
 @log.profile
 def main(args):
     pheno = find_gwas(args.pheno, dirname = args._in, long = True)
+    extract = open(args.extract[0]).read().splitlines() if len(args.extract) > 0 and os.path.isfile(args.extract[0]) else args.extract
 
     log.log('Estimating the weights for each trait')
     corr = crosscorr_parse(pheno, full = True)
@@ -174,7 +176,7 @@ def main(args):
         out_missnp = pd.concat(out_missnp, axis = 0)
 
     else:
-        parallel_args = [(g, p, args._in, weights.loc[(g,p)]) for g, p in pheno]
+        parallel_args = [(g, p, args._in, weights.loc[(g,p)], extract) for g, p in pheno]
         out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
             total = len(parallel_args), 
             desc = 'Reading summary statistics and aggregating weighted Z-scores'))
@@ -192,6 +194,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description = 'A wrapper script to conduct genomic PCA or vanilla nw-GWAMA meta-analysis')
     parser.add_argument('pheno', nargs = '+', help = 'Phenotype groups to include in the analysis')
     parser.add_argument('-i','--in', dest = '_in', default = '../gwa', help = 'Directory of input GWAS summary statistics')
+    parser.add_argument('--extract', nargs = '*', help = 'SNPs to extract from input files', default = [])
     parser.add_argument('--pca', action = 'store_true', help = 'Use PCA to estimate weights')
     parser.add_argument('--nw', action = 'store_true', help = 'Use n-weighted meta-analysis to estimate weights')
     parser.add_argument('--sep_chr', action = 'store_true', help = 'Separate chromosomes, useful for low memory mode')
@@ -204,6 +207,7 @@ if __name__ == '__main__':
     if not args.pca and not args.nw:
         args.pca = True # default to PCA if no method specified
         log.warn('No method specified for estimating weights, defaulting to PCA (--pca)')
+    if args.extract != []: args.sep_chr = False # if extracting specific SNPs, no need to separate chromosomes
         
     from _utils import cmdhistory
     logger.splash(args)
