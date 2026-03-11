@@ -107,13 +107,10 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
     n_total = pd.concat(list(n_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('N')
     af1 = (pd.concat(list(af_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1) / n_total).rename('AF1')
     weight = pd.concat(list(weight_list), axis = 1, ignore_index = True).fillna(0)
-    print(pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0))
-    out_z = (pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0) * weight.values).sum(axis = 1).rename('Z')
+    out_z = pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('Z')
     weight.columns = pd.MultiIndex.from_tuples(pheno, names = ['group','pheno'])
-    print(weight)
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
     div_coef = np.einsum('ij, jk, ik -> i', weight.values, gcovint, weight.values, optimize = 'optimal') ** 0.5
-    print(div_coef)
     out_z = out_z / div_coef
     out = pd.concat([snpinfo, af1, out_z, n_total], axis = 1, join = 'inner').sort_values(['CHR','POS'])
     out['P'] = sts.norm.sf(abs(out['Z'])) * 2
@@ -137,14 +134,12 @@ def main(args):
     log.log(f'{len(pheno)} phenotypes with positive heritability estimates retained for analysis')
     rg = rg.loc[pheno, pheno]
     rg = rg.fillna(rg.T).fillna(0)
-    print(rg)
     gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int').loc[pheno, pheno]
     gcovint = gcovint.fillna(gcovint.T)
     for i in gcovint.index:
         for j in gcovint.columns:
             if pd.isna(gcovint.loc[i,j]) and i != j: gcovint.loc[i,j] = 0
             if pd.isna(gcovint.loc[i,j]) and i == j: gcovint.loc[i,j] = 1
-    print(gcovint)
     if args.pca: # use PCA to estimate weights
         pc1 = np.real(np.linalg.eig(rg.values)[1][:,0])
         weights = pd.Series(pc1, index = rg.index)
