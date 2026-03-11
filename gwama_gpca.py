@@ -13,10 +13,11 @@ Requires following inputs:
 '''
 
 from hashlib import sha256
-import os, gc
+import os, gc, subprocess, io, tempfile
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
+from sympy import hadamard_product
 from tqdm import tqdm
 from _utils.path import find_gwas
 from _utils.plugins.logparser import crosscorr_parse
@@ -50,13 +51,22 @@ def sep_chr(input_args):
 
 def read_sumstats(input_args):
     g, p, in_dir, weight, extract = input_args
-    if os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA'):
+    if os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA') and args.extract == []:
         df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
             lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
             index_col = ['SNP'], dtype = {
                 'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
                 'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
+    elif os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA') and len(extract) > 0:
+        hdr = open(f'{in_dir}/{g}/{p}.fastGWA').readline().strip().upper().split()
+        extract_file = open(tempfile.NamedTemporaryFile(delete = False).name, 'w')
+        extract_file.write('\n'.join(extract))
+        extract_file.close()
+        to_extract = subprocess.Popen(['/bin/fgrep', '-wf', extract_file.name, f'{in_dir}/{g}/{p}.fastGWA'], stdout = subprocess.PIPE)
+        df = pd.read_table(to_extract.stdout, header = None, names = hdr)
+        df = df.loc[:, df.columns.intersection(['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1'])].set_index('SNP')
+        os.remove(extract_file.name)
     elif os.path.isfile(f'{in_dir}/{g}/{p}.parquet'):
         df = pd.read_parquet(f'{in_dir}/{g}/{p}.parquet')
         df.index.name = 'SNP'
