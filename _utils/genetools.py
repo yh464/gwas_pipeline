@@ -43,6 +43,25 @@ def ensg_to_name(ensg,
     ensg = [e.split('.')[0] for e in ensg]
     return [ref_df.loc[e,'LABEL'] if e in ref_df.index else e for e in ensg]
 
+def ensg_to_loc(ensg, build = 'hg19', ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt',
+    window_up = 10000, window_down = 10000):
+    '''Converts ENSEMBL gene IDs to genomic locations'''
+    if window_up < 1000: window_up *= 1000; log.warn('window_up is set to a value less than 1000, assuming it is in kb and converting to bp')
+    if window_down < 1000: window_down *= 1000; log.warn('window_down is set to a value less than 1000, assuming it is in kb and converting to bp')
+    ref = ref.replace('*build*', build)
+    try: ref_df = pd.read_table(ref, low_memory = False)
+    except:
+        _regenerate_ref(ref, build = build)
+        ref_df = pd.read_table(ref, low_memory = False)
+    
+    ref_df = ref_df.loc[:,['GENE','CHR','START','STOP']].drop_duplicates(subset = ['GENE']).set_index('GENE')
+    ensg = [e.split('.')[0] for e in ensg]
+    out = pd.concat([(ref_df.loc[e,['CHR','START','STOP']]) for e in ensg if e in ref_df.index])
+    out['START'] -= window_up; out['STOP'] += window_down
+    n_missing = len(ensg) - out.index.intersection(ensg).shape[0]
+    if n_missing > 0: log.warn(f'{n_missing} genes were not found in the reference file and will be ignored')
+    return out.reset_index().rename(columns = {'index':'GENE'})
+
 def overlap_loci(df, chrom_col = 'CHR', start_col = 'START', stop_col = 'STOP'):
     '''Find overlapping loci'''
     df = df.loc[:,[chrom_col, start_col, stop_col]].copy()
