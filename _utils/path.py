@@ -428,8 +428,7 @@ class project():
                     f'{self.project_root}/gwa/{group}/{pheno}'.replace('.gz',''),
                     gwa_pattern.replace('$group', group).replace('$pheno', '*')):
                     gwa_list.append((group, pheno.replace('.fastGWA','').replace('.gz','')))
-        progress = pd.DataFrame(gwa_list, columns = ['group','pheno', 'gwa']).set_index(['group','pheno'])
-        progress['gwa'] = True
+        progress = pd.DataFrame(gwa_list, columns = ['group','pheno']).assign(gwa = True).set_index(['group','pheno'])
         return progress
     
     def scan_all(self):
