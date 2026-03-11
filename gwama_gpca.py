@@ -123,13 +123,14 @@ def main(args):
         log.log(f'    {g} {p} (h2 = {h2.loc[(g,p)]:.4f})')
     log.log(f'{len(pheno)} phenotypes with positive heritability estimates retained for analysis')
     rg = rg.loc[pheno, pheno]
+    rg = rg.fillna(rg.T)
     gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int').loc[pheno, pheno]
     gcovint = gcovint.fillna(gcovint.T)
     if args.pca: # use PCA to estimate weights
-        pc1 = np.real(np.linalg.eig(rg.fillna(0).values)[1][:,0])
+        pc1 = np.real(np.linalg.eig(rg.values)[1][:,0])
         weights = pd.Series(pc1, index = rg.index)
     elif args.nw: # use n-weighted meta-analysis
-        weights = pd.Series(np.diag(rg.fillna(0).values), index = rg.index) ** 0.5
+        weights = pd.Series(np.diag(rg.values), index = rg.index) ** 0.5
     else:
         raise ValueError('Please specify a method to estimate weights: --pca or --nw')
     
