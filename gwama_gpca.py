@@ -95,9 +95,9 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
 
     log.log('Calculating meta-analytic Z-scores')
     n_total = pd.concat(list(n_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('N')
-    out_z = pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('Z')
     af1 = (pd.concat(list(af_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1) / n_total).rename('AF1')
     weight = pd.concat(list(weight_list), axis = 1, ignore_index = True).fillna(0)
+    out_z = (pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0) * weight.values).sum(axis = 1).rename('Z')
     weight.columns = pd.MultiIndex.from_tuples(pheno, names = ['group','pheno'])
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
     div_coef = np.einsum('ij, jk, ik -> i', weight.values, gcovint, weight.values, optimize = 'optimal') ** 0.5
