@@ -73,7 +73,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng.txt', __file__)
-    proj.add_output(args.out+'/%pheno_.*.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()

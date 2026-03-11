@@ -67,7 +67,7 @@ if __name__ == '__main__':
   parser.add_argument('--plink', help = 'PLINK 1.9 executable',
     default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink') # intended to be absolute
   parser.add_argument('--extract', nargs='*', help = 'SNPs to extract from input files', default = [])
-  parser.add_argument('-o','--out', dest = 'out', 
+  parser.add_argument('-o','--out', dest = 'out', required = True,
     help = 'output directory, relative to the --in dir')
   parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
     default = False, action = 'store_true')
@@ -80,7 +80,5 @@ if __name__ == '__main__':
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()
-  for x in args.dsets: proj.add_output(args._in+'/'+x, __file__)
-  proj.add_output(args._in+'/'+args.out, __file__)
   try: main(args)
   except: cmdhistory.errlog()

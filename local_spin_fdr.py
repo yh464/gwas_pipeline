@@ -34,7 +34,5 @@ if __name__ == '__main__':
   from _utils import cmdhistory, path
   cmdhistory.log()
   proj = path.project()
-  proj.add_input(args._in+'/%pheno_.*.csv', __file__)
-  proj.add_output(args._in+'/%pheno_.*.csv', __file__) # overwrites file!
   try: main(args)
   except: cmdhistory.errlog()

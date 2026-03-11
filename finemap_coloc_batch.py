@@ -172,9 +172,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pval',r'[0-9.+-e]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
-    proj.add_input(args.clump+'/%pheng_%pval_overlaps.txt',__file__)
-    proj.add_output(args.out+'/%pheng/*',__file__)
     try: main(args)
     except: cmdhistory.errlog()

@@ -142,9 +142,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args.corr+'/gcorr/%pheno_%maf.%pheno_%maf.rg.log', __file__)
-    proj.add_input(args.h2+'/%pheng/%pheno_%maf.h2.log',__file__)
-    proj.add_output(args.out+'/correlation_%pheno..*', __file__) # .* is a wildcard
-    proj.add_output(args.out+'/h2_%pheno..*', __file__) # .* is a wildcard)
     try: main(args)
     except: cmdhistory.errlog()

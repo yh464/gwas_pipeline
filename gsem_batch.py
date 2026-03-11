@@ -311,10 +311,6 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
-    proj = path.project()
-    proj.add_input(f'{args._in}/*', __file__)
-    proj.add_input(f'{args.full}/*', __file__)
-    proj.add_output(f'{args.out}/*',__file__)
-    
+    proj = path.project()    
     try: main(args)
     except: cmdhistory.errlog()

@@ -149,9 +149,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(f'{args._in}/{args.p1}/*.{args.ext1}', __file__)
-    proj.add_input(f'{args._in}/{args.p2}/*.{args.ext2}', __file__)
-    proj.add_output(f'{args.out}/{args.p2}/*',__file__)
-    
     try: main(args)
     except: cmdhistory.errlog()

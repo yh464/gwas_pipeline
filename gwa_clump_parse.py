@@ -131,12 +131,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pheng',r'.+', 'phenotype group')
-    proj.add_var('%pheno',r'.+', 'phenotype')
-    proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_var('%p',r'[0-9.e]+', 'p value') # only allows digits and decimals and 'e'
-    proj.add_input(args._in+'/%pheng/%pheno_%maf_%p.clumped', __file__)
-    proj.add_output(args._in+'/%pheng_%maf_%p_clumps.txt',__file__)
-    proj.add_output(args._in+'/%pheng_%maf_%p_overlaps.txt',__file__)
     try: main(args)
     except: cmdhistory.errlog()

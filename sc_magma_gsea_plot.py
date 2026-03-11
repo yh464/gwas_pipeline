@@ -186,8 +186,5 @@ if __name__ == '__main__':
     log.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%gset',r'.+','gene set')
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.%gset.gsa.out',__file__)
-    proj.add_output(args._in+'/%pheng/%pheno_%maf.gsasummary.txt',__file__)
     try: main(args)
     except: cmdhistory.errlog()

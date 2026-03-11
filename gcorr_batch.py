@@ -110,7 +110,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng_%pheno_%maf.sumstats', __file__)
-    proj.add_output(args.out+'/%pheng_%pheno_%maf.%pheng_%pheno_%maf.rg.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()

@@ -56,10 +56,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pheng',r'.+', 'phenotype group')
-    proj.add_var('%pheno',r'.+', 'phenotype')
-    proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng_raw/%pheno_raw.fastGWA', __file__)
-    proj.add_output(args._in+'/%pheng/%pheno.fastGWA', __file__)
     try: main(args)
     except: cmdhistory.errlog()

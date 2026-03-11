@@ -59,7 +59,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.finemap.summary',__file__)
-    proj.add_output(args.out+'/sig_variants.csv',__file__)
     try: main(args)
     except: cmdhistory.errlog()

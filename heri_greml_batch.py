@@ -106,7 +106,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng.txt', __file__)
-    proj.add_output(args.out+'/%pheng/%pheno.greml..*', __file__)
     try: main(args)
     except: cmdhistory.errlog()

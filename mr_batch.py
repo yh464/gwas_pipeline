@@ -200,12 +200,6 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
-    proj = path.project()
-    proj.add_input(f'{args.gwa}/{args.p1}/*.{args.ext1}', __file__)
-    proj.add_input(f'{args.gwa}/{args.p2}/*.{args.ext2}', __file__)
-    proj.add_input(f'{args.clump}/{args.p1}/*.clumped',__file__)
-    proj.add_input(f'{args.clump}/{args.p2}/*.clumped',__file__)
-    proj.add_output(f'{args.out}/{args.p2}/*',__file__)
-    
+    proj = path.project()    
     try: main(args)
     except: cmdhistory.errlog()

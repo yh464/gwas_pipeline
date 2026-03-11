@@ -95,9 +95,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%reg_%maf.sumstats', __file__)
-    proj.add_output(args.out+'/%pheng/rg/%reg.%reg.rg.log', __file__)
-    proj.add_output(args.out+'/%pheng/meta/%reg.%pheno.rg.log', __file__)
-    proj.add_output(args.out+'/%pheng/h2/%reg.h2.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()

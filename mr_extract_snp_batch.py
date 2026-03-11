@@ -103,11 +103,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(f'{args._in}/{args.p1}/*.fastGWA', __file__)
-    proj.add_input(f'{args._in}/{args.p2}/*.fastGWA', __file__)
-    proj.add_input(f'{args.clump}/{args.p1}/*.clumped',__file__)
-    proj.add_input(f'{args.clump}/{args.p2}/*.clumped',__file__)
-    proj.add_output(f'{args.out}/*',__file__)
-    
     try: main(args)
     except: cmdhistory.errlog()

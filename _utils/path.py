@@ -9,11 +9,10 @@ Correspondence: yh464@cam.ac.uk
 This utility manages the nomenclature of file names / paths
 '''
 
-import os
+import os, json, re
 import numpy as np
 import gzip
 from fnmatch import fnmatch
-import warnings
 import re
 import pandas as pd
 from .logger import logger
@@ -354,108 +353,111 @@ class normaliser():
         return self.quickmap
     
 class project():
-    def __init__(self,
-                 _dir = '../path/', # uses relative path, so defaults to the relative path to the wd
-                 _dict = 'wildcards.txt', # placeholders of a certain format
-                 _flow = 'workflow.txt', # workflow, shows file name, input and output
-                 ):
-        
-        # file names
-        self._dict_file = _dir+_dict
-        self._flow_file = _dir+_flow
-        
-        # create files with header
-        if not os.path.isdir(_dir):
-            os.mkdir(_dir)
-        if not os.path.isfile(self._dict_file):
-            f = open(self._dict_file,'w')
-            f.write('var\tformat\tdescription')
-            f.close()
-            del f
-        if not os.path.isfile(self._flow_file):
-            f = open(self._flow_file,'w')
-            f.write('path\toutput from\tinput to')
-            f.close()
-            del f
-        
-        # load files
-        self._dict = np.loadtxt(self._dict_file, dtype = '<U1024', delimiter = '\t')
-        if len(self._dict.shape) == 1:
-            self._dict = self._dict.reshape((1,self._dict.size))
-        self._flow = np.loadtxt(self._flow_file, dtype = '<U1024', delimiter = '\t')
-        if len(self._flow.shape) == 1:
-            self._flow = self._flow.reshape((1,self._flow.size))
+    def __init__(self, root_dir = os.path.realpath('..')):
+        self.project_root = os.path.realpath(root_dir)
+        os.makedirs(f'{self.project_root}/.path', exist_ok = True) # hidden folder to store path config
+        self.config_file = f'{self.project_root}/.path/path_config.json'
+        if not os.path.isfile(self.config_file):
+            self.config = {
+                'gwa': f'{self.project_root}/gwa/$group/$pheno.fastGWA' # require input GWAS to be in fastGWA format
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(self.config, f, indent = 4)
+        else:
+            with open(self.config_file, 'r') as f:
+                self.config = json.load(f)
+
+        self.progress_file = f'{self.project_root}/.path/progress.txt'
+        if not os.path.isfile(self.progress_file):
+            self.progress = self.scan_gwas()
+            other_files = list(self.config.keys())
+            other_files.remove('gwa')
+            self.progress[other_files] = False
+            self.progress.to_csv(self.progress_file, sep = '\t', index = True, header = True)
+        else:
+            self.progress = pd.read_csv(self.progress_file, sep = '\t', header = 0, index_col = ['group','pheno'])
+
+    def save(self): 
+        self.progress.to_csv(self.progress_file, sep = '\t', index = True, header = True)
+        with open(self.config_file, 'w') as f:
+            json.dump(self.config, f, indent = 4)
+
+    def register(self, ftype, pattern, force = False):
+        if ftype in self.config.keys() and pattern != self.config[ftype] and not force:
+            log.error(f'File type {ftype} already exists in config. Use --force to overwrite existing entry.')
+        if ftype in self.config.keys() and pattern == self.config[ftype]: return
+        if '$group' not in pattern or '$pheno' not in pattern:
+            log.error('Pattern must contain $group and $pheno placeholders')
+        self.config[ftype] = pattern
+        self.progress[ftype] = False
+        self.save()
     
-    def add_var(self,name, fmt, desc):
-        # format variable name
-        name = str(name)
-        if ord(name[0]) != ord('%'):
-            name = '%' + name
-        
-        # sanity check
-        for i in self._dict:
-            if name == i[0]:
-                if fmt == i[1] and desc == i[2]:
-                    return
-                else:
-                    raise ValueError('Var name already occupied')
-        # fmt must be a valid Regular Expression /lib/re
-        
-        # save file
-        self._dict = np.vstack((self._dict, [name, fmt, desc]))
-        np.savetxt(self._dict_file, self._dict, delimiter = '\t', fmt = '%s')
+    # utility functions
+    def _to_long_format(self, *pheno):
+        if not isinstance(pheno[0], list) and not isinstance(pheno[0][0], tuple): 
+            pheno = self.find_h5ad(pheno) # cmdline input into 'datasets'
+        elif isinstance(pheno[0][0][1], list):
+            pheno = [(x, z) for x,y in pheno[0] for z in y] # coerse into long format
+        elif isinstance(pheno[0][0], tuple):
+            pheno = pheno[0] # already in long format
+        else: raise ValueError('Unrecognised input dataset names')
+        return pheno
+
+    def to_pathname(self, ftype, group, pheno, **kwargs):
+        if ftype not in self.config: log.error(f'File type {ftype} not found in config')
+        pattern = self.config[ftype]
+        for key, value in kwargs.items():
+            if key == 'pval': value = f'{value:.0e}'
+            pattern = pattern.replace(f'${key}', f'{value}')
+        pattern = pattern.replace('$group', group).replace('$pheno', pheno)
+        return pattern
     
-    def sanity_check(self, file_name, template_path):
-        # unfortunately it is not possible to re-create the template path from file names
-        # because multiple variables may be of the same format
-        # template path contains the above variables like %subj
-        for i in self._dict[1:,:]:# iterates over an entire row
-            template_path = template_path.replace(i[0],i[1]) # name and fmt of _dict
-        res = re.search(template_path, file_name)
-        if type(res) == type(None):
-            return False # may also raise an error for incorrect file names and return None for correct names
-        else: return True
+    def to_pathname_multi(self, ftype, *pheno):
+        pheno = self._to_long_format(*pheno)
+        return [self.to_pathname(ftype, g, p) for g, p in pheno]
+
+    # scanning functions to find all files based on directory search
+    def scan_gwas(self):
+        # scans for GWAS files based on config and updates progress
+        gwa_pattern = self.config['gwa']
+        gwa_list = []
+        for group in os.listdir(f'{self.project_root}/gwa'):
+            for pheno in os.listdir(f'{self.project_root}/gwa/{group}'):
+                if pheno.replace('.gz','').endswith('_X.fastGWA'): continue # remove X-only GWAS
+                if fnmatch(
+                    f'{self.project_root}/gwa/{group}/{pheno}'.replace('.gz',''),
+                    gwa_pattern.replace('$group', group).replace('$pheno', '*')):
+                    gwa_list.append((group, pheno.replace('.fastGWA','').replace('.gz','')))
+        progress = pd.DataFrame(gwa_list, columns = ['group','pheno', 'gwa']).set_index(['group','pheno'])
+        progress['gwa'] = True
+        return progress
     
-    def add_input(self, file, script):
-        # fail-safe
-        file = os.path.relpath(file) # uses relative path to the wd, i.e. ***/scripts/
-        script = os.path.relpath(script)
-        files = self._flow[:,0]
-        
-        # if the file is already included in the workflow file
-        if len(np.argwhere(files==file)) == 1:
-            idx = np.argwhere(files==file)[0][0]
-            scripts = self._flow[idx,-1].split(', ')
-            if len(scripts) == 0: self._flow[idx,-1] = script
-            elif script in scripts: pass # do nothing if this input is already recorded
-            else: self._flow[idx,-1] += f', {script}'
-        # if the file is not otherwise found in the workflow file
-        elif len(np.argwhere(files==file)) == 0:
-            self._flow = np.vstack((self._flow,
-                np.array([file,'',script], dtype = '<U1024')))
-        else: raise ValueError('Check workflow file, repetitive entries found')
-        
-        # save file
-        np.savetxt(self._flow_file, self._flow, delimiter = '\t', fmt = '%s')
+    def scan_all(self):
+        # scan all files and update the progress table
+        self.progress = self.scan_gwas()
+        other_files = list(self.config.keys())
+        other_files.remove('gwa')
+        for group, pheno in self.progress.index:
+            for file in other_files:
+                pattern = self.config[file]
+                if os.path.exists(pattern.replace('$group', group).replace('$pheno', pheno)):
+                    self.progress.loc[(group, pheno), file] = True
+        self.save()
+        return self.progress
     
-    def add_output(self, file, script): # script means the script that generates the file
-        # fail-safe
-        file = os.path.relpath(file) # uses relative path to the wd, i.e. ***/scripts/
-        script = os.path.relpath(script)
-        files = self._flow[:,0]
-        
-        # if the file is already included in the workflow file
-        if len(np.argwhere(files==file)) == 1:
-            idx = np.argwhere(files==file)[0][0]
-            scripts = self._flow[idx,1]
-            if len(scripts) == 0: self._flow[idx,1] = script
-            elif script in scripts: pass # do nothing if this input is already recorded
-            else: self._flow[idx,1] += f', {script}'
-        # if the file is not otherwise found in the workflow file
-        elif len(np.argwhere(files==file)) == 0:
-            self._flow = np.vstack((self._flow,
-                np.array([file,'',script], dtype = '<U1024')))
-        else: raise ValueError('Check workflow file, repetitive entries found')
-        
-        # save file
-        np.savetxt(self._flow_file, self._flow, delimiter = '\t', fmt = '%s')
+    # finding functions to find files for a subset of groups / phenotypes
+    def find_gwas(self, *pheno, long = False, se = False, clump = False, no_ukb = False, exclude = []):
+        return find_gwas(*pheno, dirname = f'{self.project_root}/gwa', 
+            long = long, se = se, clump = clump, no_ukb = no_ukb, exclude = exclude)
+    
+    def find(self, ftype, *pheno, **kwargs):
+        pheno = self._to_long_format(*pheno)
+        if ftype == 'gwa': return self.find_gwas(*pheno, long = True)
+        if ftype not in self.config: log.error(f'File type {ftype} not found in config')
+        out = []
+        for g, p in pheno:
+            pattern = self.to_pathname(ftype, g, p, **kwargs)
+            out.append(os.path.isfile(pattern))
+            self.progress.loc[(g, p), ftype] = out[-1]
+        log.log(f'Found {sum(out)} / {len(out)} files for processing step {ftype}')
+        return out, pheno

@@ -107,7 +107,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in, __file__)
-    proj.add_output(f'{args._in}/neff.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()

@@ -193,8 +193,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(f'{args._in}/{args.p2}/*/*',__file__)
-    proj.add_output(f'{args._in}/{args.p2}/*.txt',__file__)
-    
     try: main(args)
     except: cmdhistory.errlog()

@@ -120,7 +120,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%reg_%maf.h2.log', __file__)
-    proj.add_output(args._in+'/local_h2_summary.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()
