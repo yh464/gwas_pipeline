@@ -123,7 +123,7 @@ def main(args):
         log.log(f'    {g} {p} (h2 = {h2.loc[(g,p)]:.4f})')
     log.log(f'{len(pheno)} phenotypes with positive heritability estimates retained for analysis')
     rg = rg.loc[pheno, pheno]
-    gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int').loc[pheno, pheno]
+    gcovint = corr.pivot(index = ['group1','pheno1'], columns = ['group2','pheno2'], values = 'gcov_int').loc[pheno, pheno].fillna(gcovint.values.T)
     if args.pca: # use PCA to estimate weights
         pc1 = np.real(np.linalg.eig(rg.fillna(0).values)[1][:,0])
         weights = pd.Series(pc1, index = rg.index)
