@@ -113,7 +113,8 @@ def main(args):
             # univariate fit
             cmd = [
                 'python', mixer_py, 'fit1', '--trait1-file', temp_g,
-                '--out', f'{out_prefix}.fit', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.fit', 
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.fit.json'):
                 fit1_submitter.add(' '.join(cmd))
@@ -122,7 +123,8 @@ def main(args):
             cmd = [
                 'python', mixer_py, 'test1', '--trait1-file', temp_g,
                 '--load-params', f'{out_prefix}.fit.json',
-                '--out', f'{out_prefix}.test', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.test', 
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.test.json'):
                 test1_submitter.add(' '.join(cmd))
@@ -147,7 +149,8 @@ def main(args):
                 'python', mixer_py, 'fit2', '--trait1-file', temp_g1, '--trait2-file', temp_g2,
                 '--trait1-params', f'{args.out}/{g1}/{g1}_{p1}.{gset}.fit.json',
                 '--trait2-params', f'{args.out}/{g2}/{g2}_{p2}.{gset}.fit.json',
-                '--out', f'{out_prefix}.fit', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.fit', 
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.fit.json'):
                 fit2_submitter.add(' '.join(cmd))
@@ -156,7 +159,8 @@ def main(args):
             cmd = [
                 'python', mixer_py, 'test2', '--trait1-file', temp_g1, '--trait2-file', temp_g2,
                 '--load-params', f'{out_prefix}.fit.json',
-                '--out', f'{out_prefix}.test', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.test',
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.test.json'):
                 test2_submitter.add(' '.join(cmd))
