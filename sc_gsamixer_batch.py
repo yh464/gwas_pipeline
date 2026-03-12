@@ -15,10 +15,12 @@ Outputs:
     Bivariate GSA-mixer (if p2 is specified)
 '''
 
-import os
-import tempfile
+import os, tempfile
+from tqdm import tqdm
+from multiprocessing import Pool
 
-def split_sumstats(input, ref, output):
+def split_sumstats(input_args):
+    input, ref, output = input_args
     import pandas as pd
 
     chroms = list(range(1,23))
@@ -27,11 +29,10 @@ def split_sumstats(input, ref, output):
         ref_df = pd.read_table(ref.replace('@', str(chrom)), header = None, usecols = [1])
         df_sub = df.loc[df['SNP'].isin(ref_df[1]),:]
         df_sub.dropna().to_csv(output.replace('@', str(chrom)), sep = '\t', index = False)
-    return
 
 def main(args):
     # tempdir
-    mixer_py = f'{args.mixer}/precimed/mixer_dev.py'
+    mixer_py = f'{args.mixer}/precimed/mixer.py'
     tmpdir = tempfile.mkdtemp()
     tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsa_mixer'; os.makedirs(tmpdir, exist_ok = True)
 
@@ -69,12 +70,17 @@ def main(args):
         # '--annot-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.annot.gz', # needs to be generated manually
         ]
     
+    # split sumstats by chromosome
+    p_file = [f'{args._in}/{g}/{p}.sumstats' for g, p in pheno]
+    temp_g = [f'{tmpdir}/{g}_{p}.chr@.sumstats' for g, p in pheno]
+    ref = [f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim' for _ in pheno]
+    with Pool(processes=min(8, len(pheno))) as pool:
+        tqdm(pool.imap(split_sumstats, zip(p_file, ref, temp_g)), total = len(pheno), desc = 'Splitting sumstats by chromosome')
+
     # univariate steps
     for g, p in pheno:
         p_file = f'{args._in}/{g}/{p}.sumstats'
         temp_g = f'{tmpdir}/{g}_{p}.chr@.sumstats'
-        if not os.path.isfile(temp_g.replace('@','22')):
-            split_sumstats(p_file, f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim', temp_g)
         if not os.path.islink(temp_g): os.symlink(p_file, temp_g)
         
         for gset in gene_sets:
