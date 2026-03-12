@@ -64,7 +64,6 @@ def main(args):
         '--bim-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim',
         # '--loadlib-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bin',
         '--ld-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.ld',
-        '--annot-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/baseline_v2.2_chr@.annot.gz'
         # '--bim-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.bim',
         # '--loadlib-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.bin', # needs to be generated manually
         # '--annot-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.annot.gz', # needs to be generated manually
@@ -92,6 +91,7 @@ def main(args):
                 'python', mixer_py, 'plsa', '--gsa-base', '--trait1-file', temp_g, 
                 '--use-complete-tag-indices',
                 '--go-file', f'{args.mixer}/resources/gsa-mixer-baseline-annot_10mar2023.csv',
+                '--annot-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/baseline_v2.2_chr@.annot.gz',
                 '--out', f'{out_prefix}.plsa.baseline'
             ] + common_flags
             cmd1 = [
@@ -100,6 +100,7 @@ def main(args):
                 '--go-file', f'{args.mixer}/resources/gsa-mixer-gene-annot_10mar2023.csv',
                 '--go-file-test', f'{args.test}/{gset}.txt', # f'{args.mixer}/resources/gsa-mixer-hybridLOO-annot_10mar2023.csv'
                 '--load-params', f'{out_prefix}.plsa.baseline.json',
+                '--annot-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/baseline_v2.2_chr@.annot.gz',
                 '--out', f'{out_prefix}.plsa.full'
             ] + common_flags
 
