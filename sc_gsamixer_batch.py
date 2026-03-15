@@ -49,18 +49,18 @@ def main(args):
     # array submitter
     from _utils.slurm import array_submitter
     fit1_submitter = array_submitter(name = 'sc_gsamixer_fit1_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720)
+        env = args.mixer, n_cpu = 32, timeout = 720)
     fit2_submitter = array_submitter(name = 'sc_gsamixer_fit2_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720, dependency=fit1_submitter)
+        env = args.mixer, n_cpu = 32, timeout = 720, dependency=fit1_submitter)
     test1_submitter = array_submitter(name = 'sc_gsamixer_test1_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720, dependency=fit1_submitter)
+        env = args.mixer, n_cpu = 32, timeout = 720, dependency=fit1_submitter)
     test2_submitter = array_submitter(name = 'sc_gsamixer_test2_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720, dependency=fit2_submitter)
+        env = args.mixer, n_cpu = 32, timeout = 720, dependency=fit2_submitter)
     plsa_submitter = array_submitter(name = 'sc_gsamixer_plsa_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         env = args.mixer, n_cpu = 16, timeout = 720)
     
     # mixer setup
-    common_flags = ['--seed','20251104','--exclude-ranges','MHC','--threads','16',
+    common_flags = ['--seed','20251104','--exclude-ranges','MHC','--threads','32',
         '--bim-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim',
         # '--loadlib-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bin',
         '--ld-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.ld',
