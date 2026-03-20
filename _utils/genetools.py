@@ -67,7 +67,7 @@ def fetch_rest(ensg, build = 'hg19', filter = True):
     ensg = list(set(ensg)) # ensure uniqueness
     log.log(f'Fetching gene information for {len(ensg)} genes from ENSEMBL REST API')
     if len(ensg) <= 1000:
-        out = _fetch_rest_batch(ensg, build = build, filter = filter)
+        out = [_fetch_rest_batch(ensg, build = build, filter = filter)]
     else:
         batches = [(ensg[i:min(i+1000, len(ensg))], build, filter) for i in range(0, len(ensg), 1000)]
         with Pool(min(cpu_count(), 16)) as pool:
