@@ -45,21 +45,24 @@ def fetch_rest(ensg, build = 'hg19'):
     server = "https://rest.ensembl.org" if build in ['hg38','grch38'] else "https://grch37.rest.ensembl.org"
     ext = "/lookup/id"
     headers = {"Content-Type": "application/json", 'Accept': "application/json"}
-    r = requests.post(server+ext, headers = headers, data = '{"ids": ["' + '","'.join(ensg) + '"]}')
-    if not r.ok:
-        r.raise_for_status()
-        log.error(f'Failed to fetch gene information from ENSEMBL REST API: {r.text}')
-    decoded = r.json()
+    # ENSEMBL REST API only allows up to 1000 genes per request, so we need to split the list into chunks of 1000
     out = []
-    for gene, info in decoded.items():
-        try: out.append(pd.DataFrame(dict(
-            CHR = info['seq_region_name'],
-            START = info['start'],
-            STOP = info['end'],
-            DIR = '+' if info['strand'] == 1 else '-',
-            LABEL = info['display_name']),
-            index = [gene]))
-        except: log.warn(f'Failed to fetch information for gene {gene}'); continue
+    for i in range(0, len(ensg), 1000):
+        chunk = ensg[i:min(i+1000, len(ensg))]
+        r = requests.post(server+ext, headers = headers, json = {"ids": chunk})
+        if not r.ok:
+            r.raise_for_status()
+            log.error(f'Failed to fetch gene information from ENSEMBL REST API: {r.text}')
+        decoded = r.json()
+        for gene, info in decoded.items():
+            try: out.append(pd.DataFrame(dict(
+                CHR = info['seq_region_name'],
+                START = info['start'],
+                STOP = info['end'],
+                DIR = '+' if info['strand'] == 1 else '-',
+                LABEL = info['display_name']),
+                index = [gene]))
+            except: log.warn(f'Failed to fetch information for gene {gene}'); continue
     out = pd.concat(out, axis = 0).astype({'CHR': 'int', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
     out.index.name = 'GENE'
     return out.dropna()
