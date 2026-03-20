@@ -63,7 +63,10 @@ def fetch_rest(ensg, build = 'hg19'):
                 LABEL = info['display_name']),
                 index = [gene]))
             except: log.warn(f'Failed to fetch information for gene {gene}'); continue
-    out = pd.concat(out, axis = 0).astype({'CHR': 'int', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
+    out = pd.concat(out, axis = 0)
+    out.CHR = out.CHR.replace('X', '23').replace('Y', '24').replace('MT', '26').replace('XY', '25')
+    out = out.loc[out.CHR.isin([str(c) for c in range(1,27)]),:].astype(
+        {'CHR': 'int', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
     out.index.name = 'GENE'
     return out.dropna()
 
