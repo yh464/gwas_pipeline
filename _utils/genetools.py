@@ -52,11 +52,15 @@ def fetch_rest(ensg, build = 'hg19'):
     decoded = r.json()
     out = []
     for gene, info in decoded.items():
-        try: out.append(pd.DataFrame.from_dict(info, index = [gene]))
+        try: out.append(pd.DataFrame(dict(
+            CHR = info['seq_region_name'],
+            START = info['start'],
+            STOP = info['end'],
+            DIR = info['strand'],
+            LABEL = info['display_name']),
+            index = [gene]))
         except: log.warn(f'Failed to fetch information for gene {gene}'); continue
-    out = pd.concat(out, axis = 0).set_index('id')
-    out = out.loc[:, ['seq_region_name','start','end','strand','display_name']]
-    out.columns = ['CHR','START','STOP','DIR','LABEL']
+    out = pd.concat(out, axis = 0)
     out.index.name = 'GENE'
     return out.dropna()
 
