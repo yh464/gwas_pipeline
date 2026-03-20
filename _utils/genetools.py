@@ -38,7 +38,7 @@ def _regenerate_ref(file, build = 'hg19'):
         ref_df['attrib'].str.extract('transcript_biotype "([^"]+)"')[0])
     ref_df.drop(['attrib'], axis = 1).to_csv(file, sep = '\t', index = False)
 
-def fetch_rest(ensg, build = 'hg19'):
+def fetch_rest(ensg, build = 'hg19', filter = True):
     '''Fetches the REST API of ENSEMBL to get gene information'''
     ensg = [e.split('.')[0] for e in ensg]
     log.log(f'Fetching gene information for {len(ensg)} genes from ENSEMBL REST API')
@@ -65,8 +65,9 @@ def fetch_rest(ensg, build = 'hg19'):
             except: log.warn(f'Failed to fetch information for gene {gene}'); continue
     out = pd.concat(out, axis = 0)
     out.CHR = out.CHR.replace('X', '23').replace('Y', '24').replace('MT', '26').replace('XY', '25')
-    out = out.loc[out.CHR.isin([str(c) for c in range(1,27)]),:].astype(
+    if filter: out = out.loc[out.CHR.isin([str(c) for c in range(1,27)]),:].astype(
         {'CHR': 'int', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
+    else: out = out.astype({'CHR': 'category', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
     out.index.name = 'GENE'
     return out.dropna()
 
@@ -86,7 +87,7 @@ def ensg_to_name(ensg,
     missing_ref = [e for e in ensg if e not in ref_df.index]
     if len(missing_ref) > 0: 
         log.warn(f'{len(missing_ref)} genes were not found in the reference file and will be returned as their ENSEMBL IDs')
-        ref_rest = fetch_rest(missing_ref, build = build).loc[:,['LABEL']]
+        ref_rest = fetch_rest(missing_ref, build = build, filter = False).loc[:,['LABEL']]
         ref_df = pd.concat([ref_df, ref_rest])
     return [ref_df.loc[e,'LABEL'] if e in ref_df.index else e for e in ensg]
 
