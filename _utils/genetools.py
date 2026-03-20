@@ -52,6 +52,7 @@ def fetch_rest(ensg, build = 'hg19'):
     decoded = r.json()
     out = []
     for gene, info in decoded.items():
+        if info is None: log.warn(f'No information found for gene {gene}'); continue
         if 'error' in info:
             log.warn(f'Failed to fetch information for gene {gene}: {info["error"]}'); continue
         out.append(pd.DataFrame.from_dict(info))
