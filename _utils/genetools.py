@@ -56,11 +56,11 @@ def fetch_rest(ensg, build = 'hg19'):
             CHR = info['seq_region_name'],
             START = info['start'],
             STOP = info['end'],
-            DIR = info['strand'],
+            DIR = '+' if info['strand'] == 1 else '-',
             LABEL = info['display_name']),
             index = [gene]))
         except: log.warn(f'Failed to fetch information for gene {gene}'); continue
-    out = pd.concat(out, axis = 0)
+    out = pd.concat(out, axis = 0).astype({'CHR': 'int', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
     out.index.name = 'GENE'
     return out.dropna()
 
