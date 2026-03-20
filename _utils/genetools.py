@@ -42,10 +42,10 @@ def fetch_rest(ensg, build = 'hg19'):
     '''Fetches the REST API of ENSEMBL to get gene information'''
     ensg = [e.split('.')[0] for e in ensg]
     log.log(f'Fetching gene information for {len(ensg)} genes from ENSEMBL REST API')
-    server = "http://rest.ensembl.org" if build in ['hg38','grch38'] else "http://grch37.rest.ensembl.org"
+    server = "https://rest.ensembl.org" if build in ['hg38','grch38'] else "https://grch37.rest.ensembl.org"
     ext = "/lookup/id"
     headers = {"Content-Type": "application/json", 'Accept': "application/json"}
-    r = requests.post(server+ext, headers = headers, json = {"ids": ensg})
+    r = requests.post(server+ext, headers = headers, data = '{"ids": ' + str(ensg) + '}')
     if not r.ok:
         r.raise_for_status()
         log.error(f'Failed to fetch gene information from ENSEMBL REST API: {r.text}')
