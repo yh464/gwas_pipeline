@@ -1,4 +1,14 @@
-from re import L
+#!/usr/bin/env python3
+'''
+Author: Yuankai He
+Correspondence: yh464@cam.ac.uk
+Version 1: 2025-11-21
+Version 2: 2026-03-20
+
+This is a general utility to fetch gene information
+'''
+
+import requests, sys
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
@@ -28,6 +38,29 @@ def _regenerate_ref(file, build = 'hg19'):
         ref_df['attrib'].str.extract('transcript_biotype "([^"]+)"')[0])
     ref_df.drop(['attrib'], axis = 1).to_csv(file, sep = '\t', index = False)
 
+def fetch_rest(ensg, build = 'hg19'):
+    '''Fetches the REST API of ENSEMBL to get gene information'''
+    ensg = [e.split('.')[0] for e in ensg]
+    log.log(f'Fetching gene information for {len(ensg)} genes from ENSEMBL REST API')
+    server = "https://rest.ensembl.org" if build in ['hg38','grch38'] else "https://grch37.rest.ensembl.org"
+    ext = "/lookup/id"
+    headers = {"Content-Type": "application/json", 'Accept': "application/json"}
+    r = requests.post(server+ext, headers = headers, json = {"ids": ensg})
+    if not r.ok:
+        r.raise_for_status()
+        log.error(f'Failed to fetch gene information from ENSEMBL REST API: {r.text}')
+    decoded = r.json()
+    out = []
+    for gene, info in decoded.items():
+        if 'error' in info:
+            log.warn(f'Failed to fetch information for gene {gene}: {info["error"]}'); continue
+        out.append(pd.DataFrame.from_dict(info))
+    out = pd.concat(out, axis = 0).set_index('id')
+    out = out.loc[:, ['seq_region_name','start','end','strand','display_name']]
+    out.columns = ['CHR','START','STOP','DIR','LABEL']
+    out.index.name = 'GENE'
+    return out.dropna()
+
 def ensg_to_name(ensg, 
     build = 'hg19',
     ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt'
@@ -41,6 +74,11 @@ def ensg_to_name(ensg,
     
     ref_df = ref_df.loc[:,['GENE','LABEL']].drop_duplicates(subset = ['GENE']).set_index('GENE')
     ensg = [e.split('.')[0] for e in ensg]
+    missing_ref = [e for e in ensg if e not in ref_df.index]
+    if len(missing_ref) > 0: 
+        log.warn(f'{len(missing_ref)} genes were not found in the reference file and will be returned as their ENSEMBL IDs')
+        ref_rest = fetch_rest(missing_ref, build = build).loc[:,['LABEL']]
+        ref_df = pd.concat([ref_df, ref_rest])
     return [ref_df.loc[e,'LABEL'] if e in ref_df.index else e for e in ensg]
 
 def ensg_to_loc(ensg, build = 'hg19', ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt',
@@ -56,6 +94,11 @@ def ensg_to_loc(ensg, build = 'hg19', ref = '/rds/project/rds-Nl99R8pHODQ/ref/en
     
     ref_df = ref_df.loc[:,['GENE','CHR','START','STOP']].drop_duplicates(subset = ['GENE']).set_index('GENE')
     ensg = [e.split('.')[0] for e in ensg]
+    missing_ref = [e for e in ensg if e not in ref_df.index]
+    if len(missing_ref) > 0:
+        log.warn(f'{len(missing_ref)} genes were not found in the reference file and will be fetched from ENSEMBL REST API')
+        ref_rest = fetch_rest(missing_ref, build = build).loc[:,['CHR','START','STOP']]
+        ref_df = pd.concat([ref_df, ref_rest])
     out = pd.concat([(ref_df.loc[e,['CHR','START','STOP']]) for e in ensg if e in ref_df.index])
     out['START'] -= window_up; out['STOP'] += window_down
     n_missing = len(ensg) - out.index.intersection(ensg).shape[0]
