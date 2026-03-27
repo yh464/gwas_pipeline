@@ -13,11 +13,10 @@ Requires following inputs:
 '''
 
 from hashlib import sha256
-import os, gc, subprocess, io, tempfile
+import os, gc, subprocess, tempfile
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
-from sympy import hadamard_product
 from tqdm import tqdm
 from _utils.path import find_gwas
 from _utils.plugins.logparser import crosscorr_parse
@@ -37,10 +36,13 @@ def sep_chr(input_args):
             'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
     })
+    df['CHR'] = df['CHR'].cat.set_categories([str(x) for x in range(1,27)] + ['X','Y','XY','MT']).replace(
+        {'X': '23', 'Y': '24', 'XY': '25', 'MT': '26'}
+    ).astype(int)
     chroms = df['CHR'].unique().tolist()
-    if any([chrom not in list(range(1,23)) + ['X','Y','XY','MT'] for chrom in chroms]):
+    if any([chrom not in range(1, 27) for chrom in chroms]):
         log.warn(f'Found unexpected chromosomes for {g}/{p}: {chroms}')
-    if any([x not in chroms for x in list(range(1,23))]):
+    if any([x not in chroms for x in range(1,23)]):
         log.warn(f'Not all autosomes found for {g}/{p}, found chromosomes: {chroms}')
     for chrom, df_chr in df.groupby('CHR'):
         os.makedirs(f'{tmpdir}/{chrom}/{g}', exist_ok = True)
@@ -58,6 +60,9 @@ def read_sumstats(input_args):
                 'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
                 'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
+        df['CHR'] = df['CHR'].cat.set_categories([str(x) for x in range(1,27)] + ['X','Y','XY','MT']).replace(
+            {'X': '23', 'Y': '24', 'XY': '25', 'MT': '26'}
+        ).astype(int)
     elif os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA') and len(extract) > 0:
         hdr = open(f'{in_dir}/{g}/{p}.fastGWA').readline().strip().upper().split()
         extract_file = open(tempfile.NamedTemporaryFile(delete = False).name, 'w')
@@ -162,7 +167,7 @@ def main(args):
         chroms = list(set([chrom for sublist in chroms for chrom in sublist]))
         if len(chroms) > 23: 
             log.warn('Found unexpected chromosomes')
-            for chrom in set(chroms) - set(list(range(1,23)) + ['X','Y','XY','MT']):
+            for chrom in set(chroms) - set(range(1,24)):
                 log.warn(f'    {chrom}')
 
         out = []; out_missnp = []
