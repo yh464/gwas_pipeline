@@ -33,12 +33,10 @@ def sep_chr(input_args):
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
         index_col = ['SNP'], dtype = {
-            'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
+            'CHR': '<U2', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
             'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
     })
-    df['CHR'] = df['CHR'].cat.set_categories([str(x) for x in range(1,27)] + ['X','Y','XY','MT']).replace(
-        {'X': '23', 'Y': '24', 'XY': '25', 'MT': '26'}
-    ).astype(int)
+    df['CHR'] = df['CHR'].replace({'X': '23', 'Y': '24', 'XY': '25', 'MT': '26'}).astype(np.int8)
     chroms = df['CHR'].unique().tolist()
     if any([chrom not in range(1, 27) for chrom in chroms]):
         log.warn(f'Found unexpected chromosomes for {g}/{p}: {chroms}')
@@ -57,12 +55,10 @@ def read_sumstats(input_args):
         df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
             lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
             index_col = ['SNP'], dtype = {
-                'CHR': 'category', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
+                'CHR': '<U2', 'POS': np.int32, 'SNP': str, 'A1': 'category', 'A2': 'category',
                 'BETA': np.float32, 'OR': np.float32, 'SE': np.float32, 'N': np.float32, 'AF1': np.float32
         })
-        df['CHR'] = df['CHR'].cat.set_categories([str(x) for x in range(1,27)] + ['X','Y','XY','MT']).replace(
-            {'X': '23', 'Y': '24', 'XY': '25', 'MT': '26'}
-        ).astype(int)
+        df['CHR'] = df['CHR'].replace({'X': '23', 'Y': '24', 'XY': '25', 'MT': '26'}).astype(np.int8)
     elif os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA') and len(extract) > 0:
         hdr = open(f'{in_dir}/{g}/{p}.fastGWA').readline().strip().upper().split()
         extract_file = open(tempfile.NamedTemporaryFile(delete = False).name, 'w')
