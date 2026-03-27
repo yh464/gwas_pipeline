@@ -51,7 +51,7 @@ def sep_chr(input_args):
 
 def read_sumstats(input_args):
     g, p, in_dir, weight, extract = input_args
-    if os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA') and args.extract == []:
+    if os.path.isfile(f'{in_dir}/{g}/{p}.fastGWA') and extract == []:
         df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
             lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
             index_col = ['SNP'], dtype = {
@@ -167,7 +167,7 @@ def main(args):
 
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
-            parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)]) for g, p in pheno]
+            parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)], []) for g, p in pheno]
             chr_temp = f'{tmpdir}/{chrom}/{sha256((str(pheno) + ('nw' if args.nw else 'pca')).encode()).hexdigest()[:12]}'
             if os.path.isfile(f'{chr_temp}.ss.parquet') and os.path.isfile(f'{chr_temp}.missnp.parquet'):
                 log.log(f'Chromosome {chrom}: found existing processed files, loading from disk')
