@@ -168,7 +168,7 @@ def main(args):
         out = []; out_missnp = []
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
             parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)]) for g, p in pheno]
-            chr_temp = f'{tmpdir}/{chrom}/{sha256(str(pheno).encode()).hexdigest()[:12]}'
+            chr_temp = f'{tmpdir}/{chrom}/{sha256((str(pheno) + ('nw' if args.nw else 'pca')).encode()).hexdigest()[:12]}'
             if os.path.isfile(f'{chr_temp}.ss.parquet') and os.path.isfile(f'{chr_temp}.missnp.parquet'):
                 log.log(f'Chromosome {chrom}: found existing processed files, loading from disk')
                 out_chr = pd.read_parquet(f'{chr_temp}.ss.parquet')
@@ -218,6 +218,7 @@ if __name__ == '__main__':
     parser.add_argument('-o','--out', help = 'Output file name', required = True)
     args = parser.parse_args()
     
+    if not args.out.endswith('.fastGWA'): args.out += '.fastGWA'
     for arg in ['_in', 'out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if not args.pca and not args.nw:
