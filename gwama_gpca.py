@@ -149,6 +149,8 @@ def main(args):
     else:
         raise ValueError('Please specify a method to estimate weights: --pca or --nw')
     
+    weights.to_csv(args.out.replace('.fastGWA', '.weights'), sep = '\t', index = True, header = True)
+    log.log(f'Weights for each trait written to {args.out.replace(".fastGWA", ".weights")}')
     log.log('This script assumes all alleles are in the same order across all files. Please run gwa_harmonise.py before calling this script.')
     pool = Pool(min(args.threads, len(pheno)))
     log.log(f'Starting parallel pool using {min(args.threads, len(pheno))} threads')
