@@ -88,10 +88,9 @@ def main(args):
                     f'--rg {sumstats} --out {out_noint_rg[:-4]} --no-intercept')
         
             if os.path.isfile(out_rg) and (not args.force): continue
-            sumstats = [proj.to_pathname(sumstats_ftype, group = g1, pheno = p1).replace(f'{wd}/','')]
-            for p2 in p2s:
-                if not p2 in na_p2s:
-                    sumstats.append(proj.to_pathname(sumstats_ftype, group = g2, pheno = p2).replace(f'{wd}/',''))
+            sumstats = [proj.to_pathname(sumstats_ftype, group = g1, pheno = p1).replace(f'{wd}/','')] + [
+                proj.to_pathname(sumstats_ftype, group = g2, pheno = p2).replace(f'{wd}/','') for p2 in p2s if p2 not in na_p2s]
+            if len(sumstats) < 2: continue
             sumstats = ','.join(sumstats)
             submitter.add(
                 f'python {args.ldsc}/ldsc.py '+
