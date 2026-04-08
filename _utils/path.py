@@ -359,7 +359,7 @@ class project():
         self.config_file = f'{self.project_root}/.path/path_config.json'
         if not os.path.isfile(self.config_file):
             self.config = {
-                'gwa': f'{self.project_root}/gwa/$group/$pheno.fastGWA' # require input GWAS to be in fastGWA format
+                'gwa': 'gwa/$group/$pheno.fastGWA' # require input GWAS to be in fastGWA format
             }
             with open(self.config_file, 'w') as f:
                 json.dump(self.config, f, indent = 4)
@@ -383,6 +383,12 @@ class project():
             json.dump(self.config, f, indent = 4)
 
     def register(self, ftype, pattern, force = False):
+        # pattern should be relative to the project root
+        if pattern.startswith('/'):
+            pattern = os.path.realpath(pattern)
+            if not pattern.startswith(self.project_root):
+                log.error('Provided absolute path is outside the project root directory.', calling_file = 'path/register')
+            else: pattern = pattern.replace(f'{self.project_root}/', '')
         if ftype in self.config.keys() and pattern != self.config[ftype] and not force:
             log.error(f'File type {ftype} already exists in config. Use --force to overwrite existing entry.')
         if ftype in self.config.keys() and pattern == self.config[ftype]: return
@@ -410,6 +416,7 @@ class project():
             if key == 'pval': value = f'{value:.0e}'
             pattern = pattern.replace(f'${key}', f'{value}')
         pattern = pattern.replace('$group', group).replace('$pheno', pheno)
+        os.makedirs(os.path.dirname(f'{self.project_root}/{pattern}'), exist_ok = True)
         return pattern
     
     def to_pathname_multi(self, ftype, *pheno):
@@ -438,7 +445,7 @@ class project():
         other_files.remove('gwa')
         for group, pheno in self.progress.index:
             for file in other_files:
-                pattern = self.config[file]
+                pattern = f'{self.project_root}/{self.config[file]}'
                 if os.path.exists(pattern.replace('$group', group).replace('$pheno', pheno)):
                     self.progress.loc[(group, pheno), file] = True
         self.save()

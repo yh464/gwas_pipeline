@@ -10,12 +10,13 @@ Requires following inputs:
     GWAS summary statistics (scans directory for files)
 '''
 
-def main(args):
-    import os
-    from fnmatch import fnmatch
-    from _utils.logger import logger
-    log = logger()
+import os
+from _utils import cmdhistory, path, logger
+proj = path.project()
+from _utils.logger import logger
+log = logger()
 
+def main(args):
     if args.force: force = '-f'
     else: force = ''
     
@@ -30,42 +31,43 @@ def main(args):
       name = f'clump_{args.pheno[0]}_{args.pval:.0e}',
       timeout = timeout)
     
-    from _utils.path import find_gwas
-    pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
+    # path specification
+    proj.register('clump', 'clump/$group/$pheno_5e-8.clumped')
+    for pval in args.pval:
+      if pval != 5e-8: 
+        proj.register(f'clump_{pval:.0e}', f'clump/$group/$pheno_{pval:.0e}.clumped')
+    pheno = proj.find_gwas(args.pheno, long = True)
 
-    # directory management
+    # run clumping
     for g,p in pheno:
-      if not os.path.isdir(f'{args.out}/{g}'): os.system(f'mkdir -p {args.out}/{g}') # creates output folder
-      log.log(f'{g}/{p}')
-      out_fname = f'{args.out}/{g}/{p}_{args.pval:.0e}.clumped'
-      if os.path.isfile(out_fname) and (not args.force): continue
-      submitter.add(
-        f'python gwa_clump.py --in {args._in}/{g}/{p}.fastGWA -b {args.bfile} --plink {args.plink} '+
-        f'-p {args.pval} -o {args.out}/{g} {force}')
+      gwa = proj.to_pathname('gwa', group = g, pheno = p)
+      for pval in args.pval:
+        out_prefix = proj.to_pathname('clump', group = g, pheno = p) if pval == 5e-8 else \
+          proj.to_pathname(f'clump_{pval:.0e}', group = g, pheno = p)
+        out_prefix = out_prefix.replace(f'_{pval:.0e}.clumped', '')
+        out_fname = f'{args.out}/{g}/{p}_{pval:.0e}.clumped'
+        if os.path.isfile(out_fname) and (not args.force): continue
+        submitter.add(
+          f'python gwa_clump.py --in {gwa} -b {args.bfile} --plink {args.plink} '+
+          f'-p {pval} -o {out_prefix} {force}')
     submitter.submit()
+    return submitter
     
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description='This programme uses PLINK1.9'+
       ' to clump the GWAS output, identifying independent SNPs')
-    parser.add_argument('pheno', help = 'Phenotypes', nargs = '*',
-      default=['deg_local','degi_local','degc_local','clu_local','eff_local','mpl_local'])
-    parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
-      default = '../gwa/')
+    parser.add_argument('pheno', help = 'Phenotypes', nargs = '*')
     parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
       default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
     parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
       default = '../params/bed')
-    parser.add_argument('-o','--out', dest = 'out', help = 'Output directory',
-      default = '../clump/')
     parser.add_argument('-p', '--pval',help = 'p-value threshold',
-      default = 5e-8, type = float) # or 3.1076e-11, or 1e-6
+      default = [5e-8], type = float, nargs = '*')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, action = 'store_true')
     args = parser.parse_args()
-    import os
-    for arg in ['_in','out','bfile']:
-        setattr(args, arg, os.path.realpath(getattr(args, arg)))
+    args.bfile = os.path.realpath(args.bfile)
 
     from _utils import cmdhistory, path, logger
     logger.splash(args)

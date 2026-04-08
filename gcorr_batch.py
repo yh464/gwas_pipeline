@@ -13,23 +13,38 @@ Outputs:
     rg log between one phenotype and all phenotypes of a group
 '''
 
+import os
+from _utils import cmdhistory, path, logger
+proj = path.project()
 
 def main(args):
     from _utils.plugins.logparser import parse_rg_log
-    if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
     from subprocess import check_output
     
-    
-    # scans directories to include sumstats
-    from _utils.path import find_gwas, pair_gwas
-    gwa1 = find_gwas(*args.p1, dirname = args._in, ext = 'sumstats', long = False)
-    gwa2 = find_gwas(*args.p2, dirname = args._in, ext = 'sumstats', long = False)
+    # check progress in ldsc formatting
+    from _utils.path import pair_gwas
+    gwa1 = proj.find_gwas(*args.p1, long = False)
+    gwa2 = proj.find_gwas(*args.p2, long = False)
     pairwise = pair_gwas(gwa1, gwa2)
+    sumstats_ftype = 'ldsc_sumstats_complete' if args.complete else 'ldsc_sumstats'
+    to_munge = []
+    for g, ps in gwa1 + gwa2:
+        for p in ps:
+            sumstats = proj.to_pathname(sumstats_ftype, group = g, pheno = p)
+            if not os.path.isfile(sumstats): to_munge.append(f'{g}/{p}')
+    if len(to_munge) > 0:
+        from heri_batch import api
+        dep = api(pheno = to_munge, ldsc = args.ldsc, complete = args.complete)
+    else: dep = None
     
+    # input and output directory
+    if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
+    wd = proj.project_root + '/' + proj.config[sumstats_ftype].split('/$group')[0]
+
     # array submitter
     timeout = int(max([len(x) for _,x in (gwa1+gwa2)]+[45])/12) # each phenotype takes ~5 seconds
     from _utils.slurm import array_submitter
-    submitter = array_submitter(name = f'gcorr_{args.p1[0]}',timeout = timeout, wd = args._in, env = args.ldsc)
+    submitter = array_submitter(name = f'gcorr_{gwa1[0][0]}',timeout = timeout, wd = wd, env = args.ldsc, dependency = dep)
     
     for g1, p1s, g2, p2s in pairwise:
         # p1s means list of <pheno1>s in group1
@@ -64,8 +79,8 @@ def main(args):
             # for NA correlations, run with constrained intercepts
             out_noint_rg = out_rg.replace('.rg.log','.noint.rg.log')
             if len(na_p2s) > 0 and (not os.path.isfile(out_noint_rg) or args.force):
-                sumstats = [f'{g1}/{p1}.sumstats'] + \
-                    [f'{g2}/{p2}.sumstats' for p2 in na_p2s]
+                sumstats = [proj.to_pathname(sumstats_ftype, group = g1, pheno = p1).replace(f'{wd}/','')] + \
+                    [proj.to_pathname(sumstats_ftype, group = g2, pheno = p2).replace(f'{wd}/','') for p2 in na_p2s]
                 sumstats = ','.join(sumstats)
                 submitter.add(
                     f'python {args.ldsc}/ldsc.py '+
@@ -73,10 +88,10 @@ def main(args):
                     f'--rg {sumstats} --out {out_noint_rg[:-4]} --no-intercept')
         
             if os.path.isfile(out_rg) and (not args.force): continue
-            sumstats = [f'{g1}/{p1}.sumstats']
+            sumstats = [proj.to_pathname(sumstats_ftype, group = g1, pheno = p1).replace(f'{wd}/','')]
             for p2 in p2s:
                 if not p2 in na_p2s:
-                    sumstats.append(f'{g2}/{p2}.sumstats')
+                    sumstats.append(proj.to_pathname(sumstats_ftype, group = g2, pheno = p2).replace(f'{wd}/',''))
             sumstats = ','.join(sumstats)
             submitter.add(
                 f'python {args.ldsc}/ldsc.py '+
@@ -93,8 +108,9 @@ if __name__ == '__main__':
     parser.add_argument('-p2', nargs = '*', default = [], 
         help = 'Second group of phenotypes to correlate, leave blank to calculate '+
         'pairwise correlations between all phenotypes in p1')
-    parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
-        default = '../gcorr/ldsc_sumstats/')
+    # removed input as it should be specified in the project path spec
+    parser.add_argument('-c','--complete', action = 'store_true', 
+        help = 'Merge with the complete set of SNPs in UKB, instead of HapMap3')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
         default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
@@ -103,10 +119,9 @@ if __name__ == '__main__':
         default = False, action = 'store_true')
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','ldsc']:
+    for arg in ['out','ldsc']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
-    from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()

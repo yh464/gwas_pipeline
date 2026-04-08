@@ -17,7 +17,7 @@ parser.add_argument('-b','--bed', dest = 'bed', help = 'BED file list',
   default = '../params/bed')
 parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
   default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
-parser.add_argument('-o','--out', dest = 'out', help = 'Output directory')     # defaults to input dir
+parser.add_argument('-o','--out', dest = 'out', help = 'Output prefix')     # defaults to input dir
 parser.add_argument('-p',help = 'p-value threshold',
   default = 5e-8, type = float) # or 3.1076e-11, or 5e-6; 3.1076e-11 is derived from matrix decomposition
 parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
@@ -43,7 +43,7 @@ def main(args):
     idx = 0
     blist = find_bed(args.bed)
     prefix = '.'.join(os.path.basename(args._in).split('.')[:-1])
-    out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
+    out = f'{args.out}_{args.p:.0e}.clumped'
     
     tmpdir = f'/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
