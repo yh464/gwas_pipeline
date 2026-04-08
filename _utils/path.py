@@ -416,7 +416,8 @@ class project():
             if key == 'pval': value = f'{value:.0e}'
             pattern = pattern.replace(f'${key}', f'{value}')
         pattern = pattern.replace('$group', group).replace('$pheno', pheno)
-        os.makedirs(os.path.dirname(f'{self.project_root}/{pattern}'), exist_ok = True)
+        pattern = f'{self.project_root}/{pattern}'
+        os.makedirs(os.path.dirname(pattern), exist_ok = True)
         return pattern
     
     def to_pathname_multi(self, ftype, *pheno):
