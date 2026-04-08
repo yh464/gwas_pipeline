@@ -10,6 +10,8 @@ Requires following inputs:
     MUNGED GWAS summary statistics
     FULL GWAS summary statistics (optional, only for SNP-level models)
 '''
+from _utils.logger import logger
+log = logger()
 
 class manual_model():
     import os
@@ -64,7 +66,7 @@ class manual_model():
         elif all([y in [str(x+2) for x in range(len(self.phenotypes))] for y in name.split(' ')]):
             return ' + '.join([self.phenotypes[int(x)-2] for x in name.split(' ')])
         elif re.match('^[0-9.]+$', name.replace('\\','')) != None: return name.replace('\\','')
-        elif re.match('^[0-9]', name) != None or re.search('[$/*+\-?\^()\\\|]',name) != None:
+        elif re.match('^[0-9]', name) != None or re.search('[-$/*+?\^()\\\|]',name) != None:
             return self._check_name(input('Please enter a valid parameter name or phenotype code:\n'))
         print(f'Specifying a new parameter: {name}, please specify constraints; blank line for no constraints')
         self.phenotypes.append(name)
@@ -166,13 +168,13 @@ def main(args):
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
 
     # if modelling exposure-outcome effects, use only correlated traits
-    from _plugins.logparser import crosscorr_parse
+    from _utils.plugins.logparser import crosscorr_parse
     if len(outcomes) > 0: exp_corr_out = crosscorr_parse(exposures_short, outcomes_short, logdir=args.rg)
     manual_kwd = {'heywood': True} if args.gwas else {}
     manual_kwd['silent'] = (len(outcomes) > 0)
 
     for g2, p2 in outcomes:
-        print(f'Outcome: {g2}/{p2}')
+        log.log(f'Outcome: {g2}/{p2}')
         if not os.path.isdir(f'{args.out}/{g2}'): os.system(f'mkdir -p {args.out}/{g2}')
         med = (['--med'] + [ f'{g}/{p}' for g, p in mediators]) if len(mediators) > 0 else []
         cov = (['--cov'] + [ f'{g}/{p}' for g, p in covariates]) if len(covariates) > 0 else []
@@ -189,7 +191,7 @@ def main(args):
 
         # all correlated exposures in the same model
         if args.all_exp:
-            print('Using all exposures from',' '.join(args.p1))
+            log.log('Using all exposures from',' '.join(args.p1))
             out_prefix = f'{args.out}/{g2}/{p2}.all_'+'_'.join(args.p1)
             cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
                    '--p1'] + [f'{g}/{p}' for g, p in exposures_filtered]
@@ -211,7 +213,7 @@ def main(args):
         # individual correlated exposures in each model
         else:
             for g1, p1 in exposures_filtered:
-                print(f'    Exposure: {g1}/{p1}')
+                log.log(f'    Exposure: {g1}/{p1}')
                 if not os.path.isdir(f'{args.out}/{g2}/{g1}'): os.system(f'mkdir -p {args.out}/{g2}/{g1}')
                 out_prefix = f'{args.out}/{g2}/{g1}/{p2}.{g1}_{p1}'
                 cmd = ['Rscript gsem_master.r', '-i', args._in, '-o', out_prefix, '--full', args.full, '--ref', args.ref, '--ld', args.ld,
@@ -233,14 +235,14 @@ def main(args):
             
     if len(outcomes) == 0:
         if not args.all_exp: 
-            RuntimeWarning('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
+            log.warn('Including all exposures by default; to analyse individual phenotype groups, use for loop outside this script')
         if not os.path.isfile(args.manual):
             outdir = f'{args.out}/'+'_'.join([x for x,_ in exposures_short])
             if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
             tmp_prefix = '_'.join([x+'_'+'_'.join(y) for x,y in exposures_short])
             if len(tmp_prefix) > 100:
-                tmp_prefix = hashlib.sha256(tmp_prefix)
-                RuntimeWarning(f'Output prefix too long, using sha256 {tmp_prefix}')
+                tmp_prefix = hashlib.sha256(tmp_prefix.encode()).hexdigest()[:10]
+                log.warn(f'Output prefix too long, using sha256 {tmp_prefix}')
             out_prefix = f'{outdir}/{tmp_prefix}'
         pheno = covariates + mediators + exposures
         p1 = [f'{g}/{p}' for g, p in exposures]
@@ -271,13 +273,16 @@ if __name__ == '__main__':
     path.add_argument('-rg', dest = 'rg', help = 'Directory to rg log files, required for causal and subtraction',
         default = '../gcorr/rglog')
     path.add_argument('--ref', help = 'Reference file for SNP variance estimation', default = 
-        '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
+        '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
     path.add_argument('--ld', help = 'LD reference panel', default = 
-        '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
+        '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
     
     pheno = parser.add_argument_group('Phenotype specifications')
     pheno.add_argument('-p1', help = 'Exposure, scans directory', nargs = '+', default = [])
-    pheno.add_argument('-p2', help = 'Outcome, scans directory', nargs = '*', default = [])
+    pheno.add_argument('-p2', help = 
+        '''Outcome, scans directory
+        Specify -p2 and -p1 and --mdl --gwas to output GWAS-by-subtraction, p2 adjusted for p1''', 
+        nargs = '*', default = [])
     pheno.add_argument('-m','--med', help = 'Mediators, scans directory', nargs = '*', default = [])
     pheno.add_argument('-c','--cov', help = 'Covariates, scans directory', nargs = '*', default = [])
     pheno.add_argument('--exclude', help = 'Exclude phenotypes', nargs = '*', default = [])
@@ -306,10 +311,6 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
-    proj = path.project()
-    proj.add_input(f'{args._in}/*', __file__)
-    proj.add_input(f'{args.full}/*', __file__)
-    proj.add_output(f'{args.out}/*',__file__)
-    
+    proj = path.project()    
     try: main(args)
     except: cmdhistory.errlog()

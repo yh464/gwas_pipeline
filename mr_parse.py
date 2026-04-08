@@ -9,6 +9,8 @@ Scans the entire directory for GWAS summary stats of the same data extension.
 Creates summary tables for all MR results of different methods.
 Significant targets identified from summary tables can be manually extracted for visual analysis
 '''
+from _utils import logger
+log = logger.logger()
 
 def parse_mr_results(prefix):
     '''
@@ -34,32 +36,32 @@ def parse_mr_results(prefix):
     pleio = pleio[['outcome','exposure','egger_intercept','se','pval']]
     pleio.columns = ['outcome','exposure','egger_intercept','se','egger_p']
     pleio['rssobs'] = presso.iloc[-1,-2]
-    pleio['presso_p'] = presso.iloc[-1,-1]
+    pleio['presso_p'] = presso.iloc[-1,-1] if presso.iloc[-1,-1] != '<0.001' else 0
     
     # merge main and presso results to create the causal output summary table
-    main_mr = main_mr.iloc[:,2:] # removes id.exposure and id.outcome
+    main_mr = main_mr.iloc[:,2:].copy() # removes id.exposure and id.outcome
+    main_mr.loc[main_mr.method == 'MR Egger', ['intercept','se_intercept','p_intercept']] = pleio.loc[1, ['egger_intercept','se','egger_p']].tolist()
+
     presso.columns = ['method','b','se','t','pval']
     presso['outcome'] = main_mr['outcome']
     presso['exposure'] = main_mr['exposure']
     presso['nsnp'] = main_mr['nsnp']
     presso['method'] = ['MR-PRESSO raw','MR-PRESSO outlier-corrected','MR-PRESSO global']
-    presso = presso.drop('t', axis = 'columns') #NB this step also drops the RSSobs estimate
-    presso = presso[main_mr.columns]
-    causal = pd.concat((main_mr, presso.iloc[:-1,:]), axis = 'index')
-    causal['p'] = causal['pval']; causal = causal.drop('pval', axis = 1)
+    presso_p = presso['pval'].tolist()
+    presso_p = [0 if p == '<0.001' else float(p) for p in presso_p]
+    presso['pval'] = presso_p
+    presso = presso.assign(F_min = np.nan, F_med = np.nan)
+    if np.isnan(presso.loc[2, 'pval']): presso.loc[1, ['F_min','F_med']] = main_mr.loc[1, ['F_min','F_med']].tolist()
+    presso.loc[3, 'b'] = presso.loc[3, 't']
+    presso = presso.drop('t', axis = 'columns')
+    presso = presso[main_mr.columns.intersection(presso.columns)]
+    causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
     
-    causal['correct_dir'] = dirtest.iloc[0,-2]
-    causal['dirtest_p'] = dirtest.iloc[0,-1]
-    try:
-        cause = pd.read_table(f'{prefix}_cause_results.txt')
-        causal['cause_p'] = cause.iloc[-1,-1]
-    except: causal['cause_p'] = np.nan
-    try:
-        lcv = f'{prefix}_lcv_results.txt'.replace('_forward','').replace('_reverse','')
-        lcv = pd.read_table(lcv)
-        causal['lcv_p'] = lcv.loc['p','x']
-    except: causal['lcv_p'] = np.nan
-    
+    try: cause = pd.read_table(f'{prefix}_cause_results.txt').iloc[-1,-1]
+    except: cause = np.nan
+    try: lcv = pd.read_table(f'{prefix}_lcv_results.txt').loc['p','x']
+    except: lcv = np.nan
+    causal = causal.assign(correct_dir = dirtest.iloc[0,-2], dirtest_p = dirtest.iloc[0,-1], cause_p = cause, lcv_p = lcv)
     return causal, pleio
 
 def stratified_fdr(df,label, pvalues):
@@ -68,16 +70,10 @@ def stratified_fdr(df,label, pvalues):
     from scipy.stats import false_discovery_control as fdr
     
     # df is a dataframe, label is a column that stratifies data, pvalues are column names that specify p-values
-    labels = df[label].unique()
     groups_list = []
-    grouped = df.groupby(label)
-    
-    for l in labels:
-        group = grouped.get_group(l)
+    for _, group in df.groupby(label):
         for pcol in pvalues:
-            p = group[pcol].to_numpy()
-            p[p=='<0.001'] = '0' # MR-PRESSO outputs may output <0.001
-            p = p.astype(np.float64)
+            p = group[pcol].to_numpy().astype(np.float64)
             q = np.zeros(p.size)
             q[~group[pcol].isna().to_numpy()] = fdr(p[~group[pcol].isna().to_numpy()])
             q[group[pcol].isna().to_numpy()] = np.nan
@@ -85,7 +81,7 @@ def stratified_fdr(df,label, pvalues):
             q = pd.DataFrame(data = q, index = group.index, columns =[qcol])
             group = pd.concat([group, q],axis = 1)
         groups_list.append(group)
-    out = pd.concat(groups_list)
+    out = pd.concat(groups_list).sort_index()
     return out
 
 def main(args):
@@ -131,7 +127,6 @@ def main(args):
             try:
                 results_fwd = pd.concat(results_fwd)
                 results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
-                results_fwd_corrected.sort_values(by = 'q', inplace = True)
                 all_fwd.append(results_fwd_corrected)
                 results_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward.txt', sep = '\t', index = False)
                 pleio_fwd = pd.concat(pleio_fwd)
@@ -139,12 +134,11 @@ def main(args):
                 pleio_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward_pleiotropy.txt',
                                             sep = '\t', index = False)
             except:
-                warnings.warn(f'{p2} no MR forward results - check summary stats')
+                log.warn(f'{p2} no MR forward results - check summary stats')
             
             try:
                 results_rev = pd.concat(results_rev)
                 results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
-                results_rev_corrected.sort_values(by = 'q', inplace = True)
                 all_rev.append(results_rev_corrected)
                 results_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
                 pleio_rev = pd.concat(pleio_rev)
@@ -152,7 +146,7 @@ def main(args):
                 pleio_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse_pleiotropy.txt', 
                                             sep = '\t', index = False)
             except:
-                warnings.warn(f'{p2} no MR reverse results - check summary stats')
+                log.warn(f'{p2} no MR reverse results - check summary stats')
             
             try:
                 results_compare = pd.concat(results_compare)
@@ -160,14 +154,14 @@ def main(args):
                 all_compare.append(results_compare)
             except: pass
         
-        norm.normalise(pd.concat(all_fwd).sort_values(by = 'q')).to_csv(
-            f'{args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt', sep = '\t', index = False)
-        norm.normalise(pd.concat(all_rev).sort_values(by = 'q')).to_csv(
-            f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
-        norm.normalise(pd.concat(all_compare)).to_csv(
-            f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
-    print('Missing MR results:')
-    for m in missing: print(m)
+        all_fwd = stratified_fdr(pd.concat(all_fwd).drop(columns = ['q','cause_q']),'method',['p','cause_p']).sort_values(by = ['outcome','exposure','method'])
+        norm.normalise(all_fwd).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt', sep = '\t', index = False)
+        all_rev = stratified_fdr(pd.concat(all_rev).drop(columns = ['q','cause_q']),'method',['p','cause_p']).sort_values(by = ['outcome','exposure','method'])
+        norm.normalise(all_rev).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
+        norm.normalise(pd.concat(all_compare)).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
+        log.log(f'Parsed MR results for {g1} and {g2} saved to {args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt and all_{g1}_{g2}_mr_reverse.txt')
+    log.log('Missing MR results:')
+    for m in missing: log.log(m)
 
 if __name__ == '__main__':
     import argparse
@@ -176,15 +170,12 @@ if __name__ == '__main__':
     parser.add_argument('-g','--gwa', dest = 'gwa', 
                         help = 'input GWA directory, assumes both groups of pheno to be in the same dir',
                         default = '../gwa')
-    parser.add_argument('-p1','--pheno1', dest = 'p1', 
-                        help = 'Phenotypes group 1 (reserved for IDPs)', nargs = '*',
-                        default=['deg_local','degi_local','degc_local',
-                                 'clu_local','eff_local','mpl_local'])
+    parser.add_argument('-p1','--pheno1', dest = 'p1', default = [], nargs = '*',
+                        help = 'Phenotypes group 1 (reserved for IDPs)')
     parser.add_argument('-e1','--ext1', dest = 'ext1', help = 'Extension for phenotype group 1',
                         default = 'fastGWA')
-    parser.add_argument('-p2','--pheno2', dest = 'p2', 
-                        help = 'Phenotypes group 2 (reserved for correlates)', nargs = '*', 
-                        default = ['disorders_for_mr']) # require manual fiddling, so create new dir
+    parser.add_argument('-p2','--pheno2', dest = 'p2', default = [], nargs = '*',
+                        help = 'Phenotypes group 2 (reserved for correlates)')
     parser.add_argument('-e2','--ext2', dest = 'ext2', help = 'Extension for phenotype group 2',
                         default = 'fastGWA')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory, should be the output of mr_batch.py',
@@ -202,8 +193,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(f'{args._in}/{args.p2}/*/*',__file__)
-    proj.add_output(f'{args._in}/{args.p2}/*.txt',__file__)
-    
     try: main(args)
     except: cmdhistory.errlog()

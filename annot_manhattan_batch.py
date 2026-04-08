@@ -66,8 +66,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args.smr, __file__)
-    proj.add_output(args.magma, __file__)
-    proj.add_output(args.out, __file__)
     try: main(args)
     except: cmdhistory.errlog()

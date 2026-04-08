@@ -13,18 +13,16 @@ Required input:
     clump output (sentinel variants)
 '''
 
-def main(args):
-    import pandas as pd
-    from hashlib import sha256
-    from time import perf_counter as t
-    tic = t()
-    force = '-f' if args.force else ''
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
-    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+import os
+import pandas as pd
+from hashlib import sha256
+from time import perf_counter as t
+from _utils.path import find_gwas
+from _utils.plugins.logparser import crosscorr_parse
 
+
+def find_loci(args):
     # scans directory for fastGWA files
-    from _utils.path import find_gwas
-    from _plugins.logparser import crosscorr_parse
     gwa = []
     if len(args.pheno) > 1 and len(args.filter) > 0:
         if any([not x in args.pheno for x in args.filter]):
@@ -46,17 +44,28 @@ def main(args):
             gwa.append((x,y))
     else:
         gwa = find_gwas(*args.pheno, dirname = args._in, long = True)
-    print(f'Found {len(gwa)} GWAS summary statistics files.')
-    print(gwa)
-    
+
     # identify blocks of fine-mapping segments
-    from _plugins.logparser import parse_clump
+    from _utils.plugins.logparser import parse_clump
     _, loci = parse_clump(gwa, clump_dir = args.clump, pval = args.pval)
     loci = loci.loc[loci.P < args.pval, ['CHR', 'START', 'STOP']]
     loci['START'] -= 5e5; loci['STOP'] += 5e5
     loci = loci.dropna().reset_index(drop=True)
+    return gwa, loci
+
+def main(args):
+    from _utils.logger import logger
+    log = logger()
+    tic = t()
+    force = '-f' if args.force else ''
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/coloc'
+    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+    gwa, loci = find_loci(args)
+    out_prefix = sha256(repr(gwa).encode()).hexdigest()[:10] # unique prefix for the specified group of phenotypes
     toc = t()-tic
-    print(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
+    log.log(f'Found {len(gwa)} GWAS summary statistics files.')
+    log.log(gwa)
+    log.log(f'Identified {loci.shape[0]} blocks for multivariate fine-mapping, time = {toc:.3f}')
     
     # check cache
     cache_files = [f'{args.out}/loci/{g}/{p}_chr{loci.CHR.iloc[i]}_{loci.START.iloc[i]:.0f}_{loci.STOP.iloc[i]:.0f}.txt'\
@@ -79,16 +88,16 @@ def main(args):
         )
     
     # correlation matrix is needed for flashfm
-    if args.flashfm:
-        rg = crosscorr_parse(gwa)
+    if args.flashfm or args.mvsusie:
+        rg = crosscorr_parse(gwa, gcov = True)
         rg['p1'] = rg.group1 + '_' + rg.pheno1; rg['p2'] = rg.group2 + '_' + rg.pheno2
         rg = rg.pivot_table(index = 'p1', columns = 'p2', values = 'rg')
         rg.columns.name = None; rg.index.name = None
         rg = rg.fillna(rg.T)
         for x in rg.columns: rg.loc[x,x] = 1
-        rg.to_csv(f'{tmpdir}/{sha256(repr(gwa).encode()).hexdigest()[:10]}_rg.txt', sep = '\t')
+        rg.to_csv(f'{tmpdir}/{out_prefix}_rg.txt', sep = '\t')
 
-    outdir = f'{args.out}/'+'_'.join([g for g,_ in find_gwas(args.pheno)])
+    outdir = f'{args.out}/{out_prefix}'
     if not os.path.isdir(outdir): os.system(f'mkdir -p {outdir}')
     for x in range(1, loci.shape[0]):
         c = loci.loc[x, 'CHR']
@@ -105,10 +114,25 @@ def main(args):
             if not os.path.isfile(out+'.txt') or args.force:
                 cmd = ['Rscript', 'finemap_flashfm.r'] + [f'{g}/{p}' for g,p in gwa] + \
                     ['-i', f'{args.out}/loci',f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out}',
-                    '--gcov',f'{tmpdir}/{sha256(repr(gwa).encode()).hexdigest()[:10]}_rg.txt', force]
+                    '--gcov',f'{tmpdir}/{out_prefix}_rg.txt', force]
+                submitter.add(' '.join(cmd))
+        if args.mvsusie:
+            out = f'{outdir}/chr{c:.0f}_{start:.0f}_{stop:.0f}_mvsusie'
+            if not os.path.isfile(out+'.txt') or args.force:
+                cmd = ['Rscript', 'finemap_mvsusie.r'] + [f'{g}/{p}' for g,p in gwa] + \
+                    ['-i', f'{args.out}/loci',f'--chr {c:.0f} --start {start:.0f} --stop {stop:.0f} -o {out}',
+                    '--gcov',f'{tmpdir}/{out_prefix}_rg.txt', force]
                 submitter.add(' '.join(cmd))
     submitter.submit()
-    
+
+    dict_file = f'{args.out}/.directory.map.txt'
+    if os.path.isfile(dict_file): df = pd.read_table(dict_file, sep = '\t')
+    else: df = pd.DataFrame(index = [], columns = ['directory','phenotypes'])
+    df = pd.concat([df, pd.DataFrame(dict(
+        directory = [outdir], phenotypes = [','.join([f'{g}/{p}' for g,p in gwa])]))])
+    df = df.drop_duplicates().reset_index(drop = True).sort_values(by = 'phenotypes')
+    df.to_csv(dict_file, sep = '\t', index = False)
+
 if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(
@@ -134,24 +158,19 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # pre-process cmd line arguments
-    import os
     for arg in ['_in','out','clump', 'rg']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if args.rgp != None and 0 < args.rgp < 1:
         if len(args.filter) == 0: Warning('Ignoring rgp value as no filtering trait is specified')
     if args.rgp != None and (args.rgp > 1 or args.rgp <= 0): raise ValueError('p-value threshold must be 0 to 1')
     if not any([args.hyprcoloc, args.flashfm, args.mvsusie]):
-        Warning('No algorithm specified, defaulting to hyprcoloc')
-        args.hyprcoloc = True
+        Warning('No algorithm specified, defaulting to mvsusie')
+        args.mvsusie = True
     args.pheno.sort()
 
     from _utils import path, cmdhistory, logger
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pval',r'[0-9.+-e]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
-    proj.add_input(args.clump+'/%pheng_%pval_overlaps.txt',__file__)
-    proj.add_output(args.out+'/%pheng/*',__file__)
     try: main(args)
     except: cmdhistory.errlog()

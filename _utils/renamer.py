@@ -13,6 +13,11 @@ protected_directories = [
     'toolbox',
     'scripts',
     'params',
+    'multiomics',
+    'xqtl',
+    'test',
+    'logs',
+    'pheno',
     'fmri',
     'temp',
     'archive-2023-rsfmri-gwas'
@@ -48,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('-p','--protect', nargs = '*', help = 'Protected file names that will not be changed',
                         default = [])
     parser.add_argument('-d','--dir', dest = '_dir', help = 'Project root directory',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/')
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/')
     args=parser.parse_args()
     import os
     args._dir = os.path.realpath(args._dir)

@@ -1,8 +1,21 @@
-from re import L
+#!/usr/bin/env python3
+'''
+Author: Yuankai He
+Correspondence: yh464@cam.ac.uk
+Version 1: 2025-11-21
+Version 2: 2026-03-20
+
+This is a general utility to fetch gene information
+'''
+
+import requests, sys
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
 import warnings
+from multiprocessing import Pool, cpu_count
+from .logger import logger
+log = logger()
 
 def _regenerate_ref(file, build = 'hg19'):
     '''Regenerates the reference gene file for inrich'''
@@ -26,6 +39,53 @@ def _regenerate_ref(file, build = 'hg19'):
         ref_df['attrib'].str.extract('transcript_biotype "([^"]+)"')[0])
     ref_df.drop(['attrib'], axis = 1).to_csv(file, sep = '\t', index = False)
 
+def _fetch_rest_batch(ensg, build = 'hg19', filter = True):
+    '''Fetches the REST API of ENSEMBL to get gene information for a batch of genes'''
+    server = "https://rest.ensembl.org" if build in ['hg38','grch38'] else "https://grch37.rest.ensembl.org"
+    ext = "/lookup/id"
+    headers = {"Content-Type": "application/json", 'Accept': "application/json"}
+    r = requests.post(server+ext, headers = headers, json = {"ids": ensg})
+    if not r.ok:
+        r.raise_for_status()
+        log.error(f'Failed to fetch gene information from ENSEMBL REST API: {r.text}')
+    decoded = r.json()
+    out = []
+    for gene, info in decoded.items():
+        try: out.append(pd.DataFrame(dict(
+            CHR = info['seq_region_name'],
+            START = info['start'],
+            STOP = info['end'],
+            DIR = '+' if info['strand'] == 1 else '-',
+            LABEL = info['display_name']),
+            index = [gene]))
+        except: continue
+    return pd.concat(out, axis = 0)
+
+def fetch_rest(ensg, build = 'hg19', filter = True):
+    '''Fetches the REST API of ENSEMBL to get gene information'''
+    ensg = [e.split('.')[0] for e in ensg]
+    ensg = list(set(ensg)) # ensure uniqueness
+    log.log(f'Fetching gene information for {len(ensg)} genes from ENSEMBL REST API')
+    if len(ensg) <= 1000:
+        out = [_fetch_rest_batch(ensg, build = build, filter = filter)]
+    else:
+        batches = [(ensg[i:min(i+1000, len(ensg))], build, filter) for i in range(0, len(ensg), 1000)]
+        with Pool(min(cpu_count(), 16)) as pool:
+            out = pool.starmap(_fetch_rest_batch, batches)
+    if len(out) == 0:
+        out = pd.DataFrame(columns = ['CHR','START','STOP','DIR','LABEL'], dtype =
+            {'CHR': 'int' if filter else 'category', 'START': 'int', 'STOP': 'int', 'DIR': 'category'}
+        )
+        out.index.name = 'GENE'
+        return out
+    out = pd.concat(out, axis = 0)
+    out.CHR = out.CHR.replace('X', '23').replace('Y', '24').replace('MT', '26').replace('XY', '25')
+    if filter: out = out.loc[out.CHR.isin([str(c) for c in range(1,27)]),:].astype(
+        {'CHR': 'int', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
+    else: out = out.astype({'CHR': 'category', 'START': 'int', 'STOP': 'int', 'DIR': 'category'})
+    out.index.name = 'GENE'
+    return out.dropna()
+
 def ensg_to_name(ensg, 
     build = 'hg19',
     ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt'
@@ -39,7 +99,36 @@ def ensg_to_name(ensg,
     
     ref_df = ref_df.loc[:,['GENE','LABEL']].drop_duplicates(subset = ['GENE']).set_index('GENE')
     ensg = [e.split('.')[0] for e in ensg]
+    missing_ref = [e for e in ensg if e not in ref_df.index]
+    if len(missing_ref) > 0: 
+        log.warn(f'{len(missing_ref)} genes were not found in the reference file and will be returned as their ENSEMBL IDs')
+        ref_rest = fetch_rest(missing_ref, build = build, filter = False).loc[:,['LABEL']]
+        ref_df = pd.concat([ref_df, ref_rest])
     return [ref_df.loc[e,'LABEL'] if e in ref_df.index else e for e in ensg]
+
+def ensg_to_loc(ensg, build = 'hg19', ref = '/rds/project/rds-Nl99R8pHODQ/ref/ensg/ensg.*build*.gtf.txt',
+    window_up = 10000, window_down = 10000):
+    '''Converts ENSEMBL gene IDs to genomic locations'''
+    if window_up < 1000: window_up *= 1000; log.warn('window_up is set to a value less than 1000, assuming it is in kb and converting to bp')
+    if window_down < 1000: window_down *= 1000; log.warn('window_down is set to a value less than 1000, assuming it is in kb and converting to bp')
+    ref = ref.replace('*build*', build)
+    try: ref_df = pd.read_table(ref, low_memory = False)
+    except:
+        _regenerate_ref(ref, build = build)
+        ref_df = pd.read_table(ref, low_memory = False)
+    
+    ref_df = ref_df.loc[:,['GENE','CHR','START','STOP']].drop_duplicates(subset = ['GENE']).set_index('GENE')
+    ensg = [e.split('.')[0] for e in ensg]
+    missing_ref = [e for e in ensg if e not in ref_df.index]
+    if len(missing_ref) > 0:
+        log.warn(f'{len(missing_ref)} genes were not found in the reference file and will be fetched from ENSEMBL REST API')
+        ref_rest = fetch_rest(missing_ref, build = build).loc[:,['CHR','START','STOP']]
+        ref_df = pd.concat([ref_df, ref_rest])
+    out = pd.concat([(ref_df.loc[e,['CHR','START','STOP']]) for e in ensg if e in ref_df.index])
+    out['START'] -= window_up; out['STOP'] += window_down
+    n_missing = len(ensg) - out.index.intersection(ensg).shape[0]
+    if n_missing > 0: log.warn(f'{n_missing} genes were not found in the reference file and will be ignored')
+    return out.reset_index().rename(columns = {'index':'GENE'})
 
 def overlap_loci(df, chrom_col = 'CHR', start_col = 'START', stop_col = 'STOP'):
     '''Find overlapping loci'''
@@ -93,7 +182,7 @@ def _find_genes_in_locus(df,
             (ref_df['START'] <= _stop_bp) &
             (ref_df['STOP'] >= _start_bp), find_col].tolist()
         out.extend(genes)
-    print(f'Found {len(set(out))} unique genes in the specified loci')
+    log.log(f'Found {len(set(out))} unique genes in the specified loci')
     return list(set(out))
 
 def locus_to_ensg(df, chrom_col = 'CHR', start_col = 'START', stop_col = 'STOP', window = 10000, build = 'hg19',

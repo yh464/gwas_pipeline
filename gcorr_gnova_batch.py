@@ -12,7 +12,9 @@ Outputs:
     GNOVA report
 '''
 
-import os, warnings
+import os
+from _utils.logger import logger
+log = logger()
 
 def main(args):
     from _utils.slurm import array_submitter
@@ -30,11 +32,12 @@ def main(args):
     for x in os.listdir(args.gene_set):
         if x.startswith('.') or not os.path.isdir(f'{args.gene_set}/{x}'): continue
         if not any([f'{chrom}.gnova' in os.listdir(f'{args.gene_set}/{x}') for chrom in range(1,23)]): 
-            warnings.warn(f'Missing GNOVA annotation file in {args.gene_set}/{x}, skipping')
+            log.warn(f'Missing GNOVA annotation file in {args.gene_set}/{x}, skipping')
             continue
         gene_sets.append(x)
 
-    print(f'Found following gene sets for GNOVA analysis: \n' + '\n'.join(gene_sets))
+    log.log(f'Found following gene sets for GNOVA analysis:')
+    for gene_set in gene_sets: log.log(f'    {gene_set}')
 
     for g1, p1, g2, p2 in pairwise:
         if g1 > g2 or (g1 == g2 and p1 > p2):
@@ -42,7 +45,7 @@ def main(args):
         outdir = f'{args.out}/{g1}.{g2}'
         os.makedirs(outdir, exist_ok = True)
         for gene_set in gene_sets:
-            out_prefix = f'{outdir}/{g1}_{p1}.{g2}_{p2}.{gene_set}.gnova'
+            out_prefix = f'{outdir}/{g1}_{p1}.{g2}_{p2}.{gene_set}.gnova.txt'
             ld_file = f'{args.gene_set}/{gene_set}.gnova.ldscore'
             if (not args.force) and os.path.isfile(f'{out_prefix}'): continue
             cmd = ['python',f'{args.gnova}/GNOVA/gnova.py', '--bfile', args.bfile,

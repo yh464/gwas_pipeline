@@ -9,6 +9,8 @@ Creates a plot of phenotypic correlations at local level
 Requires following inputs: 
     Phenotype file ready for GWAS analysis (with FID and IID)
 '''
+from _utils import logger
+log = logger.logger()
 
 def corresp_global(loc, glob):
     from fnmatch import fnmatch
@@ -44,7 +46,7 @@ def main(args):
     norm = normaliser()
     
     for g2 in args.p2:
-        print(f'Processing phenotype: {g2}')
+        log.log(f'Processing phenotype: {g2}')
         prefix = f'{args.out}/pcorr_local_{g2}.'+'_'.join(args.p1)
         
         summary = []
@@ -95,7 +97,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/*',__file__)
-    proj.add_output(args.out+'/pcorr_local_%pheno..*', __file__) # .* is a wildcard
     try: main(args)
     except: cmdhistory.errlog()

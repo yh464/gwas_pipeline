@@ -7,3 +7,4 @@ backup/*
 .Rproj.user
 /_utils/__pycache__
 /_plots/__pycache__
+/_utils/plugins/__pycache__

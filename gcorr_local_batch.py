@@ -11,7 +11,7 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         name = 'gcorr_local',
-        timeout = 10,mode = 'long')
+        timeout = 10)
     
     scripts_path = os.path.realpath(__file__)
     scripts_path = os.path.dirname(scripts_path)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'summary stats file directory',
       default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/')
     parser.add_argument('-g','--global', dest = 'glob', help = 'pqath to global summary stats',
       default = '../gcorr/ldsc_sumstats/global/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
@@ -95,9 +95,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%reg_%maf.sumstats', __file__)
-    proj.add_output(args.out+'/%pheng/rg/%reg.%reg.rg.log', __file__)
-    proj.add_output(args.out+'/%pheng/meta/%reg.%pheno.rg.log', __file__)
-    proj.add_output(args.out+'/%pheng/h2/%reg.h2.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()

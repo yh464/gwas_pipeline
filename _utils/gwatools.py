@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import scipy.stats as sts
 import warnings
+from .logger import logger
+log = logger()
 
 def validate_columns(colnames, silent = False, **kwargs):
   colnames = [c.upper() for c in colnames] # all in uppercase
@@ -49,7 +51,7 @@ def validate_columns(colnames, silent = False, **kwargs):
       raise ValueError(f'More than one column found for {description[group]}: {intersect}')
     if len(intersect) == 1:
       out_dict[group] = intersect[0]
-      if not silent: print(f'Interpreting {intersect[0]:15s} as {description[group]}')
+      if not silent: log.log(f'Interpreting {intersect[0]:15s} as {description[group]}')
   print()
   return out_dict
 
@@ -71,7 +73,7 @@ def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
     elif cols['se'] != None and cols['beta'] != None:
       df['Z'] = df[cols['beta']] / df[cols['se']]; cols['zscore'] = 'Z'
     else: raise ValueError('Cannot impute z-score')
-    print('Imputed z-scores in Z column')
+    log.log('Imputed z-scores in Z column')
   
   if s and cols['se'] == None:
     _impute_beta()
@@ -82,7 +84,7 @@ def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
       df['SE'] = abs(df[cols['beta']]) / sts.norm.isf(df[cols['pval']] / 2)
       cols['se'] = 'SE'
     else: raise ValueError('Cannot impute standard error')
-    print('Imputed standard errors in SE column')
+    log.log('Imputed standard errors in SE column')
 
   if p and cols['pval'] == None:
     if cols['zscore'] != None:
@@ -92,7 +94,7 @@ def _convert_z_p_se(df, z = False, p = False, s = False, **kwargs):
       df['P'] = 2 * sts.norm.sf(abs(df[cols['beta']] / df[cols['se']]))
       cols['pval'] = 'P'
     else: raise ValueError('Cannot impute p-value')
-    print('Imputed p-values in P column')
+    log.log('Imputed p-values in P column')
   print()
   return df
 
@@ -138,13 +140,13 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   
   # match input and output columns
   from .logger import logger
-  _logger = logger(**kwargs)
-  _logger.log('Specifying output columns')
+  _log = logger(**kwargs)
+  _log.log('Specifying output columns')
   out_cols = validate_columns(outcols, **kwargs)
   # fill out SE, P values and Z scores if requested and not present
   df = _convert_z_p_se(df, out_cols['zscore'] != None, out_cols['pval'] != None, out_cols['se'] != None, **kwargs)
   df = convert_chrom(df, **kwargs)
-  _logger.log('Parsing input columns')
+  _log.log('Parsing input columns')
   orig_cols = validate_columns(df.columns, **kwargs)
   if orig_cols['a1'] != None: df[orig_cols['a1']] = df[orig_cols['a1']].str.upper()
   if orig_cols['a2'] != None: df[orig_cols['a2']] = df[orig_cols['a2']].str.upper()
@@ -161,13 +163,13 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   if orig_cols['odds_ratio'] != None:
     or_median = np.median(df[orig_cols['odds_ratio']])
     if 0.9 < or_median < 1.1:
-      _logger.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LINEAR SCALE')
+      _log.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LINEAR SCALE')
       if all_beta:
         df[beta] = np.log(df[orig_cols['odds_ratio']])
         out_cols['beta'] = beta; orig_cols['beta'] = beta # only beta will be outputted
       else: out_cols['odds_ratio'] = odds_ratio # only OR will be outputted
     elif -0.1 < or_median < 0.1:
-      _logger.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LOG SCALE')
+      _log.log(f'Interpreting {orig_cols["odds_ratio"]} as odds ratio on LOG SCALE')
       if all_beta == False:
         df[odds_ratio] = np.exp(df[orig_cols['odds_ratio']])
         out_cols['odds_ratio'] = odds_ratio; orig_cols['odds_ratio'] = odds_ratio # only OR will be outputted
@@ -190,7 +192,7 @@ def format_gwas(df, beta = 'BETA', odds_ratio = 'OR',
   out_df = df[match_cols].rename(columns=dict(zip(match_cols, out_cols_list)))
   if out != None:
     out_df.to_csv(out, sep = '\t', index = False)
-    _logger.log(f'Output written to {out}')
+    _log.log(f'Output written to {out}')
   
   return out_df
 
@@ -218,7 +220,7 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
 
   # filter by p-value
   if pval < 1:
-    print(f'Filtering by p-value <= {pval:.3e}')
+    log.log(f'Filtering by p-value <= {pval:.3e}')
     if cols['pval'] == None and pval < 1:
       raise ValueError('Cannot filter by p-value without P column')
     df = df[df[cols['pval']] <= pval].reset_index(drop = True)
@@ -231,14 +233,14 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
   if 'MT' in chrom: chrom.remove('MT'); chrom.append(26)
   chrom = [int(c) for c in chrom if c is not None and c != '']
   if chrom != None:
-    print(f'Filtering for chromosomes {", ".join(chrom)}')
+    log.log(f'Filtering for chromosomes {", ".join(chrom)}')
     if cols['chrom'] == None: raise ValueError('Cannot filter by chromosome without CHR column')
     df = convert_chrom(df, **kwargs)
     df = df[df[cols['chrom']].isin(chrom)].reset_index(drop = True)
 
     # start and end positions are ignored if chromosome is not specified
     if start != None and end != None:
-      print(f'Filtering for SNPs between chr{chrom}:{start} and chr{chrom}:{end}')
+      log.log(f'Filtering for SNPs between chr{chrom}:{start} and chr{chrom}:{end}')
       if cols['pos'] == None:
         raise ValueError('Cannot filter by position without BP or POS column')
       df = df[(df[cols['pos']] >= start) & (df[cols['pos']] <= end)].reset_index(drop = True)
@@ -246,7 +248,7 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
   # filter out indels
   # do not filter if alleles are not specified
   if not indel and cols['a1'] != None and cols['a2'] != None:
-    print('Filtering out indels')
+    log.log('Filtering out indels')
     atcg = ['A', 'T', 'C', 'G']
     df[cols['a1']] = df[cols['a1']].str.upper()
     df[cols['a2']] = df[cols['a2']].str.upper()
@@ -256,22 +258,22 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
   # do not filter if maf is not specified
   if cols['af1'] != None:
     if maf > 0: 
-      print(f'Filtering for MAF = {maf:.3f}')
+      log.log(f'Filtering for MAF = {maf:.3f}')
       df = df[df[cols['af1']] >= maf & df[cols['af1']] <= 1 - maf].reset_index(drop = True)
     if not ambig: 
-      print('Filtering out strand-ambiguous SNPs (MAF > 0.45)')
+      log.log('Filtering out strand-ambiguous SNPs (MAF > 0.45)')
       df = df[df[cols['af1']] < 0.55 & df[cols['af1']] > 0.45].reset_index(drop = True)
     
   # filter by imputation quality score
   # do not filter if info is not specified
   if info > 0 and cols['info'] != None:
-    print(f'Filtering for imputation quality score (r^2) >= {info:.3f}')
+    log.log(f'Filtering for imputation quality score (r^2) >= {info:.3f}')
     df = df[df[cols['info']] >= info].reset_index(drop = True)
 
   # filter by sample size
   # do not filter if sample size is not specified
   if samplesize > 0 and cols['n'] != None:
-    print(f'Filtering for sample size >= {samplesize} * entire cohort size')
+    log.log(f'Filtering for sample size >= {samplesize} * entire cohort size')
     if samplesize > 1: samplesize = 0; Warning('Sample size should be a fraction')
     elif samplesize > 0.9: Warning('Please check the number of SNPs that survive sample size filtering')
     max_samplesize = df[cols['n']].max()
@@ -279,6 +281,6 @@ def filter_gwas(df, pval = 1, maf = 0, indel = True, chrom = None, start = None,
 
   if out != None:
     df.to_csv(out, sep = '\t', index = False)
-    print(f'Output written to {out}')
+    log.log(f'Output written to {out}')
   
   return df

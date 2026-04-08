@@ -6,7 +6,9 @@ Version 1: 2025-03-24
 
 A tool to extract instruments for MR analysis before mr_batch and mr_mvmr_batch
 '''
-    
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     import pandas as pd
@@ -19,7 +21,7 @@ def main(args):
     
     # output directory
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_snp_list'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_snp_list'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     force = ' -f' if args.force else ''
@@ -29,13 +31,14 @@ def main(args):
     else: exposures = find_gwas(args.p1 + args.p2)
     all_pheno = find_gwas(args.p1 + args.p2)
     
-    print('Trying to find genetic instruments for all exposure phenotypes')
+    log.log('Trying to find genetic instruments for all exposure phenotypes')
     for expg, expp in exposures:
-        print(f'    {expg}: {len(expp)} phenotypes')
+        log.log(f'    {expg}: {len(expp)} phenotypes')
         all_snps = []
         # read trait-wise clump files
         for x in expp:
-            clump,_ = find_clump(expg, x, args.clump, args.pval)
+            try: clump,_ = find_clump(expg, x, args.clump, args.pval)
+            except: log.log(f'No clump file for {x} at pval {args.pval:.0e}'); continue
             all_snps.append(pd.read_table(clump, sep = '\\s+', usecols = ['SNP']))
         all_snps = pd.concat(all_snps)['SNP'].unique()
         temp_snps = f'{tmpdir}/{expg}_{args.pval:.0e}.txt'
@@ -100,11 +103,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(f'{args._in}/{args.p1}/*.fastGWA', __file__)
-    proj.add_input(f'{args._in}/{args.p2}/*.fastGWA', __file__)
-    proj.add_input(f'{args.clump}/{args.p1}/*.clumped',__file__)
-    proj.add_input(f'{args.clump}/{args.p2}/*.clumped',__file__)
-    proj.add_output(f'{args.out}/*',__file__)
-    
     try: main(args)
     except: cmdhistory.errlog()

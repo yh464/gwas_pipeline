@@ -13,6 +13,8 @@ Changelog:
     uses PLINK to estimate beta, SE and Z instead of METAL
 '''
 
+from _utils import logger
+log = logger.logger()
 def main(args):
   import os
   import numpy as np
@@ -31,7 +33,7 @@ def main(args):
   # METAL: heterogeneity test, AF1/SE, 
   metal_out = f'{out_prefix}.metal'
   if not os.path.isfile(metal_out) or args.force:
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/metal_scripts/'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/metal_scripts/'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     # temp metal script name
@@ -119,9 +121,9 @@ if __name__ == '__main__':
   parser.add_argument('-i','--in', dest = '_in', help = 'input files in fastGWA format',
     nargs = '*')
   parser.add_argument('--metal', help = 'METAL executable',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/metal') # intended to be absolute
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/metal') # intended to be absolute
   parser.add_argument('--plink', help = 'PLINK 1.9 executable',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink') # intended to be absolute
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink') # intended to be absolute
   parser.add_argument('--extract', help = 'SNPs to extract, one per line')
   parser.add_argument('-o','--out', dest = 'out', help = 'output file name')
   parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',

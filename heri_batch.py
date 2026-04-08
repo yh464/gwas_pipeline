@@ -16,21 +16,21 @@ Requires following inputs:
 def main(args):
   import os
   from fnmatch import fnmatch
-  from _plugins.logparser import parse_h2_log
+  from _utils.plugins.logparser import parse_h2_log
   import numpy as np
   
   force = '-f' if args.force else ''
   
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10, env = args.ldsc, partition = 'sapphire')
+  submitter = array_submitter(name = f'heri_{args.pheno[0]}', timeout = 10 if not args.complete else 60, env = args.ldsc, partition = 'sapphire')
   
   from _utils.path import find_gwas
   pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
 
   for g, p in pheno:
     os.makedirs(f'{args.out}/{g}/', exist_ok = True)
-    out_prefix = f'{args.out}/{g}/{p}'
+    out_prefix = f'{args.out}/{g}/{p}' if not args.complete else f'{args.out}/{g}_complete/{p}'
 
     cmds = []
     sumstats_file = f'{args._in}/{g}/{p}.fastGWA'
@@ -45,9 +45,11 @@ def main(args):
         else: raise ValueError('No valid summary statistics found in the input file')
 
         cmds.append(f'python {args.ldsc}/munge_sumstats.py --sumstats {sumstats_file} '+ \
-                    f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt '+
+                    (f'--merge-alleles {args.ldsc}/ukb_snp_info.txt ' if args.complete else \
+                    f'--merge-alleles {args.ldsc}/ukb_merge_ldscore.txt ')+
                     f'--signed-sumstats {ss} '+
                     f'--out {out_prefix} --chunksize 50000')
+        cmds.append(f'if [ -f {out_prefix}.sumstats.gz ]; then gunzip -f {out_prefix}.sumstats.gz; fi')
     
     if args.force or (not os.path.isfile(h2_log)):
         cmds.append(f'python {args.ldsc}/ldsc.py '+
@@ -66,9 +68,10 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
       default = '../gwa/')
     parser.add_argument('--ldsc', dest = 'ldsc', help = 'LDSC executable directory',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/') # intended to be absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
       default = '../gcorr/ldsc_sumstats/')
+    parser.add_argument('-c','--complete', action = 'store_true', help = 'Merge with the complete set of SNPs in UKB, instead of HapMap3')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     
@@ -81,10 +84,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pheng',r'.+', 'phenotype group')
-    proj.add_var('%pheno',r'.+', 'phenotype')
-    proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng/%reg_%maf.fastGWA', __file__)
-    proj.add_output(args.out+'/%pheng/%reg_%maf.h2.log', __file__)
     try: main(args)
     except: cmdhistory.errlog()

@@ -16,12 +16,15 @@ Changelog:
     Applied a wide- and long-format tabular output
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     from _utils.path import normaliser, find_gwas
     import pandas as pd
     from fnmatch import fnmatch
-    from _plugins.logparser import crosscorr_parse
+    from _utils.plugins.logparser import crosscorr_parse
     
     # scans directories to include sumstats
     gwa1 = find_gwas(*args.p1, dirname = args.sumstats, ext = 'sumstats')
@@ -41,9 +44,9 @@ def main(args):
     # tabular output, wide and long
     norm = normaliser()
     if len(args.p2) > 0:
-        fout = f'{args.out}/crosscorr_' + ('_'.join(args.p1)+'.'+'_'.join(args.p2)).replace('/','_')
+        fout = f'{args.out}/crosscorr_' + ('_'.join([g for g,_ in gwa1])+'.'+'_'.join([g for g,_ in gwa2])).replace('/','_')
     else: 
-        fout = f'{args.out}/corr_' + ('_'.join(args.p1)).replace('/','_')
+        fout = f'{args.out}/corr_' + ('_'.join([g for g,_ in gwa1])).replace('/','_')
         summary_rev = summary.copy()
         summary_rev[['group1','pheno1','group2','pheno2']] = summary[['group2','pheno2','group1','pheno1']]
         summary = pd.concat([summary, summary_rev]).sort_values(['group1','pheno1','group2','pheno2']).drop_duplicates()
@@ -58,6 +61,8 @@ def main(args):
     from _plots import corr_heatmap
     fig = corr_heatmap(summary, annot = 'Heritability')
     fig.savefig(f'{fout}.pdf', bbox_inches = 'tight')
+    log.log(f'Figure output saved to {fout}.pdf')
+    log.log(f'Tabular output saved to {fout}.txt and {fout}.wide.txt')
     
 if __name__ == '__main__':
     import argparse
@@ -86,7 +91,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheno.%pheno.rg.log', __file__)
-    proj.add_output(args.out+'/crosscorr_.*.pdf', __file__)
     try: main(args)
     except: cmdhistory.errlog()

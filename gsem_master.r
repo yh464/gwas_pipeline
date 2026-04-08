@@ -10,10 +10,10 @@ library(here)
 parser = ArgumentParser(description = 'This script runs genomic SEM')
 # path specs
 parser$add_argument('-i','--in', dest = 'input', help = 'input MUNGED summary stats directory',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats')
 parser$add_argument('--full', dest = 'full', 
   help = 'input FULL summary stats directory, needed for common factor GWAS/GWAS by subtraction',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gwa')
 parser$add_argument('--p1', nargs = '+', 
   help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('--p2', nargs = '*',
@@ -24,9 +24,9 @@ parser$add_argument('--med', nargs = '*',
   help = 'Mediators, format <group>/<pheno>')
 parser$add_argument('--meta', nargs = '*', help = 'Metadata files')
 parser$add_argument('--ld', help = 'LD reference',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/ldsc/baseline')
 parser$add_argument('--ref', help = 'Reference file for SNP variance calculation', default = 
-  '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
+  '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/ref.1000G.txt')
 parser$add_argument('-o','--out', help = 'Output prefix; NB manual models will be output where model file is')
 
 # analyses
@@ -161,7 +161,7 @@ add_af1 = function(mgwas, ref){
   ref_rev = ref; names(ref_rev) = c('SNP','AF1','A2','A1'); ref_rev$AF1 = 1 - ref_rev$AF1
   ref = bind_rows(ref, ref_rev)
   mgwas = mgwas %>% left_join(ref)
-  mgwas$AF1 = mgwas$AF1 %>% replace_na(mgwas$MAF)
+  mgwas$AF1 = mgwas$AF1 %>% coalesce(mgwas$MAF)
   mgwas$MAF = mgwas$AF1
   mgwas = mgwas %>% select(-AF1) %>% rename(AF1 = MAF)
   return(mgwas)
@@ -173,7 +173,7 @@ main = function(args){
   library(GenomicSEM)
   library(openssl)
   library(tidyverse)
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsem'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsem'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
   
   #### Read metadata ####
@@ -205,7 +205,7 @@ main = function(args){
       traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2,args$med),'.sumstats'),
       sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
       ld = args$ld, wld = args$ld, trait.names = trait.names_med,
-      ldsc.log = paste0(tmpdir,'/',paste(rand_bytes(4), collapse = '')))
+      ldsc.log = ppaste0(tmpdir,'/',sha256(paste(trait.names_med,collapse='.')),'.ldsc.log'))
     save(ldscoutput, file = ldsc_cache)
   }
   sumstats_cache = paste0(tmpdir,'/',sha256(paste(c(p1,p2),collapse='.')),'.sumstats.rdata')

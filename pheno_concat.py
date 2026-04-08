@@ -21,28 +21,38 @@ Output:
 Changelog:
     changed input format so that index = phenotype name, columns = phenotype group name
 '''
+
+import pandas as pd
+import numpy as np
+import os
+from _utils.logger import logger
+log = logger()
+
+def read_file(file):
+    subj = os.path.basename(file).replace('.txt','')
+    df = pd.read_table(file, index_col = 0)
+    df['pheno'] = df.index
+    df = df.melt(id_vars = 'pheno', var_name = 'pheng')
+    df.insert(0, column = 'EID', value = subj)
+    return df
+
 def main(args):
-    import pandas as pd
-    import os
+    from tqdm import tqdm
+    from multiprocessing import Pool
     from fnmatch import fnmatch
     os.chdir(args._in)
+    pool = Pool(64)
     for x in args.pheno:
-        dflist = []
-        for y in os.listdir(x):
-            if not fnmatch(y, '*.txt'): continue
-            subj = y.replace('.txt','')
-            df = pd.read_table(f'{x}/{y}', index_col = 0)
-            df['pheno'] = df.index
-            df = df.melt(id_vars = 'pheno', var_name = 'pheng')
-            df.insert(0, column = 'EID', value = subj)
-            dflist.append(df)
+        files = [f'{x}/{y}' for y in os.listdir(x) if fnmatch(y, '*.txt')]
+        dflist = list(tqdm(pool.imap(read_file, files, chunksize = 64), total = len(files), desc = f'Processing {x}'))
         df = pd.concat(dflist)
         pheno_groups = df['pheng'].unique()
         for pg in pheno_groups:
             tmp = df.loc[df.pheng == pg, :]
             tmp = tmp.pivot_table(columns = 'pheno', index = 'EID', values = 'value')
-            for c in tmp.columns:
-                tmp[c] /= tmp[c].std()
+            tmp.to_csv(f'{pg}.unstd.txt', sep = '\t', index = False)
+            tmp = tmp.replace([np.inf, -np.inf], np.nan)
+            tmp = tmp.div(tmp.std(axis = 0), axis = 1)
             tmp.insert(0, column = 'FID', value = tmp.index)
             tmp.insert(1, column = 'IID', value = tmp.index)
             tmp.to_csv(f'{pg}.txt', index = False, sep = '\t')
@@ -65,7 +75,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in, __file__)
-    proj.add_output(args._in, __file__)
     try: main(args)
     except: cmdhistory.errlog()

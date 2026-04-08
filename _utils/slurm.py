@@ -10,13 +10,14 @@ if slurm returns 'FAILED', some steps may still run normally
 CHECK LOG
 '''
 
-from logging import warning
+from .logger import logger
 import os
 import argparse
 import re
 import warnings
 import math
 from hashlib import sha256
+_logger = logger()
 
 class array_submitter():
     '''
@@ -47,10 +48,10 @@ class array_submitter():
                  n_node = 1,
                  n_task = 1,
                  n_cpu = 1,
-                 log = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
-                 tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
+                 n_gpu = 0,
+                 log = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
+                 tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
-                 lim = warnings.warn(DeprecationWarning('Command limit will be automatically determined')), # deprecated
                  arraysize = 200, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500
                  email = True,
                  wallclock = -1, # total time limit per file, default 240 minutes
@@ -70,18 +71,26 @@ class array_submitter():
             'icelake-himem': 1,
             'icelake': 1,
             'cclake': 1,
-            'cclake-himem': 1
+            'cclake-himem': 1,
+            'ampere': 1
         }
 
         self._full_name = name
         if len(name) > 30:
             name = sha256(name.encode()).hexdigest()[:6] # truncate to 6S characters
-            warnings.warn(f'Job name too long, using random name {name}')
+            _logger.warn(f'Job name too long, using random name {name}')
         self.name = '_' + name.replace('/','_') + '_0'
         self.debug = debug
         self.intr = intr
         self.parallel = parallel
         
+        # initialise command counts
+        self._staged_cmd = []
+        self._blank = True
+        self._count = 0
+        self._nfiles = 0
+        self._jobid = 0
+
         # SLURM config
         self.partition = partition
         self.timeout = timeout
@@ -89,6 +98,7 @@ class array_submitter():
         self.n_task = n_task
         self.n_cpu = n_cpu
         if n_cpu < 20: arraysize = min(arraysize, int(500/n_cpu)) # QOS max CPU per user limit is 500
+        self.n_gpu = n_gpu
         self.arraysize = arraysize # the default array job size limit is 2000 for SLURM
         self.email = '--mail-type=ALL' if email else ''
         self.account = account
@@ -113,6 +123,12 @@ class array_submitter():
         # read command line args before specifying limit of commands per file
         import __main__
         if 'args' in dir(__main__): self.config(**vars(__main__.args))
+        if not self.name.endswith('_0'): self.name += '_0' # ensure name ends with _0 for job array indexing
+
+        # if GPU > 0, adjust the partition and charge account
+        if self.n_gpu > 0: 
+            self.partition = 'ampere'
+            self.account = 'WARRIER-SL3-GPU' # default GPU account
 
         # adjust parallel processes based on available CPUs
         if self.n_cpu < cpu_avail[self.partition]:
@@ -122,24 +138,13 @@ class array_submitter():
         # number of *parallel batches* of commands per file
         self.lim = int(self.wallclock/timeout)
         self.lim = max(self.lim, 1) # at least one command per file
-        print(f'Max {self.lim} batches * {self.parallel} commands per file, {self.arraysize} files per array job')
+        _logger.log(f'Max {self.lim} batches * {self.parallel} commands per file, {self.arraysize} files per array job for {self.name}')
+        self.array_cmd_limit = self.arraysize * self.lim * self.parallel
 
         # directories
-        self.logdir = f'{log}/{self.name}' # to prevent confusion with other array submissions
-        if not os.path.isdir(self.logdir): os.mkdir(self.logdir)
-        os.system(f'rm -rf {self.logdir}/*') # clear temp files from the previous run
-        self.tmpdir = f'{tmpdir}/{self.name}' # to prevent confusion with other array submissions
-        if not os.path.isdir(self.tmpdir): os.mkdir(self.tmpdir)
-        os.system(f'rm -rf {self.tmpdir}/*') # clear temp files from the previous run
+        self.logdir = f'{log}/{self.name}'
+        self.tmpdir = f'{tmpdir}/{self.name}'
 
-        # commands are staged up to an array size limit before a new job array is initialised
-        self.array_cmd_limit = self.arraysize * self.lim * self.parallel
-        self._staged_cmd = []
-        self._blank = True
-        self._count = 0
-        self._nfiles = 0
-        self._jobid = 0
-        
         # SLURM status properties
         self.submitted = False
         self._slurmid = []
@@ -147,11 +152,11 @@ class array_submitter():
     # change settings
     def config(self, **kwargs):
         valid_keys = [
-            'name', 'debug','partition', 'timeout','wallclock','n_node', 'n_task','n_cpu',
+            'name', 'debug','partition', 'timeout','wallclock','n_node', 'n_task','n_cpu', 'n_gpu',
             'arraysize','email','account','env','wd','dep','modules','logdir',
             'tmpdir','lim','intr','dependency', 'parallel'
             ]
-        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'timeout', 'arraysize', 'lim', 'wallclock','parallel']
+        numeric_keys = ['n_node', 'n_task', 'n_cpu', 'n_gpu', 'timeout', 'arraysize', 'lim', 'wallclock','parallel']
         for key, value in kwargs.items():
             if key in numeric_keys and value != None and value.startswith('x'):
                 # if the value starts with 'x', it is a multiplier
@@ -222,11 +227,11 @@ class array_submitter():
                 dep_str.append(f'afterok:{dep}')
             else:
                 if dep._blank: 
-                    print(f'Warning: {dep.name} has no commands to run, skipping dependency')
+                    _logger.warn(f'{dep.name} has no commands to run, skipping dependency')
                     continue
                 if not dep.submitted:
                     dep.submit()
-                    print(f'Warning: {dep.name} is listed as a dependency and automatically submitted')
+                    _logger.warn(f'{dep.name} is listed as a dependency and automatically submitted')
                 for idx in dep._slurmid:
                     dep_str.append(f'afterok:{idx}')
                 if len(dep._slurmid) == 0:
@@ -248,6 +253,8 @@ class array_submitter():
         print(f'#SBATCH -N {self.n_node}', file = wrap)
         print(f'#SBATCH -n {self.n_task}', file = wrap)
         print(f'#SBATCH -c {n_cpu}', file = wrap)
+        if self.n_gpu > 0:
+            print(f'#SBATCH --gres=gpu:{self.n_gpu}', file = wrap)
         time = self.timeout * self._count
         print(f'#SBATCH -t {int(time)}', file = wrap)
         print(f'#SBATCH -p {self.partition}', file = wrap)
@@ -265,6 +272,12 @@ class array_submitter():
     def _dump(self):
         if len(self._staged_cmd) == 0: return
         cmds_to_dump = self._staged_cmd[:min(len(self._staged_cmd), self.array_cmd_limit)]
+
+        # make directories and remove temp files from previous runs
+        os.makedirs(self.logdir, exist_ok = True)
+        os.makedirs(self.tmpdir, exist_ok = True)
+        os.system(f'rm -rf {self.logdir}/*')
+        os.system(f'rm -rf {self.tmpdir}/*')
 
         # organise cmds into parallel batches
         if self.parallel > 1:
@@ -310,7 +323,8 @@ class array_submitter():
         time = self.timeout * self._count
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
-        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
+        gpu_str = f' --gres=gpu:{self.n_gpu}' if self.n_gpu > 0 else ''
+        print(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} {gpu_str} '+
                   f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
                   f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}') 
@@ -325,9 +339,12 @@ class array_submitter():
         msg.append('Following job has been submitted to SLURM:')
         msg.append(f'    Name:       {self._full_name}')
         msg.append(f'    Path:       {self.tmpdir}')
+        msg.append(f'    Log:        {self.logdir}')
         msg.append(f'    Partition:  {self.partition}')
-        msg.append(f'    Timeout:    {self.timeout * math.ceil(self._count / self.parallel)} minutes')
+        msg.append(f'    Timeout:    {self.timeout * self._count} minutes')
         msg.append(f'    CPUs:       {n_cpu}')
+        if self.n_gpu > 0:
+            msg.append(f'    GPUs:       {self.n_gpu}')
         msg.append(f'    # files:    {self._nfiles}')
         msg.append(f'    Parallel:   {self.parallel}')
         msg.append(f'    Dependency: {re.sub("^-d ","", self._write_dep_str()) if self._write_dep_str() != "" else "None"}')
@@ -339,16 +356,19 @@ class array_submitter():
     def _submit_single(self):
         if self.debug: self._print(); self.submitted = True; return # debug mode -> print only
         if self.intr: os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
-        time = self.timeout * math.ceil(self._count / self.parallel)
+        time = self.timeout * self._count
         time = min(time, 720)
         email = '--mail-type=ALL' if self.email else ''
         account = f'-A {self.account}' if self.account else ''
-        
+        gpu_str = f' --gres=gpu:{self.n_gpu}' if self.n_gpu > 0 else ''
+
         from subprocess import check_output
-        msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} '+
+        dep_str = self._write_dep_str()
+
+        msg = check_output(f'sbatch -N {self.n_node} -n {self.n_task} -c {self.n_cpu} {gpu_str} '+
                   f'-t {int(time)} -p {self.partition} {email} {account} '+
                   f'-o {self.logdir}/{self.name}_%a.log -e {self.logdir}/{self.name}_%a.err'+ # %a = array index
-                  f' --array=0-{self._nfiles-1} {self._write_dep_str()} {self._wrap_name}', shell = True
+                  f' --array=0-{self._nfiles-1} {dep_str} {self._wrap_name}', shell = True
                   ).decode().strip()
         jobid = int(msg.split()[-1]) # raises an error if sbatch fails
         self._splash(jobid)
@@ -361,33 +381,42 @@ class array_submitter():
         Submits all commands to the cluster (SLURM manager)
         '''
         if self._blank: return
-        if self.submitted: warnings.warn(f'Job {self.name} already submitted'); return
+        if self.submitted: _logger.warn(f'Job {self.name} already submitted'); return
         self._dump()
         self._submit_single()
         self._staged_cmd = []
 
+def add_slurm_args(parser: argparse.ArgumentParser):
+    slurm = parser.add_argument_group('SLURM configuration, enter numbers to override default resource allocation,\n'+
+        'enter x2, etc. to multiply the default values, leave blank to use defaults')
+    slurm.add_argument('--jobname', help = 'Manually specify job name')
+    slurm.add_argument('--partition', help = 'partition')
+    slurm.add_argument('--account', help = 'account to charge')
+    slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
+    slurm.add_argument('--n_gpu', help = 'number of GPUs per task')
+    slurm.add_argument('--n_node', help = 'number of nodes needed')
+    slurm.add_argument('--n_task', help = 'number of tasks per job')
+    slurm.add_argument('--arraysize', help = 'number of files per array job')
+    slurm.add_argument('--timeout', help = 'timeout in minutes')
+    slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
+    slurm.add_argument('--parallel', help = 'number of parallel processes')
+    slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
+    slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
+    slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
+    return parser
+
+def add_slurm_args_dec(generator):
+    def wrapper(*args, **kwargs):
+        parser = generator(*args, **kwargs)
+        parser = add_slurm_args(parser)
+        return parser
+    return wrapper
+
 class slurm_parser(argparse.ArgumentParser):
-    '''
-    An argparse.ArgumentParser with default SLURM config options
-    '''
+    '''An argparse.ArgumentParser with default SLURM config options'''
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.parser_config()
 
     def parser_config(self):
-        slurm = self.add_argument_group('SLURM configuration, enter numbers to override default resource allocation,\n'+
-            'enter x2, etc. to multiply the default values, leave blank to use defaults')
-        slurm.add_argument('--jobname', help = 'Manually specify job name')
-        slurm.add_argument('--partition', help = 'partition')
-        slurm.add_argument('--account', help = 'account to charge')
-        slurm.add_argument('--n_cpu', help = 'number of CPUs per task')
-        slurm.add_argument('--n_node', help = 'number of nodes needed')
-        slurm.add_argument('--n_task', help = 'number of tasks per job')
-        slurm.add_argument('--arraysize', help = 'number of files per array job')
-        slurm.add_argument('--timeout', help = 'timeout in minutes')
-        slurm.add_argument('--wallclock', help = 'total time limit per file in minutes')
-        slurm.add_argument('--parallel', help = 'number of parallel processes')
-        slurm.add_argument('--debug', help = 'debug mode', default = False, action = 'store_true')
-        slurm.add_argument('--dep', help = 'dependencies', default = [], nargs = '*')
-        slurm.add_argument('--intr', help = 'interactive mode', default = False, action = 'store_true')
-        
+        self = add_slurm_args(self)

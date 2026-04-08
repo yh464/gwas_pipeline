@@ -7,7 +7,8 @@ def main(args):
     import os
     from fnmatch import fnmatch
     # from sklearn.linear_model import LinearRegression
-    
+    from _utils import logger
+    log = logger.logger()
     # array submitter
     from _utils.slurm import array_submitter
     submitter = array_submitter(
@@ -34,8 +35,8 @@ def main(args):
         for x in os.listdir(args._in):
             if fnmatch(x, f'*{p}*.txt'):
                 flist.append(x)
-    print('Files to process:')
-    for x in flist: print(x)
+    log.log('Files to process:')
+    for x in flist: log.log(x)
     
     # Correlation
     for x in flist:
@@ -72,7 +73,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng.txt', __file__)
-    proj.add_output(args.out+'/%pheno_.*.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()

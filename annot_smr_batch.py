@@ -3,6 +3,7 @@
 Author: Yuankai He
 Correspondence: yh464@cam.ac.uk
 Version 1: 2025-01-16
+Version 2: 2026-01-22
 
 Conducts Summary-data Mendelian Randomisation to prioritise genes using
 expression, isoform, splicing, methylation and chromosome accessibility QTL.
@@ -12,143 +13,127 @@ Requires following inputs:
     BESD format xQTL datasets.
 '''
 
+from _utils.logger import logger
+import pandas as pd
+import numpy as np
+import os
+from fnmatch import fnmatch
+log = logger()
+
 def format_gwa(gwa, tmpgwa):
     # input file name, usually fastGWA format
-    import pandas as pd
-    import numpy as np
-    import os
     with open(gwa) as f:
         hdr = f.readline().strip().split()
-    out = [0,0,0,0,0,0,0,0] # 8 columns
+    out = [None, None, None, None, None, None, None, None] # 8 columns
+    out_col = [None] * 8
     os.makedirs(os.path.dirname(tmpgwa), exist_ok = True)
     
     for idx, col in enumerate(hdr):
-        if col.lower() in ['snp','id','rsid']: out[0] = idx
-        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = idx
-        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = idx
-        if col.lower() in ['af1','freq','eaf','maf']: out[3] = idx
-        if col.lower() in ['beta','logor','b']: out[4] = idx; log = False
-        if col.lower() in ['or']: out[4] = idx; log = True
-        if col.lower() in ['se', 'stderr']: out[5] = idx
-        if col.lower() in ['p','pval']: out[6] = idx
-        if col.lower() in ['nobs','n']: out[7] = idx
+        if col.lower() in ['snp','id','rsid']: out[0] = idx; out_col[0] = col
+        if col.lower() in ['a1','ref','refallele','effectallele']: out[1] = idx; out_col[1] = col
+        if col.lower() in ['a2','alt','altallele','otherallele']: out[2] = idx; out_col[2] = col
+        if col.lower() in ['af1','freq','eaf','maf']: out[3] = idx; out_col[3] = col
+        if col.lower() in ['beta','logor','b']: out[4] = idx; out_col[4] = col; log_eff = False
+        if col.lower() in ['or']: out[4] = idx; out_col[4] = col; log_eff = True
+        if col.lower() in ['se', 'stderr']: out[5] = idx; out_col[5] = col
+        if col.lower() in ['p','pval']: out[6] = idx; out_col[6] = col
+        if col.lower() in ['nobs','n']: out[7] = idx; out_col[7] = col
     
-    if any([x == 0 for x in out[:3]]): raise ValueError('Missing necessary columns')
+    log.log(f'''Identified necessary columns at positions: 
+            SNP  = {out[0]}
+            A1   = {out[1]}
+            A2   = {out[2]}
+            AF1  = {out[3]}
+            BETA = {out[4]}
+            SE   = {out[5]}
+            P    = {out[6]}
+            N    = {out[7]}''')
 
-    if not log:
+    if any([x is None for x in out[:3]]): raise ValueError('Missing necessary columns')
+
+    if not log_eff:
         print_field = ','.join([f'${x+1}' for x in out])
         cmd = ['awk', '-v', r'OFS="\t"', '\'{print', print_field+'}\'', gwa, '>', tmpgwa]
-        print(' '.join(cmd))
+        log.log(' '.join(cmd))
         os.system(' '.join(cmd))
     else:
         df = pd.read_table(gwa, usecols = out)
+        df = df.loc[:, out_col]
         df.iloc[:,4] = np.log(df.iloc[:,4])
-        out.to_csv(tmpgwa, sep = '\t', index = False)
+        df.to_csv(tmpgwa, sep = '\t', index = False)
 
 def main(args):
     import os
     from fnmatch import fnmatch
     
     # temp directory
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/smr_temp'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/smr_temp'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     # array submitter
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = f'annot_smr_{args.pheno[0]}',n_cpu = 2,timeout = 90)
     
-    # annotation utility for single fastGWA and single xQTL dataset
-    def annot_smr(gwa, xqtl, bfile, out, smr, force):
-        # output directory
-        pheno = os.path.basename(gwa)
-        group = os.path.basename(os.path.dirname(gwa))
-        pheno = '.'.join(pheno.split('.')[:-1])
-        if not os.path.isdir(out): os.system(f'mkdir -p {out}')
-        
-        # munge input summary statistics
-        if not os.path.isfile(f'{tmpdir}/{group}/{pheno}.txt') or force:
-            try: format_gwa(gwa, f'{tmpdir}/{group}/{pheno}.txt')
-            except: Warning(f'{pheno} missing necessary columns'); return
-        
-        # parse input xqtl file
-        from fnmatch import fnmatch
-        qtl = os.path.basename(xqtl).replace('.besd','')
-        if os.path.isfile(f'{xqtl}.besd'):
-            xqtl_list = [xqtl] * 24
-        else:
-            xqtl_list = []
-            for chrom in range(1,25):
-                found = False
-                for f in os.listdir(xqtl):
-                    if fnmatch(f.replace('X','23').replace('Y','24'), f'*chr{chrom}.besd'):
-                        xqtl_list.append(f'{xqtl}/'+f.replace('.besd',''))
-                        found = True
-                        break
-                if found: continue
-                # if there is no match
-                xqtl_list.append(None)
-        
-        # parse input PLINK binaries
-        if os.path.isfile(f'{bfile}.bed'):
-            bfile_list = [bfile] * 24
-        else:
-            bfile_list = []
-            for chrom in range(1,25):
-                found = False
-                for f in os.listdir(bfile):
-                    if fnmatch(f.replace('X','23').replace('Y','24'), f'*chr{chrom}.bed'):
-                        bfile_list.append(f'{bfile}/'+f.replace('.bed',''))
-                        found = True
-                        break
-                if found: continue
-                # if there is no match
-                bfile_list.append(None)
-        
-        if os.path.isfile(f'{xqtl}.besd') and os.path.isfile(f'{bfile}.bed'):
-            if not os.path.isfile(f'{out}/{pheno}.smr') or force:
-                submitter.add(
-                f'{smr} --bfile {bfile} --gwas-summary {tmpdir}/{group}/{pheno}.txt '+
-                f'--beqtl-summary {xqtl} --out {out}/{pheno}.{qtl}'
-                )
-        
-        else:
-            # print(f'Processing: {pheno} \n\tConducting SMR by chromosome, following files have been found:')
-            # for x, b in zip(xqtl_list, bfile_list):
-            #     print('\t\t'.join([str(x), str(b)]))
-            
-            if not os.path.isdir(f'{out}/{pheno}.{qtl}'): os.mkdir(f'{out}/{pheno}.{qtl}')
-            
-            for x, b, chrom in zip(xqtl_list, bfile_list, range(1,25)):
-                if x == None or b == None: continue
-                if not os.path.isfile(f'{out}/{pheno}.{qtl}/chr{chrom}.smr') or force:
-                    submitter.add(
-                    f'{smr} --bfile {b} --gwas-summary {tmpdir}/{group}/{pheno}.txt '+
-                    f'--beqtl-summary {x} --out {out}/{pheno}.{qtl}/chr{chrom}'
-                    )
-    
+    # find QTL files
+    log.log('Following QTL have been found:')
     qtl_list = []
     for y in os.listdir(args.qtl):
-        if fnmatch(y, '*.besd'): qtl_list.append(f'{args.qtl}/{y}')
+        if fnmatch(y, '*.besd'):
+            log.log(y)
+            qtl_list.append([f'{args.qtl}/{y}'.replace('.besd','')] * 24)
         if os.path.isdir(f'{args.qtl}/{y}'):
-            if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]):
-                qtl_list.append(f'{args.qtl}/{y}')
-    
-    print('Following QTL have been found:')
-    for x in qtl_list: print(x)
+            if any([fnmatch(z, '*.besd') for z in os.listdir(f'{args.qtl}/{y}')]): log.log(y)
+            else: continue
+            tmp_list = []
+            for chrom in range(1, 25):
+                found = False
+                for f in os.listdir(f'{args.qtl}/{y}'):
+                    if fnmatch(f.replace('X','23').replace('Y','24'), f'*chr{chrom}.besd'):
+                        tmp_list.append(f'{args.qtl}/{y}/'+f.replace('.besd',''))
+                        found = True
+                        break
+                if found: continue
+            qtl_list.append(tmp_list)
+
+    # parse input PLINK binaries
+    if os.path.isfile(f'{args.bfile}.bed'):
+        bfile_list = [args.bfile] * 24
+    else:
+        bfile_list = []
+        for chrom in range(1,25):
+            found = False
+            for f in os.listdir(args.bfile):
+                if fnmatch(f.replace('X','23').replace('Y','24'), f'*chr{chrom}.bed'):
+                    bfile_list.append(f'{args.bfile}/'+f.replace('.bed',''))
+                    found = True
+                    break
+            if found: continue
+            # if there is no match
+            bfile_list.append(None)
     
     from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, dirname = args._in, ext = 'fastGWA', long = True)
     for g,p in pheno:
         os.makedirs(f'{args.out}/{g}', exist_ok = True)
+        tmpgwa = f'{tmpdir}/{g}/{p}.txt'
+        gwa = f'{args._in}/{g}/{p}.fastGWA'
+        if not os.path.isfile(tmpgwa) or args.force:
+            try: format_gwa(gwa, tmpgwa)
+            except: log.warn(f'{p} missing necessary columns'); continue
+
         for qtl in qtl_list:
-            annot_smr(
-                gwa = f'{args._in}/{g}/{p}.fastGWA',
-                xqtl = qtl,
-                bfile = args.bfile,
-                out = f'{args.out}/{g}',
-                smr = args.smr,
-                force = args.force
-                )
+            if qtl[0] == qtl[1] and bfile_list[0] == bfile_list[1]:
+                if os.path.isfile(f'{args.out}/{p}.smr') and not args.force: continue
+                submitter.add(f'{args.smr} --bfile {bfile_list[0]} --gwas-summary {tmpgwa} '+
+                    f'--beqtl-summary {qtl[0]} --out {args.out}/{g}/{p}.{os.path.basename(qtl[0])}')
+            else:
+                qtl_name = os.path.basename(qtl[0]).replace('_chr1','').replace('.besd','')
+                os.makedirs(f'{args.out}/{g}/{p}.{qtl_name}', exist_ok = True)
+                for q, b, chrom in zip(qtl, bfile_list, range(1,25)):
+                    if os.path.isfile(f'{args.out}/{g}/{p}.{qtl_name}/chr{chrom}.smr') and not args.force:
+                        continue
+                    submitter.add(f'{args.smr} --bfile {b} --gwas-summary {tmpgwa} '+
+                        f'--beqtl-summary {q} --out {args.out}/{g}/{p}.{qtl_name}/chr{chrom}')
     
     submitter.submit()
 
@@ -162,7 +147,7 @@ if __name__ == '__main__':
     parser.add_argument('-q','--qtl', dest = 'qtl', help = 'Directory containing all xQTL files',
       default = '../params/xqtl')
     parser.add_argument('-s','--smr', dest = 'smr', help = 'Location of SMR binary',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary to use in magma',
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/') # intentionally absolute
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
@@ -178,7 +163,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
-    proj.add_output(args.out+'/%pheng/%pheno.*.smr',__file__)
     try: main(args)
     except: cmdhistory.errlog()

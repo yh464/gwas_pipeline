@@ -39,6 +39,8 @@ def main(args = None, **kwargs):
     import pandas as pd
     from fnmatch import fnmatch
     from _utils.path import normaliser
+    from _utils.logger import logger
+    log = logger()
     
     if args == None:
         from _utils.gadgets import namespace
@@ -49,7 +51,7 @@ def main(args = None, **kwargs):
     crosstrait_clumps = []
     # for each phenotype
     for p in args.pheno:
-        print(p)
+        log.log(p)
         # scan directory for clump files at desired p value threshold
         flist = []
         for f in os.listdir(f'{args._in}/{p}'):
@@ -129,12 +131,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pheng',r'.+', 'phenotype group')
-    proj.add_var('%pheno',r'.+', 'phenotype')
-    proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_var('%p',r'[0-9.e]+', 'p value') # only allows digits and decimals and 'e'
-    proj.add_input(args._in+'/%pheng/%pheno_%maf_%p.clumped', __file__)
-    proj.add_output(args._in+'/%pheng_%maf_%p_clumps.txt',__file__)
-    proj.add_output(args._in+'/%pheng_%maf_%p_overlaps.txt',__file__)
     try: main(args)
     except: cmdhistory.errlog()

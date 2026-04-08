@@ -10,11 +10,14 @@ This script is specific to the GWAS pipeline and will not be migrated to _utils
 
 import os, warnings
 from fnmatch import fnmatch
+from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import scipy.stats as sts
-    
-def parse_h2_log(file, full = False):
+from ..logger import logger
+_logger = logger()
+
+def parse_h2_log(file, full = False, gcov = False):
     '''
     Parses LDSC H2 logs
     input: file name *.h2.log
@@ -32,7 +35,8 @@ def parse_h2_log(file, full = False):
         h2; se # important in case the total observed scale h2 is not read from log
     except:
         h2 = np.nan; se = np.nan; gcov_int = np.nan; gcov_int_se = np.nan
-    if not full: return h2, se
+    if not full and not gcov: return h2, se
+    elif not full and gcov: return gcov_int, gcov_int_se
     df = pd.DataFrame(dict(
         group1 = [os.path.basename(os.path.dirname(file))],
         pheno1 = os.path.basename(file).replace('.h2.log','').replace('.gz',''),
@@ -57,7 +61,7 @@ def parse_greml_h2_log(file):
     except: h2 = np.nan; se = np.nan
     return h2, se
 
-def parse_rg_log(file, full = False):
+def parse_rg_log(file, full = False, gcov = False):
     '''
     Parses LDSC rg log for only one pair of phenotypes
     input: file name *.rg.log
@@ -71,15 +75,16 @@ def parse_rg_log(file, full = False):
     hdr = ['group1','pheno1','group2','pheno2','rg','se','z','p','h2_obs',
            'h2_obs_se','h2_int','h2_int_se','gcov_int','gcov_int_se']
     all_stats = []
-    tmp = open(file)
+    tmp = open(file).read().splitlines()
     skip = True
-    line = 'placeholder'
-    while len(line) > 0:
-        line = tmp.readline()
-        if line.find('gcov_int_se') > -1: skip = False; continue
-        if line.find('Analysis finished') > -1: skip = True; continue
+    for line in tmp[::-1]: # read from the end since the relevant stats are at the end of the log
+        if line.find('gcov_int_se') > -1: break
+        if line.find('Analysis finished') > -1: skip = False; continue
         if skip: continue
-        tmp_stats = line.replace('\n','').split()
+        if line.find('Error') > -1: 
+            _logger.log(f'Error found in {file}:\n{line}\n')
+            return pd.DataFrame(data = [], index = [], columns = hdr)
+        tmp_stats = line.split()
         if len(tmp_stats) == 0: continue
         group1 = os.path.basename(os.path.dirname(tmp_stats[0]))
         pheno1 = os.path.basename(tmp_stats[0]).replace('.sumstats','').replace('.gz','')
@@ -88,27 +93,31 @@ def parse_rg_log(file, full = False):
         tmp_stats = [group1, pheno1, group2, pheno2] + [floatna(x) for x in tmp_stats[2:]]
         all_stats.append(tmp_stats)
     
-    if len(all_stats) == 0: return pd.DataFrame(data = [], index = [], columns = hdr)
+    if len(all_stats) == 0: 
+        _logger.warn(f'No valid rg found in {file}')
+        return pd.DataFrame(data = [], index = [], columns = hdr)
     all_stats = pd.DataFrame(data = all_stats, columns = hdr)
     all_stats.loc[all_stats.rg > 1, 'rg'] = 1
     all_stats.loc[all_stats.rg < -1, 'rg'] = -1
     all_stats.loc[all_stats.se < 1e-20, 'se'] = 1e-20
 
     if full: return all_stats
+    elif gcov: return all_stats[['group1','pheno1','group2','pheno2','gcov_int','gcov_int_se','p']].rename(
+        columns = {'gcov_int':'rg','gcov_int_se':'se'})
     else: return all_stats[['group1','pheno1','group2','pheno2','rg','se','p']]
 
 def crosscorr_parse(gwa1, gwa2 = [], 
-        logdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog',
-        h2dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
-        exclude = [], full = False):
+        logdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/rglog',
+        h2dir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gcorr/ldsc_sumstats',
+        exclude = [], full = False, gcov = False):
     '''
     gwa1 and gwa2 are lists of (group, pheno_list) tuples or (group, pheno) tuples, compatible with long/short
     leave gwa2 blank to estimate auto-correlations of gwa1
     '''
     summary = []
     
-    from .._utils.path import pair_gwas
-    pairwise = pair_gwas(gwa1, gwa2)
+    from ..path import pair_gwas
+    pairwise = pair_gwas(gwa1, gwa2, short = True)
     
     for g1, p1s, g2, p2s in pairwise:
         if g1 > g2: 
@@ -117,7 +126,7 @@ def crosscorr_parse(gwa1, gwa2 = [],
         else: flip = False
         if isinstance(p1s, str): p1s = [p1s]
         if isinstance(p2s, str): p2s = [p2s]
-        for p1 in p1s:
+        for p1 in tqdm(p1s, desc = f'Parsing logs for {g1}'):
             if g1 == g2 and h2dir != None: # heritability
                 fname = f'{h2dir}/{g1}/{p1}.h2.log'
                 if not full:
@@ -125,30 +134,32 @@ def crosscorr_parse(gwa1, gwa2 = [],
                     rg = pd.DataFrame(dict(group1 = [g1], pheno1 = p1, group2 = g1, 
                         pheno2 = p1, rg = h2, se = se, 
                         p = 1-sts.chi2.cdf(h2**2/se**2, df = 1),fixed_int = False))
-                else: rg = parse_h2_log(fname, full = True)
+                else: rg = parse_h2_log(fname, full = True, gcov = gcov)
                 rg['fixed_int'] = False
                 if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
                 summary.append(rg)
                 
             fname = f'{logdir}/{g1}.{g2}/{g1}_{p1}.{g2}.rg.log'
             if not os.path.isfile(fname) and g1 != g2: 
-                warnings.warn(f'No gene correlation found for {g1}/{p1} with {g2}\n'+
+                _logger.warn(f'No gene correlation found for {g1}/{p1} with {g2}\n'+
                     f'Try running:\n\n python gcorr_batch.py -p1 {g1} -p2 {g2}\n')
                 continue
             elif not os.path.isfile(fname) and g1 == g2: continue
-            rg = parse_rg_log(fname, full = full)
+            rg = parse_rg_log(fname, full = full, gcov = gcov)
             rg['fixed_int'] = False
             rg = rg.loc[rg.pheno2.isin(p2s),:] # due to the file structure, some other traits may be present in the rg log
             if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
-            summary.append(rg)
             
             fname_noint = fname.replace('.rg.log','.noint.rg.log')
             if os.path.isfile(fname_noint):
-                rg = parse_rg_log(fname_noint, full = full)
-                rg['fixed_int'] = True
-                if flip: rg.iloc[:,[0,1,2,3]] = rg.iloc[:,[2,3,0,1]]
-                summary.append(rg)
-            
+                rg_noint = parse_rg_log(fname_noint, full = full, gcov = gcov)
+                rg_noint['fixed_int'] = True
+                if flip: rg_noint.iloc[:,[0,1,2,3]] = rg_noint.iloc[:,[2,3,0,1]]
+                na_in_rg = rg.loc[rg.isna().any(axis = 1), ['group1','pheno1','group2','pheno2']]
+                overlap = pd.merge(rg_noint, na_in_rg, on = ['group1','pheno1','group2','pheno2'], how = 'inner')
+                rg = pd.concat([rg.dropna(), overlap]).sort_values(by = ['group1','pheno1','group2','pheno2']).reset_index(drop = True)
+            summary.append(rg)
+
     summary = pd.concat(summary) # creates a long format table
     summary.insert(loc = len(summary.columns), column = 'q', value = np.nan)
     for g1,p1s in gwa1: # FDR correction for each IDP, which are non-independent
@@ -215,12 +226,12 @@ def overlap_clumps(df, dist:int = 0):
     clumps.append(current_clump)
     return pd.concat([c.to_dataframe() for c in clumps]).fillna(0), clumps
 
-def parse_clump(pheno, clump_dir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump', pval = 5e-08):
+def parse_clump(pheno, clump_dir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/clump', pval = 5e-08):
     '''Identifies all clumps from a list of GWAS summary statistics'''
     # long format list of phenotypes
     if isinstance(pheno[0][1], list): pheno = [(g,p) for g, ps in pheno for p in ps]
     
-    from .._utils.path import find_clump
+    from ..path import find_clump
     clumps = []
     for g, p in pheno:
         try:

@@ -9,17 +9,18 @@ Correspondence: yh464@cam.ac.uk
 This utility manages the nomenclature of file names / paths
 '''
 
-import os
+import os, json, re
 import numpy as np
 import gzip
 from fnmatch import fnmatch
-import warnings
 import re
 import pandas as pd
+from .logger import logger
+log = logger()
 
 def find_clump(group, pheno, 
-               dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
-               pval = 5e-8):
+               dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
+               pval = 5e-8, strict = False):
     '''
     Find PLINK clump files for a specific trait
     Quality controls to find strictest p-value threshold with >5 SNP
@@ -28,6 +29,12 @@ def find_clump(group, pheno,
     pval: p-value
     '''
     dirname = f'{dirname}/{group}'
+    if strict:
+        if os.path.isfile(f'{dirname}/{pheno}_{pval:.0e}.clumped'):
+            if len(open(f'{dirname}/{pheno}_{pval:.0e}.clumped').read().splitlines()) <= 5:
+                log.log(f'{pheno} has <5 SNPs at pval {pval:.0e}', calling_file = 'find_clump')
+            return f'{dirname}/{pheno}_{pval:.0e}.clumped', pval
+        else: raise FileNotFoundError(f'No clump found for {pheno} at pval {pval:.0e}')
     if os.path.isfile(f'{dirname}/{pheno}_{pval:.0e}.clumped'):
         # min 5 SNPs
         if len(open(f'{dirname}/{pheno}_{pval:.0e}.clumped').read().splitlines()) > 5:
@@ -47,12 +54,12 @@ def find_clump(group, pheno,
              flist.append(y)
     if len(flist) > 0:
         plist = [float(z[-13:-8]) for z in flist]
-        warnings.warn(f'{pheno} has <5 SNPs')
+        log.warn(f'{pheno} has <5 SNPs', calling_file = 'find_clump')
         return f'{dirname}/{pheno}_{max(plist):.0e}.clumped', max(plist)
     raise FileNotFoundError(f'No clump found for {pheno}')
     
 def find_gwas(*pheno, 
-              dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
+              dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gwa', 
               ext = 'fastGWA',
               exclude = [],
               long = False,
@@ -115,14 +122,38 @@ def find_gwas(*pheno,
                 if x[-7:] == '_noUKBB' and x[:-7] in xlist: xlist.remove(x)
         if len(out) == 0 or pdir != out[-1][0]: out.append((pdir, xlist))
         else: out[-1] = (pdir, sorted(out[-1][1] + xlist))
-    if long: out = [(x,z) for x,y in out for z in y]
+    out_long = [(x,z) for x,y in out for z in y]
+    log.log('Found following GWAS phenotypes')
+    for x, y in out_long:
+        log.log(f'    {x}/{y}')
+    log.log(f'Total {len(out_long)} phenotypes found')
+    if long: return out_long
     return out
 
-def pair_gwas(gwa1, gwa2 = [], self_pair = True):
+def force_short(pheno):
+    '''Converts a list of [(group, pheno)] pairs into [(group, [pheno1, pheno2,...])] pairs'''
+    if len(pheno) == 0: return []
+    if not isinstance(pheno[0][1], str): return pheno
+    tmp = dict()
+    for g, p in pheno:
+        if g not in tmp.keys(): tmp[g] = [p]
+        else: tmp[g].append(p)
+    return [(g, sorted(ps)) for g, ps in tmp.items()]
+
+def force_long(pheno):
+    '''Converts a list of [(group, [pheno1, pheno2,...])] pairs into [(group, pheno)] pairs'''
+    if len(pheno) == 0: return []
+    if not isinstance(pheno[0][1], list): return pheno
+    return [(g, p) for g, ps in pheno for p in ps]
+
+def pair_gwas(gwa1, gwa2 = [], self_pair = True, short = False, long = False):
     '''
     Input: gwa1 and gwa2 are both [(group, [pheno1, pheno2,...]),...] lists
     in the same format as find_gwas output, compatible with long = True and False
+    Specify short / long = True to force conversion into short/long formats
     '''
+    if short: gwa1 = force_short(gwa1); gwa2 = force_short(gwa2)
+    if long: gwa1 = force_long(gwa1); gwa2 = force_long(gwa2)
     pairwise = []
     if len(gwa2) > 0:
         for g1, p1s in gwa1:
@@ -135,20 +166,20 @@ def pair_gwas(gwa1, gwa2 = [], self_pair = True):
     return pairwise
 
 def find_gene_sumstats(group, pheno, 
-    dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/annot/magma',
+    dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/annot/magma',
     annot = 'ENSG', ext = 'genes.out'):
     '''Finds gene-level summary stats for a given phenotype
     pheno parameter should be a single <group>, <pheno> tuple '''
     
     annot = annot.replace('.genes.annot','')
     if dirname.find('smr') > -1: 
-        if not annot in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/xqtl'):
+        if not annot in os.listdir('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/xqtl'):
             annot = 'psychencode_eqtl'
         if not ext in ['txt','smr']: ext = 'smr'
         Warning('Found SMR in directory name, automatically setting config to SMR output')
     if dirname.find('magma') > -1:
-        if not annot in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma') and not \
-            f'{annot}.genes.annot' in os.listdir('/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma'):
+        if not annot in os.listdir('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma') and not \
+            f'{annot}.genes.annot' in os.listdir('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/hmagma'):
             annot = 'ENSG'
         if not ext in ['genes.raw','genes.out']: ext = 'genes.out'
         Warning('Found MAGMA in directory name, automatically setting config to MAGMA output')
@@ -183,7 +214,7 @@ def find_bed(bed, sep_chr = True, x = False):
         elif len(out) == n_chr + 1: return out[:-1]
         else: raise FileNotFoundError('Incorrect number of chromosome-specific bed files')
 
-def find_h5ad(*datasets, dirname = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/raw', long = False):
+def find_h5ad(*datasets, dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/raw', long = False):
     '''
     Finds h5ad files for a specific single-cell dataset
     dirname: Directory to look for h5ad files
@@ -260,7 +291,7 @@ class normaliser():
                     series = '_' + series + '_'
                     series = series.str.replace(f'_{x}_',f'_{y}_', regex = True, case = False).str.replace(
                     f' {x}_',f' {y}_', regex = True, case = False).str.removeprefix('_').str.removesuffix('_')
-                return series.tolist()
+            return series.tolist()
         except: return input_list
 
     def _normalise_df(self, df_in, quickmap = False):
@@ -270,9 +301,10 @@ class normaliser():
         if quickmap and hasattr(self, 'quickmap'): normalise_func = lambda x: [self.quickmap(y) for y in x]
         else: normalise_func = self._normalise_list
         for c in df.columns:
-            # if c.upper() in ['SNP','CHR','POS','BETA','Z','SE','P']: continue
+            if isinstance(c, tuple): continue
+            if c.upper() in ['SNP','CHR','POS','BETA','Z','SE','P', 'CELL_TYPE']: continue
             # only normalise phenotype_related columns
-            if not any([c.lower().find(x) > -1 for x in ['group','pheno','variable','trait']]): continue
+            # if not any([c.lower().find(x) > -1 for x in ['group','pheno','variable','trait']]): continue
             df.loc[:,c] = normalise_func(df[c])
         for c in col.columns:
             col.loc[:,c] = normalise_func(col[c])
@@ -285,18 +317,18 @@ class normaliser():
         else: df.index = idx.iloc[:,0]
         return df
     
-    def normalise(self, data, backup = None):
+    def normalise(self, data, backup = None, quickmap = False):
         # read table if data is a file
         if type(data) == str and os.path.isfile(data):
             if backup == None: backup = f'{data}.bak'
             os.system(f'cp {data} {backup}')
             if data[-3:] == 'csv':                
                 df = pd.read_csv(data)
-                df = self._normalise_df(df)
+                df = self._normalise_df(df, quickmap = quickmap)
                 df.to_csv(data, index = False)
             else: 
                 df = pd.read_table(data, sep = '\\s+')
-                df = self._normalise_df(df)
+                df = self._normalise_df(df, quickmap = quickmap)
                 df.to_csv(data, index = False, sep = '\t')
             return df
         
@@ -306,7 +338,7 @@ class normaliser():
         # or try to coerse input object into pd.DataFrame
         else: df = pd.DataFrame(data)
         
-        return self._normalise_df(df)
+        return self._normalise_df(df, quickmap = quickmap)
     
     def quickmap_pheno(self, pheno):
         from itertools import chain
@@ -321,108 +353,110 @@ class normaliser():
         return self.quickmap
     
 class project():
-    def __init__(self,
-                 _dir = '../path/', # uses relative path, so defaults to the relative path to the wd
-                 _dict = 'wildcards.txt', # placeholders of a certain format
-                 _flow = 'workflow.txt', # workflow, shows file name, input and output
-                 ):
-        
-        # file names
-        self._dict_file = _dir+_dict
-        self._flow_file = _dir+_flow
-        
-        # create files with header
-        if not os.path.isdir(_dir):
-            os.mkdir(_dir)
-        if not os.path.isfile(self._dict_file):
-            f = open(self._dict_file,'w')
-            f.write('var\tformat\tdescription')
-            f.close()
-            del f
-        if not os.path.isfile(self._flow_file):
-            f = open(self._flow_file,'w')
-            f.write('path\toutput from\tinput to')
-            f.close()
-            del f
-        
-        # load files
-        self._dict = np.loadtxt(self._dict_file, dtype = '<U1024', delimiter = '\t')
-        if len(self._dict.shape) == 1:
-            self._dict = self._dict.reshape((1,self._dict.size))
-        self._flow = np.loadtxt(self._flow_file, dtype = '<U1024', delimiter = '\t')
-        if len(self._flow.shape) == 1:
-            self._flow = self._flow.reshape((1,self._flow.size))
+    def __init__(self, root_dir = os.path.realpath('..')):
+        self.project_root = os.path.realpath(root_dir)
+        os.makedirs(f'{self.project_root}/.path', exist_ok = True) # hidden folder to store path config
+        self.config_file = f'{self.project_root}/.path/path_config.json'
+        if not os.path.isfile(self.config_file):
+            self.config = {
+                'gwa': f'{self.project_root}/gwa/$group/$pheno.fastGWA' # require input GWAS to be in fastGWA format
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(self.config, f, indent = 4)
+        else:
+            with open(self.config_file, 'r') as f:
+                self.config = json.load(f)
+
+        self.progress_file = f'{self.project_root}/.path/progress.txt'
+        if not os.path.isfile(self.progress_file):
+            self.progress = self.scan_gwas()
+            other_files = list(self.config.keys())
+            other_files.remove('gwa')
+            self.progress[other_files] = False
+            self.progress.to_csv(self.progress_file, sep = '\t', index = True, header = True)
+        else:
+            self.progress = pd.read_csv(self.progress_file, sep = '\t', header = 0, index_col = ['group','pheno'])
+
+    def save(self): 
+        self.progress.to_csv(self.progress_file, sep = '\t', index = True, header = True)
+        with open(self.config_file, 'w') as f:
+            json.dump(self.config, f, indent = 4)
+
+    def register(self, ftype, pattern, force = False):
+        if ftype in self.config.keys() and pattern != self.config[ftype] and not force:
+            log.error(f'File type {ftype} already exists in config. Use --force to overwrite existing entry.')
+        if ftype in self.config.keys() and pattern == self.config[ftype]: return
+        if '$group' not in pattern or '$pheno' not in pattern:
+            log.error('Pattern must contain $group and $pheno placeholders')
+        self.config[ftype] = pattern
+        self.progress[ftype] = False
+        self.save()
     
-    def add_var(self,name, fmt, desc):
-        # format variable name
-        name = str(name)
-        if ord(name[0]) != ord('%'):
-            name = '%' + name
-        
-        # sanity check
-        for i in self._dict:
-            if name == i[0]:
-                if fmt == i[1] and desc == i[2]:
-                    return
-                else:
-                    raise ValueError('Var name already occupied')
-        # fmt must be a valid Regular Expression /lib/re
-        
-        # save file
-        self._dict = np.vstack((self._dict, [name, fmt, desc]))
-        np.savetxt(self._dict_file, self._dict, delimiter = '\t', fmt = '%s')
+    # utility functions
+    def _to_long_format(self, *pheno):
+        if not isinstance(pheno[0], list) and not isinstance(pheno[0][0], tuple): 
+            pheno = self.find_h5ad(pheno) # cmdline input into 'datasets'
+        elif isinstance(pheno[0][0][1], list):
+            pheno = [(x, z) for x,y in pheno[0] for z in y] # coerse into long format
+        elif isinstance(pheno[0][0], tuple):
+            pheno = pheno[0] # already in long format
+        else: raise ValueError('Unrecognised input dataset names')
+        return pheno
+
+    def to_pathname(self, ftype, group, pheno, **kwargs):
+        if ftype not in self.config: log.error(f'File type {ftype} not found in config')
+        pattern = self.config[ftype]
+        for key, value in kwargs.items():
+            if key == 'pval': value = f'{value:.0e}'
+            pattern = pattern.replace(f'${key}', f'{value}')
+        pattern = pattern.replace('$group', group).replace('$pheno', pheno)
+        return pattern
     
-    def sanity_check(self, file_name, template_path):
-        # unfortunately it is not possible to re-create the template path from file names
-        # because multiple variables may be of the same format
-        # template path contains the above variables like %subj
-        for i in self._dict[1:,:]:# iterates over an entire row
-            template_path = template_path.replace(i[0],i[1]) # name and fmt of _dict
-        res = re.search(template_path, file_name)
-        if type(res) == type(None):
-            return False # may also raise an error for incorrect file names and return None for correct names
-        else: return True
+    def to_pathname_multi(self, ftype, *pheno):
+        pheno = self._to_long_format(*pheno)
+        return [self.to_pathname(ftype, g, p) for g, p in pheno]
+
+    # scanning functions to find all files based on directory search
+    def scan_gwas(self):
+        # scans for GWAS files based on config and updates progress
+        gwa_pattern = self.config['gwa']
+        gwa_list = []
+        for group in os.listdir(f'{self.project_root}/gwa'):
+            for pheno in os.listdir(f'{self.project_root}/gwa/{group}'):
+                if pheno.replace('.gz','').endswith('_X.fastGWA'): continue # remove X-only GWAS
+                if fnmatch(
+                    f'{self.project_root}/gwa/{group}/{pheno}'.replace('.gz',''),
+                    gwa_pattern.replace('$group', group).replace('$pheno', '*')):
+                    gwa_list.append((group, pheno.replace('.fastGWA','').replace('.gz','')))
+        progress = pd.DataFrame(gwa_list, columns = ['group','pheno']).assign(gwa = True).set_index(['group','pheno'])
+        return progress
     
-    def add_input(self, file, script):
-        # fail-safe
-        file = os.path.relpath(file) # uses relative path to the wd, i.e. ***/scripts/
-        script = os.path.relpath(script)
-        files = self._flow[:,0]
-        
-        # if the file is already included in the workflow file
-        if len(np.argwhere(files==file)) == 1:
-            idx = np.argwhere(files==file)[0][0]
-            scripts = self._flow[idx,-1].split(', ')
-            if len(scripts) == 0: self._flow[idx,-1] = script
-            elif script in scripts: pass # do nothing if this input is already recorded
-            else: self._flow[idx,-1] += f', {script}'
-        # if the file is not otherwise found in the workflow file
-        elif len(np.argwhere(files==file)) == 0:
-            self._flow = np.vstack((self._flow,
-                np.array([file,'',script], dtype = '<U1024')))
-        else: raise ValueError('Check workflow file, repetitive entries found')
-        
-        # save file
-        np.savetxt(self._flow_file, self._flow, delimiter = '\t', fmt = '%s')
+    def scan_all(self):
+        # scan all files and update the progress table
+        self.progress = self.scan_gwas()
+        other_files = list(self.config.keys())
+        other_files.remove('gwa')
+        for group, pheno in self.progress.index:
+            for file in other_files:
+                pattern = self.config[file]
+                if os.path.exists(pattern.replace('$group', group).replace('$pheno', pheno)):
+                    self.progress.loc[(group, pheno), file] = True
+        self.save()
+        return self.progress
     
-    def add_output(self, file, script): # script means the script that generates the file
-        # fail-safe
-        file = os.path.relpath(file) # uses relative path to the wd, i.e. ***/scripts/
-        script = os.path.relpath(script)
-        files = self._flow[:,0]
-        
-        # if the file is already included in the workflow file
-        if len(np.argwhere(files==file)) == 1:
-            idx = np.argwhere(files==file)[0][0]
-            scripts = self._flow[idx,1]
-            if len(scripts) == 0: self._flow[idx,1] = script
-            elif script in scripts: pass # do nothing if this input is already recorded
-            else: self._flow[idx,1] += f', {script}'
-        # if the file is not otherwise found in the workflow file
-        elif len(np.argwhere(files==file)) == 0:
-            self._flow = np.vstack((self._flow,
-                np.array([file,'',script], dtype = '<U1024')))
-        else: raise ValueError('Check workflow file, repetitive entries found')
-        
-        # save file
-        np.savetxt(self._flow_file, self._flow, delimiter = '\t', fmt = '%s')
+    # finding functions to find files for a subset of groups / phenotypes
+    def find_gwas(self, *pheno, long = False, se = False, clump = False, no_ukb = False, exclude = []):
+        return find_gwas(*pheno, dirname = f'{self.project_root}/gwa', 
+            long = long, se = se, clump = clump, no_ukb = no_ukb, exclude = exclude)
+    
+    def find(self, ftype, *pheno, **kwargs):
+        pheno = self._to_long_format(*pheno)
+        if ftype == 'gwa': return self.find_gwas(*pheno, long = True)
+        if ftype not in self.config: log.error(f'File type {ftype} not found in config')
+        out = []
+        for g, p in pheno:
+            pattern = self.to_pathname(ftype, g, p, **kwargs)
+            out.append(os.path.isfile(pattern))
+            self.progress.loc[(g, p), ftype] = out[-1]
+        log.log(f'Found {sum(out)} / {len(out)} files for processing step {ftype}')
+        return out, pheno

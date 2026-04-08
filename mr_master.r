@@ -24,7 +24,8 @@ optlist = list(
   # if metadata is not given, will infer from input instruments file
   
   # for MR-lap based correction
-  make_option('--pval', help = 'p-value threshold for MR', type = 'double'),
+  make_option('--pval1', help = 'p-value threshold for trait 1', type = 'double'),
+  make_option('--pval2', help = 'p-value threshold for trait 2', type = 'double'),
   make_option('--h21', help = 'LDSC h2 estimate for trait 1', type = 'double'),
   make_option('--h2se1', help = 'LDSC h2 std. err. for trait 1', type = 'double'),
   make_option('--h22', help = 'LDSC h2 estimate for trait 2', type = 'double'),
@@ -80,10 +81,10 @@ merge_gwa_clump = function(gwa, clump, pheno) {
 }
 
 #### Define function for MR ####
-all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
+all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL){
   # harm = harmonised data by TwoSampleMR
   # prefix = output file name, INCLUDING directory
-  # ldsc_params is for MR-lap correction
+  # mrlap_params is for MR-lap correction
   # apss_params is for MR-APSS correction
   library(ggplot2) # apparently there is a problem with the ggplot2 function 'scale_linewidth_manual'
   library(TwoSampleMR)
@@ -118,7 +119,7 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
     res = res %>% rbind(data.frame(
       id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
       outcome = res$outcome[1], exposure = res$exposure[1],
-      method = 'Steiger-filtered IVW', nsnp = nrow(harm_filtered),
+      method = 'Steiger-filtered IVW', nsnp = sum(harm$mr_keep),
       b = res_filtered$b, se = res_filtered$se, pval = res_filtered$pval
     ))
   }
@@ -129,16 +130,16 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
     mrlap_res = get_correction(
       IVs = harm %>% select(beta.exposure,se.exposure) %>%
         rename(std_beta.exp = beta.exposure, std_SE.exp = se.exposure),
-      lambda = ldsc_params$lambda,
-      lambda_se = ldsc_params$lambda_se,
-      h2_LDSC = ldsc_params$h2_exp,
-      h2_LDSC_se = ldsc_params$h2se_exp,
+      lambda = mrlap_params$lambda,
+      lambda_se = mrlap_params$lambda_se,
+      h2_LDSC = mrlap_params$h2_exp,
+      h2_LDSC_se = mrlap_params$h2se_exp,
       alpha_obs = res$b[res$method=='Inverse variance weighted'],
       alpha_obs_se = res$se[res$method=='Inverse variance weighted'],
       n_exp = max(harm$samplesize.exposure, na.rm = T) %>% as.numeric(), 
       # as.numeric() required to prevent integer overflow
       n_out = max(harm$samplesize.outcome, na.rm = T) %>% as.numeric(),
-      MR_threshold = args$pval,
+      MR_threshold = mrlap_params$pval,
       verbose = T
     )
     res = res %>% rbind(
@@ -195,9 +196,14 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
   remove(loo_plot)
   
   #### tabular outputs ####
+  # a copy of the harmonised data
+  write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
+  
   # tabular output
+  res = res %>% add_column(F_min = min(harm$F.statistic), F_med = median(harm$F.statistic))
   write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
   print(res)
+  print(paste0('Saving results to ',prefix, '_results.txt'))
   
   # tabular outputs for QC tests
   write.table(het, paste0(prefix, '_heterogeneity.txt'), sep = '\t')
@@ -235,6 +241,22 @@ all_mr_results = function(harm, prefix, ldsc_params, apss_params = NULL){
     writeLines(c('Distortion Coefficient:','Distortion P-value:','','','Outliers:',''),
                con = outlier_log)
   })
+}
+
+### Estimate F statistic ####
+getr = function(harm, meta){
+  if (!is.na(meta$nca[1]) & !is.na(meta$nco[1])) harm$r.exposure = get_r_from_lor(
+    lor = harm$beta.exposure, af = harm$eaf.exposure, ncase = meta$nca[1],
+    ncontrol = meta$nco[1], prevalence = meta$nca[1]/(meta$nca[1]+meta$nco[1]),
+    model = 'logit', correction = T
+  ) else harm$r.exposure = get_r_from_bsen(harm$beta.exposure, harm$se.exposure, harm$samplesize.exposure)
+  harm$F.statistic = (harm$samplesize.exposure-2) * harm$r.exposure^2 / (1-harm$r.exposure^2)
+  if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
+    lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
+    ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),
+    model = 'logit', correction = T
+  ) else harm$r.outcome = get_r_from_bsen(harm$beta.outcome, harm$se.outcome, harm$samplesize.outcome)
+  return(harm)
 }
 
 #### main MR execution block ####
@@ -313,19 +335,6 @@ main = function(args){
   if (is.na(metadata$n[2])) metadata$n[2] = max(gwa2_rev$N)
   
   #### harmonise data for 2-sample MR ####
-  getr = function(harm, meta){
-    if (!is.na(meta$nca[1]) & !is.na(meta$nco[1])) harm$r.exposure = get_r_from_lor(
-      lor = harm$beta.exposure, af = harm$eaf.exposure, ncase = meta$nca[1],
-      ncontrol = meta$nco[1], prevalence = meta$nca[1]/(meta$nca[1]+meta$nco[1]),
-      model = 'logit', correction = T
-    ) else harm$r.exposure = get_r_from_pn(harm$pval.outcome, harm$samplesize.outcome)
-    if (!is.na(meta$nca[2]) & !is.na(meta$nco[2])) harm$r.outcome = get_r_from_lor(
-      lor = harm$beta.outcome, af = harm$eaf.outcome, ncase = meta$nca[2],
-      ncontrol = meta$nco[2], prevalence = meta$nca[2]/(meta$nca[2]+meta$nco[2]),
-      model = 'logit', correction = T
-    ) else harm$r.outcome = get_r_from_pn(harm$pval.outcome, harm$samplesize.outcome)
-    return(harm)
-  }
   # harmonise data for forward direction
   exp1$samplesize.exposure = metadata$n[1]
   out2$samplesize.outcome = metadata$n[2]
@@ -370,13 +379,29 @@ main = function(args){
   print(paste0('Finished input data harmonisation, time = ',toc[3]))
   
   #### Execute MR ####
-  ldsc_params = list(lambda = args$gcovint, lambda_se = args$gcintse)
-  ldsc_params_fwd = c(ldsc_params, list(h2_exp = args$h21, h2se_exp = args$h2se1))
-  ldsc_params_rev = c(ldsc_params, list(h2_exp = args$h22, h2se_exp = args$h2se2))
-  all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), ldsc_params_fwd, apss_fwd)
+  mrlap_params = list(lambda = args$gcovint, lambda_se = args$gcintse)
+  mrlap_params_fwd = c(mrlap_params, list(h2_exp = args$h21, h2se_exp = args$h2se1, pval = args$pval1))
+  mrlap_params_rev = c(mrlap_params, list(h2_exp = args$h22, h2se_exp = args$h2se2, pval = args$pval2))
+  
+  if (! all(mr_fwd_harm$F.statistic > 10)){
+    mr_fwd_harm_weak = mr_fwd_harm
+    print(paste0(sum(mr_fwd_harm$F.statistic < 10),' variants have F < 10'))
+    mr_fwd_harm = mr_fwd_harm[mr_fwd_harm$F.statistic > 10,]
+  }
+  all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), mrlap_params_fwd, apss_fwd)
+  if (! all(mr_fwd_harm$F.statistic > 10)) all_mr_results(
+    mr_fwd_harm_weak, paste0(out_prefix,'_mr_forward_weak'), mrlap_params_fwd, apss_fwd)
   toc = proc.time()
   print(paste0('Finished forward direction MR, time = ',toc[3]))
-  all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), ldsc_params_rev, apss_rev)
+  
+  if (! all(mr_rev_harm$F.statistic > 10)){
+    mr_rev_harm_weak = mr_rev_harm
+    print(paste0(sum(mr_rev_harm$F.statistic < 10),' variants have F < 10'))
+    mr_rev_harm = mr_rev_harm[mr_rev_harm$F.statistic > 10,]
+  }
+  all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), mrlap_params_rev, apss_rev)
+  if (! all(mr_rev_harm$F.statistic > 10)) all_mr_results(
+    mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), mrlap_params_rev, apss_rev)
   toc = proc.time()
   print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }

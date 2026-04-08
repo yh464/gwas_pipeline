@@ -3,6 +3,9 @@
 This script filters all GWA files for a phenotype
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     from fnmatch import fnmatch
@@ -21,7 +24,7 @@ def main(args):
     for x in pheno:
       out_dir = f'{args._in}/{x}_{args.freq}/'
       out_dir = f'{args._in}/{x}/'
-      print(f'Output to {out_dir}')
+      log.log(f'Output to {out_dir}')
       if not os.path.isdir(out_dir): os.system(f'mkdir -p {out_dir}')
       os.chdir(args._in)
       os.chdir(x+'_raw')
@@ -53,10 +56,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pheng',r'.+', 'phenotype group')
-    proj.add_var('%pheno',r'.+', 'phenotype')
-    proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng_raw/%pheno_raw.fastGWA', __file__)
-    proj.add_output(args._in+'/%pheng/%pheno.fastGWA', __file__)
     try: main(args)
     except: cmdhistory.errlog()

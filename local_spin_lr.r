@@ -18,17 +18,17 @@ if (endsWith(args$input,'csv')) {sep <- ','} else {sep <- '\t'}
 f <- args$force
 tic <- proc.time()
 
-tmpdir <- '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
+tmpdir <- '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/spin_cache/'
 if (! dir.exists(tmpdir)) dir.create(tmpdir)
 
 #### Mapping from HCP to broader cortical types ####
 # load the mapping files
 require(httr)
-hcp2mesulam <- read.csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2meslr.csv', header=T)
+hcp2mesulam <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2meslr.csv', header=T)
 colnames(hcp2mesulam) <- c("annot1","annot2","Gof","Parcellation","Class")
 hcp2mesulam <-hcp2mesulam[!(hcp2mesulam$Parcellation=="no matching lookup"),]
 
-hcp2yeo <- read.csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
+hcp2yeo <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
 colnames(hcp2yeo) <- c("annot1","annot2","Gof","Parcellation","Class")
 hcp2yeo <-hcp2yeo[!(hcp2yeo$Parcellation=="no matching lookup"),]
 
@@ -44,7 +44,7 @@ hcp2mesulam$Parcellation <- gsub("R_","rh_R_",hcp2mesulam$Parcellation)
 hcp2mesulam$label <- hcp2mesulam$Parcellation
 
 # load all things for running permutation
-permfile <- '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/spin_perms.rdata'
+permfile <- '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/spin_perms.rdata'
 if (file.exists(permfile)){
   load(permfile)
 } else {

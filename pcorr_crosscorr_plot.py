@@ -72,7 +72,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/*',__file__)
-    proj.add_output(args.out+'/pcorr_%pheno..*', __file__) # .* is a wildcard
     try: main(args)
     except: cmdhistory.errlog()

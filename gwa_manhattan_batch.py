@@ -52,11 +52,11 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
       default = '../gwa/')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-      default = '../gwa/manhattan/')
+      default = '../manhattan/')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
     parser.add_argument('-p','--pval', help = 'p-value threshold', type = float, default = 5e-8)
-    parser.add_argument('-a','--autosome-only',dest = 'a', help = 'exclude sex chromosomes',
+    parser.add_argument('-a','--autosome_only',dest = 'a', help = 'exclude sex chromosomes',
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
@@ -66,7 +66,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in, __file__)
-    proj.add_output(args.out, __file__)
     try: main(args)
     except: cmdhistory.errlog()

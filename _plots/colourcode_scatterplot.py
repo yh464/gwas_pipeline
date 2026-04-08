@@ -77,5 +77,41 @@ def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '
     handles = ax.get_legend().legend_handles
     for handle in handles: handle.set_markersize(5)
   
-  if rep != False: fig = _add_rep_axis(fig, rep)
+  if isinstance(rep, str): fig = _add_rep_axis(fig, rep.upper())
+  return fig
+
+def scatterplot_adata(adata, v, rep = 'umap', **kwargs):
+  '''
+  Scatterplot from anndata object
+  Input:
+    adata: anndata object with obsm[rep] containing coordinates
+    v: variable name in adata.obs or adata.var to colour by
+    rep: representation in adata.obsm to use for coordinates
+    all **kwargs are passed to scatterplot_noaxis()
+  '''
+  if rep.lower() == 'umap':
+    coord_key = 'X_umap'; rep_axis = 'UMAP'
+  elif rep.lower() == 'pca':
+    coord_key = 'X_pca'; rep_axis = 'PC'
+  elif rep.lower() == 'tsne':
+    coord_key = 'X_tsne'; rep_axis = 'tSNE'
+  elif rep.lower() == 'spatial':
+    coord_key = 'spatial'; rep_axis = False
+  elif rep in adata.obsm.keys():
+    coord_key = rep; rep_axis = rep.upper()
+  else:
+    raise ValueError(f'Reduced-dimension representation {rep} not in the anndata object')
+  x = adata.obsm[coord_key][:,0]
+  y = adata.obsm[coord_key][:,1]
+  
+  if isinstance(v, str) and v in adata.obs.columns.tolist():
+    val = adata.obs[v]; vname = v
+  elif isinstance(v, str) and v in adata.var.index.tolist():
+    gene_idx = adata.var.index.get_loc(v)
+    val = adata.X[:,gene_idx].toarray().flatten() if hasattr(adata.X, 'toarray') else adata.X[:,gene_idx].flatten()
+    vname = v
+  else:
+    val = v; vname = ''
+  
+  fig = scatterplot_noaxis(x, y, val, rep = rep_axis, vname = vname, **kwargs)
   return fig

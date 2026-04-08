@@ -12,83 +12,104 @@ Requires following inputs:
     PLINK bed binaries
     covariates files in FID IID *** format
 '''
+from _utils.logger import logger
+log = logger()
+import os, fnmatch
+import pandas as pd
+from hashlib import sha256
 
 def main(args):
   # array submitter
   from _utils.slurm import array_submitter
-  submitter = array_submitter(name = f'gwa_{args.pheno}',timeout = 90)
+  submitter = array_submitter(name = 'gwa_'+ '_'.join(args.pheno),timeout = 90)
+  tmpdir = os.path.realpath('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/_snp_list')
+  os.makedirs(tmpdir, exist_ok = True)
   
-  # locate phenotype file
-  import os
-  import fnmatch
-  flist = []
-  for f in os.listdir(args._in):
-    if fnmatch.fnmatch(f,f'*{args.pheno}*') and not(os.path.isdir(f)):       # search for all files matching args.pheno
-      flist.append(f'{args._in}/{f}')
-  if len(flist) != 1: raise ValueError('Please give only ONE phenotype file')
-  
-  # temp and log
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'                                 # temporatory dir
-  if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
-  
+  # general args
   force = '-f' if args.force else ''
   xchr = '' if args.xchr else '--nox'
   if len(args.extract) > 0:
     if os.path.isfile(args.extract[0]): extract = f'--extract {os.path.realpath(args.extract[0])} '
     else:
-      snp_file = f'{submitter.tmpdir}/snps_to_extract.txt'
+      snp_file = f'{tmpdir}/{sha256(" ".join(args.extract).encode()).hexdigest()[:6]}.txt'
       with open(snp_file, 'w') as f:
         for snp in args.extract:
           print(snp, file = f)
       extract = f'--extract {snp_file} '
   else: extract = ''
 
-  # check validity of the phenotype file
-  import pandas as pd
-  f = flist[0]
-  if not fnmatch.fnmatch(f,'*.txt'): raise ValueError('Phenotype file should be in TXT format')
-  os.system(f'head {f} -n 5 > {tmpdir}/temp_{args.pheno}.txt')
-  df = pd.read_csv(f'{tmpdir}/temp_{args.pheno}.txt',sep = '\s+')
-  c = df.columns.values
-  if c[0] != 'FID' or c[1] != 'IID':
-    raise ValueError('Phenotype file should be in the format: FID IID *pheno')
-  os.remove(f'{tmpdir}/temp_{args.pheno}.txt')
-  
-  # create output folder
-  outdir = f'{args.out}/{os.path.basename(f)}/'.replace('.txt','')
-  print(outdir)
-  if not os.path.isdir(outdir):
-    os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
-  
-  # phenotypes to be analysed
-  c = c[2:]
-  print('Following traits are to be GWA-analysed:')
-  for i in c: print(i)
-  
-  # for each phenotype
-  for i in range(c.size):
-    mpheno = i+1
-    trait = c[i]
-    out_fname = outdir + trait
-    # check existing files
-    if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
-      print(f'Trait already analysed for: {trait}')
+  if args.bysex:
+    dcov = pd.read_table(args.dcov, index_col = [0,1])
+    qcov = pd.read_table(args.qcov, index_col = [0,1])
+    if 'sex' not in dcov.columns: raise ValueError('Covariate file should contain a "sex" column for sex-specific analyses')
+    for sex in [0,1]:
+      sex_dcov = dcov.loc[dcov['sex'] == sex,:].drop(columns = 'sex')
+      sex_qcov = qcov.loc[sex_dcov.index.intersection(qcov.index), ~qcov.columns.str.contains('sex')]
+      sex_dcov_file = args.dcov.replace('.txt',f'_sex_{sex}.txt')
+      sex_qcov_file = args.qcov.replace('.txt',f'_sex_{sex}.txt')
+      sex_dcov.to_csv(sex_dcov_file, sep = '\t')
+      sex_qcov.to_csv(sex_qcov_file, sep = '\t')
+
+  # locate phenotype file
+  for pheno in args.pheno:
+    flist = []
+    for f in os.listdir(args._in):
+      if f == f'{pheno}.txt': flist = [f'{args._in}/{f}']; break
+      if fnmatch.fnmatch(f,f'*{pheno}*.txt') and not(os.path.isdir(f)):       # search for all files matching pheno
+        flist.append(f'{args._in}/{f}')
+    if len(flist) != 1: log.warn(f'Please give only ONE phenotype file for {pheno}'); continue
+    f = flist[0]
+
+    # check validity of the phenotype file
+    hdr = open(f).readline().replace('\n','').split()
+    if hdr[0] != 'FID' or hdr[1] != 'IID':
+      log.warn('Phenotype file should be in the format: FID IID *pheno')
       continue
     
-    submitter.add(
-      f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov} '+
-      f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
-      f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
-      )
+    # create output folder
+    outdir = f'{args.out}/{os.path.basename(f)}'.replace('.txt','')
+    log.log(outdir)
+    if not os.path.isdir(outdir):
+      os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
+    
+    # phenotypes to be analysed
+    c = hdr[2:]
+    log.log(f'Following traits are to be GWA-analysed for {pheno}:')
+    for i in c: log.log(f'    {i}')
+    
+    # for each phenotype
+    for i, trait in enumerate(c):
+      mpheno = i+1
+      # check existing files
+      if args.bysex:
+        for sex in [0,1]:
+          out_fname = f'{outdir}_sex_{sex}/{trait}'
+          if os.path.isfile(out_fname+'.fastGWA') and not args.force:
+            log.log(f'Trait already analysed for: {trait} in sex {sex}')
+            continue
+          submitter.add(
+            f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov.replace(".txt",f"_sex_{sex}.txt")} '+
+            f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+            f'--keep {args.keep} --nox {extract} {force}'
+          )
+
+      out_fname = f'{outdir}/{trait}'
+      if os.path.isfile(f'{out_fname}.fastGWA') and not args.force:
+        log.log(f'Trait already analysed for: {trait}')
+        continue
+      submitter.add(
+        f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov} '+
+        f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+        f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
+        )
+
   submitter.submit()
 
 if __name__ == '__main__':
-  import argparse
-  from _utils.slurm import parser_config
-  # argument input
-  parser = argparse.ArgumentParser(description=
+  from _utils.slurm import slurm_parser
+  parser = slurm_parser(description=
     'This programme runs GWA for any phenotype given as the 1st positional argument')
-  parser.add_argument('pheno', help = 'Phenotype file in TXT format - please supply ONLY ONE')
+  parser.add_argument('pheno', nargs = '+', help = 'Phenotype file in TXT format - please supply ONLY ONE')
   
   io = parser.add_argument_group(title = 'input and output options')
   io.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory',
@@ -100,24 +121,25 @@ if __name__ == '__main__':
   io.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file',
     default = '../params/ukb_qcov.txt')
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
-    default = '../params/bed_files_ukb.txt')
-  io.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/sp0.05_grm')
+    default = '../params/bed')
+  io.add_argument('--grm', dest = 'grm', help = 'Genetic relatedness matrix',
+    default = '../params/bed/ukb_img_eur.sp')
   
   params = parser.add_argument_group(title = 'parameters for GCTA')
   params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-    default = '../toolbox/gcta/gcta-1.94.1')
+    default = '../toolbox/gcta/gcta64')
   params.add_argument('--maf', dest = 'maf', help = 'Filter by minor allele frequency',
     default = '0.01', type = str)
   params.add_argument('--keep', dest = 'keep', help = 'Subjects to keep', # intentionally absolute
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ukbkeepfile_202402.txt')
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/subjlist_ukb_img_2025.txt')
   params.add_argument('--extract', nargs='*', help = 'SNPs to extract from input files', default = [])
   
-  xchr = parser.add_argument_group(title = 'X chromosome GWAS options')
+  xchr = parser.add_argument_group(title = 'Sex-related analyses')
+  xchr.add_argument('--bysex', action = 'store_true', help = 'Conduct GWAS separately for males and females')
   xchr.add_argument('--nox', dest = 'xchr', help = 'Do not conduct GWAS for X chromosome',
       default = True, action = 'store_false')
   xchr.add_argument('--xbed', help = 'PLINK binary for the X chromosome',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chrX')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/chr23')
   
   parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
     default = False, action = 'store_true')
@@ -131,10 +153,5 @@ if __name__ == '__main__':
   logger.splash(args)
   cmdhistory.log()
   proj = path.project()
-  proj.add_var('/%pheng',r'.+', 'phenotype group')
-  proj.add_var('/%pheno',r'.+', 'phenotype')
-  proj.add_var('/%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-  proj.add_input(args._in+'/%pheng.txt', __file__)
-  proj.add_output(args.out+'/%pheng/%pheno.fastGWA', __file__)
   try: main(args)
   except: cmdhistory.errlog()

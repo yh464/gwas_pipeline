@@ -69,7 +69,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
-    proj.add_output(args.out+'/%pheng/%pheno_%maf.log',__file__)
     try: main(args)
     except: cmdhistory.errlog()

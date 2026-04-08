@@ -10,7 +10,7 @@ library(here)
 parser = ArgumentParser(description = 'This script runs LAVA')
 # path specs
 parser$add_argument('-i','--in', dest = 'input', help = 'input summary stats directory',
-                    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/gwa/')
+                    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/gwa/')
 parser$add_argument('--p1', nargs = '+', required = T,
                     help = 'Exposure, format <group>/<pheno>, separated by whitespace')
 parser$add_argument('--p2', nargs = '*',
@@ -18,12 +18,12 @@ parser$add_argument('--p2', nargs = '*',
 parser$add_argument('--cov', nargs = '*', help = 'Covariates, format <group>/<pheno>')
 parser$add_argument('--meta', nargs = '*', help = 'Metadata files')
 parser$add_argument('--clump', nargs = '*', help = 'clumping outputs, in order to select for loci')
-parser$add_argument('--all-loci', default = F, action = 'store_true', help = 'use all loci for regional correlation')
+parser$add_argument('--all_loci', default = F, action = 'store_true', help = 'use all loci for regional correlation')
 parser$add_argument('--overlap', help = 'sample overlap file from LDSC gcov_int')
 parser$add_argument('--ref', help = 'Reference files directory', default = 
-                      '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
+                      '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/1000g_by_eth/')
 parser$add_argument('--eth', help = 'ethnicity', choices = c('afr','amr','eas','eur','sas'), default = 'eur')
-parser$add_argument('--all-exp', dest = 'all_exp', help = 'Multiple regression with all exposures',
+parser$add_argument('--all_exp', help = 'Multiple regression with all exposures',
                     action = 'store_true', default = F)
 parser$add_argument('-o','--out', help = 'Output file name', required = T)
 parser$add_argument('-f','--force', help = 'force overwrite', action = 'store_true', default = F)
@@ -93,7 +93,7 @@ main = function(args) {
   library(progress)
   library(doParallel)
   
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava'
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava'
   if (!dir.exists(tmpdir)) dir.create(tmpdir)
   if (! dir.exists(dirname(args$out))) dir.create(dirname(args$out), recursive = T)
   if (file.exists(args$out) & !args$force) return(NULL)
@@ -216,8 +216,16 @@ main = function(args) {
   }
   stats = lapply(stats_files %>% na.omit(), read_tsv, col_types = 
     cols(CHR = 'i', START='d', STOP = 'd', nsnp = 'i')) %>% bind_rows() %>% 
-    mutate(p_bonferroni = p * nrow(loci)) %>% 
-    group_by(type) %>% mutate(q = p.adjust(p, 'BH'))
+    drop_na() %>% group_by(type, group1, pheno1) %>% 
+    mutate(q_allloci = p.adjust(p, 'BH'))
+  locus_sig = stats %>% filter(type == 'h2') %>% group_by(CHR, START, STOP) %>%
+    summarize(h2_sig = max(q_allloci) < 0.05)
+  stats = stats %>% left_join(locus_sig) %>% group_by(type, group1, pheno1, h2_sig) %>% 
+    mutate(q = if_else(h2_sig, p.adjust(p, 'BH'), NA),
+           p_bonferroni = if_else(h2_sig, p.adjust(p, 'bonferroni'), NA),
+           ) %>% ungroup() %>%
+    select(CHR, START, STOP, nsnp, group1, pheno1, group2, pheno2, type, stat, 
+           se, p, h2_sig, q, p_bonferroni, q_allloci)
   write_tsv(stats, args$out)
   
   if (length(error_loci) > 0) write_tsv(bind_rows(error_loci), 

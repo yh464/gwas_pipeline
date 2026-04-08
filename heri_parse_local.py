@@ -13,6 +13,9 @@ Requires following inputs:
     LDSC H2 logs
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     from fnmatch import fnmatch
@@ -22,7 +25,7 @@ def main(args):
     import matplotlib.pyplot as plt
     import scipy.stats as sts
     
-    m2m = pd.read_csv('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv')
+    m2m = pd.read_csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv')
     m2m = m2m[['label1','label2']]
     m2m.columns = ['roi','Yeo']
     
@@ -86,7 +89,7 @@ def main(args):
             plt.savefig(f'{args._in}/{x}/h2_summary_z.png')
             plt.close()
         except:
-            print('Check naming conventions, no fig plotted')
+            log.log('Check naming conventions, no fig plotted')
     
     all_summary = pd.concat(all_summary)
     h2_all = all_summary.pivot_table(values = 'h2', index = 'roi', columns = 'pheno')
@@ -117,7 +120,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%reg_%maf.h2.log', __file__)
-    proj.add_output(args._in+'/local_h2_summary.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()

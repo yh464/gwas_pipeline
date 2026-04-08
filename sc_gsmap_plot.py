@@ -11,6 +11,9 @@ Requires following inputs:
     original spatial transcriptomics dataset for gsMap (.h5ad)
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     import os
     from _utils.path import find_gwas
@@ -33,9 +36,9 @@ def main(args):
         gsmap_output = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.csv.gz'
         out_fig = f'{args._in}/{g}/{p}/{s}_gsmap_spatial_ldsc.png'
 
-        if not os.path.isfile(h5ad): warnings.warn(f'Missing h5ad file for {s}, skipping'); continue
+        if not os.path.isfile(h5ad): log.warn(f'Missing h5ad file for {s}, skipping'); continue
         if not os.path.isfile(gsmap_output):
-          warnings.warn(f'Missing spatial LDSC output file, please run:\n    python sc_gsmap_batch.py {g}/{p}')
+          log.warn(f'Missing spatial LDSC output file, please run:\n    python sc_gsmap_batch.py {g}/{p}')
           continue
         if os.path.isfile(out_fig) and not args.force: continue
 
@@ -43,7 +46,7 @@ def main(args):
         coords = pd.DataFrame(index = adata.obs_names, columns = ['x','y'], data = adata.obsm['spatial'])
         sldsc = pd.read_table(gsmap_output, sep = ',', index_col = 'spot', dtype = {'spot':str})
         df = coords.join(sldsc, how = 'inner')
-        if df.shape[0] == 0: warnings.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
+        if df.shape[0] == 0: log.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
         df['logp'] = -np.log10(df['p'])
         df.loc[df['logp'] < 0, 'logp'] = 0
         colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], redgrey, 0.1, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)

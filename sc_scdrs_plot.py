@@ -10,23 +10,29 @@ Requires following inputs:
     scDRS output folder
     columns containing cell classifications
 '''
+
+import os, warnings
+from _utils.path import normaliser, find_gwas
+from _utils import logger
+log = logger.logger()
+from _utils.gadgets import mv_symlink
+from _plots.corr_heatmap import corr_heatmap
+import pandas as pd
+
 def main(args):
-    import warnings
 
     # find phenotypes
-    from _utils.path import find_gwas
     pheno = find_gwas(args.pheno, long = True)
     pheno_short = find_gwas(args.pheno); 
+    norm = normaliser()
+    norm.quickmap_pheno(pheno_short)
 
     # find h5ad annotations
-    import os
-    from _utils.gadgets import mv_symlink
     for sc in args.sc:
         os.makedirs(f'{args._in}/plots/{sc}', exist_ok=True)
         h5ad_prefix = [x[:-5] for x in os.listdir(f'{args.h5ad}/{sc}') if x[-5:] =='.h5ad']
         out_prefix = f'{args._in}/'+'_'.join([x[0] for x in pheno_short])+f'.{sc}'
         # concatenate scDRS output
-        import pandas as pd
         summary = []
         for g, p in pheno:
             pheno_summary = []
@@ -37,9 +43,9 @@ def main(args):
                                f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.score.png')
                     mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.pseudotime.png',
                                f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.pseudotime.png')
-                except: warnings.warn(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
+                except: log.warn(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
                 pheno_summary.append(df)
-            if len(pheno_summary) == 0: warnings.warn(f'Missing scDRS enrichment for {g}/{p}'); continue
+            if len(pheno_summary) == 0: log.warn(f'Missing scDRS enrichment for {g}/{p}'); continue
             pheno_summary = pd.concat(pheno_summary, axis = 0)
             pheno_summary.to_csv(f'{args._in}/{g}/{p}.{sc}.scdrs.enrichment.txt', index = False, sep = '\t')
             pheno_summary.columns = ['cell_type', 'annotation', 'n_cell','n_ctrl','p','beta','hetero_p','hetero_z','fdr.05','fdr.1','fdr.2','dataset']
@@ -49,9 +55,9 @@ def main(args):
             summary.append(pheno_summary)
         
         # plot heatmap
-        if len(summary) == 0: warnings.warn(f'No scDRS enrichment found for {sc}'); continue
+        if len(summary) == 0: log.warn(f'No scDRS enrichment found for {sc}'); continue
         summary = pd.concat(summary)
-        from _plots.corr_heatmap import corr_heatmap
+        summary = norm.normalise(summary, quickmap = True)
         for lab in summary.annotation.unique():
             tmp = summary.loc[summary.annotation == lab,:]
             tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
@@ -59,7 +65,7 @@ def main(args):
             if 1 <= x_size.unique().size <= 500:
                 fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])
                 fig.savefig(f'{out_prefix}_{lab}_enrichment.pdf', bbox_inches = 'tight')
-            else: warnings.warn(f'{out_prefix}_{lab} is too large to plot, check tabular output')
+            else: log.warn(f'{out_prefix}_{lab} is too large to plot, check tabular output')
 
 
 if __name__ == '__main__':  
@@ -67,13 +73,15 @@ if __name__ == '__main__':
     parser = ArgumentParser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing scDRS output', default = '../sc/scdrs')
-    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025'])
+    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025','keefe_2025'])
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
     parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
-        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
-    parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
+        'subcluster_identity_broad','subcluster_identity', # keefe
+        ])
+    # always overwrites
     args = parser.parse_args()
     
     # path normalisation

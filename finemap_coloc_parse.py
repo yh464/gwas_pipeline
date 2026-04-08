@@ -12,8 +12,19 @@ Required input:
     hyprcoloc tabular output
 '''
 
+import os
+from hashlib import sha256
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from _utils.path import normaliser, find_gwas
+from _utils.genetools import locus_to_name
+from _utils.plugins.enrichr import enrichr_list, enrichr_to_revigo
+from _utils.plugins.inrich import inrich
+from multiprocessing import Pool, cpu_count
+
+
 def parse_hyprcoloc_tabular(file):
-    import pandas as pd
     df = pd.read_table(file).drop(['iteration','dropped_trait'], axis=1) # valid clusters are now devoid of NA
     df.dropna(inplace = True)
     df = df.loc[df['regional_prob']>0.6, :] # filter by regional probability at 0.6 as in Nat Gen 2023
@@ -24,9 +35,6 @@ def parse_hyprcoloc_cluster(entry, pheno):
     entry: pandas DataFrame single row, with following columns: 'traits', 'candidate_snp';
     groups: a list output from _utils.path.find_gwas(long = False)
     '''
-    import pandas as pd
-    import numpy as np
-    
     # initialise output
     snp = entry['candidate_snp']
     clusters = pd.DataFrame(data = np.nan, index = [snp], columns = [f'{g}_{p}' for g, ps in pheno for p in ps])
@@ -40,29 +48,33 @@ def parse_hyprcoloc_cluster(entry, pheno):
     summary.insert(loc = 0, column = 'regional_prob', value = entry['regional_prob'])
     summary.insert(loc = 1, column = 'prob_explained_by_snp', value = entry['posterior_explained_by_snp'])
     return clusters, summary
-    
-    
-def main(args):
-    import os
-    import pandas as pd
-    from fnmatch import fnmatch
-    from _utils.path import normaliser, find_gwas
-    from _utils.genetools import locus_to_name
-    from _plugins.enrichr import enrichr_list, enrichr_to_revigo
-    from _plugins.inrich import inrich
 
-    pheno = find_gwas(args.pheno, dirname = args.gwa, long = False)
-    pheno_str = '_'.join([g for g,_ in pheno])
+def _enrichr(df, traits):
+    gene_list = locus_to_name(df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
+    enrichr_result = enrichr_list(gene_list)
+    return enrichr_result.assign(traits = traits)
+
+def _inrich(df, traits):
+    main, igt = inrich(df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end', niter = 10000)
+    return main.assign(traits = traits), igt.assign(traits = traits)
+
+def main(args):
+    from finemap_coloc_batch import find_loci
+    from _utils.logger import logger
+    log = logger()
+    pheno, loci = find_loci(args)
+    pheno_str = sha256(repr(pheno).encode()).hexdigest()[:10]
     in_dir = f'{args._in}/{pheno_str}'  
-    
+    norm = normaliser()
+
     orig = []
     summary = []
     clusters = []
-    for x in sorted(os.listdir(in_dir)):
-        if not fnmatch(x, '*hyprcoloc.txt'): continue
-        # parse chromosomal position
-        tmp = x.split('_')
-        chrom = int(tmp[0][3:]); start = int(tmp[1]); end = int(tmp[2])
+
+    for _, row in loci.iterrows():
+        chrom = int(row['CHR']); start = int(row['START']); end = int(row['STOP'])
+        x = f'chr{chrom}_{start:.0f}_{end:.0f}_hyprcoloc.txt'
+        if not os.path.isfile(f'{in_dir}/{x}'): continue
         
         df = parse_hyprcoloc_tabular(f'{in_dir}/{x}')
         for i in range(df.shape[0]):
@@ -90,31 +102,31 @@ def main(args):
     clusters.index.name = 'SNP'
     
     # enrichr and revigo analysis
-    enrichr_res = []; revigo_res = [] 
-    inrich_main = []; inrich_igt = []
-    for phen_group, group_df in orig.groupby('traits'):
-        gene_list = locus_to_name(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end')
-        enrichr_result = enrichr_list(gene_list)
-        enrichr_res.append(enrichr_result.assign(traits = phen_group))
-        revigo_result = enrichr_to_revigo([enrichr_result])
-        revigo_res.append(revigo_result[0].assign(traits = phen_group))
+    if not os.path.isfile(f'{args.out}/{pheno_str}_coloc_revigo.txt') or args.force:
+        enrichr_res = []; revigo_res = [] 
+        with Pool(processes = max(cpu_count()*2, orig.traits.unique().size)) as pool:
+            enrichr_res = list(tqdm(pool.starmap(_enrichr, 
+                [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
+                total = orig.traits.unique().size))
+            inrich_res = list(tqdm(pool.starmap(_inrich, 
+                [(group_df, phen_group) for phen_group, group_df in orig.groupby('traits')]), 
+                total = orig.traits.unique().size))
+        revigo_res = enrichr_to_revigo(enrichr_res, keepcols = ['traits'])
+        inrich_main = [x[0] for x in inrich_res]; inrich_igt = [x[1] for x in inrich_res]
+        enrichr_res = pd.concat(enrichr_res)
+        revigo_res = pd.concat(revigo_res)
+        inrich_main = pd.concat(inrich_main)
+        inrich_igt = pd.concat(inrich_igt)
+        norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = False)
+        norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = False)
+        norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = False)
+        norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = False)
 
-        inrich_main_result, inrich_igt_result = inrich(group_df, chrom_col = 'chromosome', start_col = 'start', stop_col = 'end', niter = 10000)
-        inrich_main.append(inrich_main_result.assign(traits = phen_group))
-        inrich_igt.append(inrich_igt_result.assign(traits = phen_group))
-    enrichr_res = pd.concat(enrichr_res)
-    revigo_res = pd.concat(revigo_res)
-    inrich_main = pd.concat(inrich_main)
-    inrich_igt = pd.concat(inrich_igt)
-
-    norm = normaliser()
     norm.normalise(orig).to_csv(f'{args.out}/{pheno_str}_coloc_raw.txt', sep = '\t', index = True)
     norm.normalise(summary).to_csv(f'{args.out}/{pheno_str}_coloc_summary.txt', sep = '\t', index = True)
     norm.normalise(clusters).to_csv(f'{args.out}/{pheno_str}_coloc_clusters.txt', sep = '\t', index = True)
-    norm.normalise(enrichr_res).to_csv(f'{args.out}/{pheno_str}_coloc_enrichr.txt', sep = '\t', index = True)
-    norm.normalise(revigo_res).to_csv(f'{args.out}/{pheno_str}_coloc_revigo.txt', sep = '\t', index = True)
-    norm.normalise(inrich_main).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_main.txt', sep = '\t', index = True)
-    norm.normalise(inrich_igt).to_csv(f'{args.out}/{pheno_str}_coloc_inrich_igt.txt', sep = '\t', index = True)
+
+    log.log(f'Output written to {args.out}/{pheno_str}_coloc_*.txt')
     return
 
 if __name__ == '__main__':
@@ -126,6 +138,14 @@ if __name__ == '__main__':
       default = '../coloc/')
     parser.add_argument('-g','--gwa', dest = 'gwa', help = 'Directory containing all summary stats (for phenotype names only)',
       default = '../gwa/')
+    parser.add_argument('-c','--clump', dest = 'clump', help = 'Directory containing all clump outputs',
+      default = '../clump/')
+    parser.add_argument('--filter', help = 'Filter for significant correlates of --filter phenotypes',
+      nargs = '*', default = [])
+    parser.add_argument('-r','--rg', help = 'Directory for rg logs, to filter traits',
+      default = '../gcorr/rglog/')
+    parser.add_argument('--rgp', help = 'p-value threshold for genetic correlation', default = None, type = float)
+    parser.add_argument('-p', '--pval', help = 'p-value', default = 5e-8, type = float)
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory')
     parser.add_argument('-f','--force',dest = 'force', help = 'force output',
       default = False, action = 'store_true')
@@ -140,9 +160,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pval',r'[0-9.+-e]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng/*coloc.txt', __file__)
-    proj.add_output(args.out+'/%pheng_coloc_summary.txt',__file__)
-    proj.add_output(args.out+'/%pheng_coloc_clusters.txt',__file__)
     try: main(args)
     except: cmdhistory.errlog()

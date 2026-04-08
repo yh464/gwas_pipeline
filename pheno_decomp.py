@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from _utils import logger
+log = logger.logger()
 
 def decomp(corrmat):
     import numpy as np
@@ -35,8 +37,8 @@ def main(args):
         for x in os.listdir(args._in):
             if fnmatch(x, f'*{p}*.txt'):
                 flist.append(f'{args._in}/{x}')
-    print('Following phenotype files have been found:')
-    for f in flist: print(f)
+    log.log('Following phenotype files have been found:')
+    for f in flist: log.log(f)
     
     pflist = []; dflist = []
     for x in flist:
@@ -78,17 +80,15 @@ def main(args):
         out_df.loc[i,'n_new'] = neff_pos
         out_df.loc[i,'p_new'] = 1-0.95**(1/neff_pos)
         toc = t() - tic
-        print(f'{i+1}/{comb_df.shape[0]}, time = {toc:.3f}')
+        log.log(f'{i+1}/{comb_df.shape[0]}, time = {toc:.3f}')
         
     out_df = pd.concat([comb_df, out_df], axis = 1)
     out_df.to_csv(f'{args._in}/neff_'+'_'.join(args.pheno)+'.txt', sep = '\t', index   = False, header = True)
-    
-    # with open(args.out,'w') as f:
-    #   print(f'Effective # variables by old method Nyholt DR (2004): {neff_abs}', file = f)
-    #   print(f'Bonferroni corrected threshold: {1-0.95**(1/neff_abs)}', file = f)
-    #   print(file = f)
-    #   print(f'Effective # variables by new method Nyholt DR (2004): {neff_pos}', file = f)
-    #   print(f'Bonferroni corrected threshold: {1-0.95**(1/neff_pos)}', file = f)
+
+    log.log(f'Effective # variables by old method Nyholt DR (2004): {neff_abs}')
+    log.log(f'Bonferroni corrected threshold: {1-0.95**(1/neff_abs)}')
+    log.log(f'Effective # variables by new method Nyholt DR (2004): {neff_pos}')
+    log.log(f'Bonferroni corrected threshold: {1-0.95**(1/neff_pos)}')
       
 if __name__ == '__main__':
     import argparse
@@ -107,7 +107,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in, __file__)
-    proj.add_output(f'{args._in}/neff.txt', __file__)
     try: main(args)
     except: cmdhistory.errlog()

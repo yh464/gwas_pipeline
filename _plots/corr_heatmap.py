@@ -50,7 +50,7 @@ def corr_heatmap(summary, sort = True, absmax = None, autocor = False, annot = '
         summary.iloc[:,col] = capitalise(summary.iloc[:,col])
         
     # determine figure size and aspect ratios
-    group1 = summary.iloc[:, 0].unique(); group2 = summary.iloc[:, 2].unique()
+    group1 = np.unique(summary.iloc[:, 0].values); group2 = np.unique(summary.iloc[:, 2].values)
     if sort: group1.sort(); group2.sort()
     if len(group1) == len(group2):
         if all(group1 == group2): autocor = True # diagonal lines to be plotted if auto-correlating

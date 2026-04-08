@@ -4,6 +4,9 @@ This script screens subjects with a valid imaging profile
 
 def main(args):
     import os
+    from _utils import logger
+    from tqdm import tqdm
+    log = logger.logger()
     
     # fail-safe
     outdir = os.path.dirname(args.out)
@@ -11,9 +14,9 @@ def main(args):
     
     # progress check
     fout = f'{args.out}.txt'
-    errlog = args.out.replace('.txt','_not_found.txt')
+    errlog = f'{args.out}_not_found.txt'
     if os.path.isfile(fout) and not args.force: 
-        print('subj list already generated')
+        log.log('subj list already generated')
         return
     
     # count subjs with imaging profiles and w/o
@@ -22,7 +25,7 @@ def main(args):
     fout = open(fout,'w')
     errlog = open(errlog,'w')
     base = args.target.split('%subj')[0]
-    for subj in os.listdir(base):
+    for subj in tqdm(os.listdir(base)):
         target = args.target.replace('%subj',subj) # target file path
         if os.path.isfile(target):
             found += 1
@@ -31,9 +34,9 @@ def main(args):
             not_found += 1
             print(subj.replace('UKB',''), file = errlog)
     
-    print(f'Total {found + not_found} subjects')
-    print(f'Found imaging profiles for {found} subjects')
-    print(f'No imaging profile for {not_found} subjects')
+    log.log(f'Total {found + not_found} subjects')
+    log.log(f'Found imaging profiles for {found} subjects')
+    log.log(f'No imaging profile for {not_found} subjects')
     return
 
 if __name__ == '__main__':
@@ -42,7 +45,7 @@ if __name__ == '__main__':
         'a valid imaging profile')
     parser.add_argument('-t','--target',dest = 'target', help =
         'Target file to screen',
-        default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Imaging/'+
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Imaging/'+
         '%subj/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
     parser.add_argument('-o','--out', dest = 'out', help = 'output prefix', required = True)
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',

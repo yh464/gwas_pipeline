@@ -45,7 +45,7 @@ def main(args):
     from _utils.path import find_gwas, find_gene_sumstats
     from _utils.slurm import array_submitter
     pheno = find_gwas(args.pheno, long = True)
-    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 4, timeout = 720, env = 'gentoolspy')
+    submitter = array_submitter(name = 'sc_scdrs_'+'_'.join(args.pheno), n_cpu = 8, timeout = 720, env = 'gentoolspy')
 
     # scans hdf5 files
     for g, p in pheno:
@@ -68,7 +68,7 @@ def main(args):
 
             for h5, h5prefix in zip(h5ad,h5ad_prefix):
                 out_prefix = f'{outdir}/{p}.{h5prefix}.scdrs'
-                if not os.path.isfile(f'{out_prefix}.sensitivity.txt'):
+                if not os.path.isfile(f'{out_prefix}.sensitivity.txt') or args.force:
                     submitter.add(
                         f'python sc_scdrs_sensitivity.py -i {weights_file} --h5ad {h5} --label '+
                         ' '.join(args.label)+
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
-    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025'])
+    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025','keefe_2025'])
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing gene-level summary statistics',
         default = '../annot/magma')
     parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG')
@@ -108,10 +108,12 @@ if __name__ == '__main__':
     parser.add_argument('-n','--nsig', help = 'Number of significant genes, -1 for all FDR-significant genes, default 1000', 
         type = int, default = 1000)
     parser.add_argument('--h5ad', help = 'Input directory containing h5ad single-cell multiomics dataset',
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
-    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/multiomics/scdrs') # intentionally absolute
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
-        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
+        'subcluster_identity_broad','subcluster_identity', # keefe
+        ])
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite', default = False, action = 'store_true')

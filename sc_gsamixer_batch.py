@@ -15,10 +15,12 @@ Outputs:
     Bivariate GSA-mixer (if p2 is specified)
 '''
 
-import os
-import tempfile
+import os, tempfile
+from tqdm import tqdm
+from multiprocessing import Pool
 
-def split_sumstats(input, ref, output):
+def split_sumstats(input_args):
+    input, ref, output = input_args
     import pandas as pd
 
     chroms = list(range(1,23))
@@ -27,13 +29,12 @@ def split_sumstats(input, ref, output):
         ref_df = pd.read_table(ref.replace('@', str(chrom)), header = None, usecols = [1])
         df_sub = df.loc[df['SNP'].isin(ref_df[1]),:]
         df_sub.dropna().to_csv(output.replace('@', str(chrom)), sep = '\t', index = False)
-    return
 
 def main(args):
     # tempdir
-    mixer_py = f'{args.mixer}/precimed/mixer_dev.py'
+    mixer_py = f'{args.mixer}/precimed/mixer.py'
     tmpdir = tempfile.mkdtemp()
-    tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsa_mixer'; os.makedirs(tmpdir, exist_ok = True)
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/gsa_mixer'; os.makedirs(tmpdir, exist_ok = True)
 
     # find GWAS sumstats
     from _utils.path import find_gwas, pair_gwas
@@ -48,33 +49,37 @@ def main(args):
     # array submitter
     from _utils.slurm import array_submitter
     fit1_submitter = array_submitter(name = 'sc_gsamixer_fit1_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720)
+        env = args.mixer, n_cpu = 32, timeout = 720)
     fit2_submitter = array_submitter(name = 'sc_gsamixer_fit2_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720, dependency=fit1_submitter)
+        env = args.mixer, n_cpu = 32, timeout = 720, dependency=fit1_submitter)
     test1_submitter = array_submitter(name = 'sc_gsamixer_test1_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720, dependency=fit1_submitter)
+        env = args.mixer, n_cpu = 32, timeout = 720, dependency=fit1_submitter)
     test2_submitter = array_submitter(name = 'sc_gsamixer_test2_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        env = args.mixer, n_cpu = 8, timeout = 720, dependency=fit2_submitter)
+        env = args.mixer, n_cpu = 32, timeout = 720, dependency=fit2_submitter)
     plsa_submitter = array_submitter(name = 'sc_gsamixer_plsa_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
         env = args.mixer, n_cpu = 16, timeout = 720)
     
     # mixer setup
-    common_flags = ['--seed','20251104','--exclude-ranges','MHC','--threads','16',
+    common_flags = ['--seed','20251104','--exclude-ranges','MHC','--threads','32',
         '--bim-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim',
         # '--loadlib-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bin',
         '--ld-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.ld',
-        '--annot-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/baseline_v2.2_chr@.annot.gz'
         # '--bim-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.bim',
         # '--loadlib-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.bin', # needs to be generated manually
         # '--annot-file', f'{args.mixer}/resources/ukb_EUR_qc/chr@.annot.gz', # needs to be generated manually
         ]
     
+    # split sumstats by chromosome
+    p_file = [f'{args._in}/{g}/{p}.sumstats' for g, p in pheno]
+    temp_g = [f'{tmpdir}/{g}_{p}.chr@.sumstats' for g, p in pheno]
+    ref = [f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim' for _ in pheno]
+    with Pool(processes=min(8, len(pheno))) as pool:
+        tqdm(pool.imap(split_sumstats, zip(p_file, ref, temp_g)), total = len(pheno), desc = 'Splitting sumstats by chromosome')
+
     # univariate steps
     for g, p in pheno:
         p_file = f'{args._in}/{g}/{p}.sumstats'
         temp_g = f'{tmpdir}/{g}_{p}.chr@.sumstats'
-        if not os.path.isfile(temp_g.replace('@','22')):
-            split_sumstats(p_file, f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/chr@.bim', temp_g)
         if not os.path.islink(temp_g): os.symlink(p_file, temp_g)
         
         for gset in gene_sets:
@@ -86,6 +91,7 @@ def main(args):
                 'python', mixer_py, 'plsa', '--gsa-base', '--trait1-file', temp_g, 
                 '--use-complete-tag-indices',
                 '--go-file', f'{args.mixer}/resources/gsa-mixer-baseline-annot_10mar2023.csv',
+                '--annot-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/baseline_v2.2_chr@.annot.gz',
                 '--out', f'{out_prefix}.plsa.baseline'
             ] + common_flags
             cmd1 = [
@@ -94,6 +100,7 @@ def main(args):
                 '--go-file', f'{args.mixer}/resources/gsa-mixer-gene-annot_10mar2023.csv',
                 '--go-file-test', f'{args.test}/{gset}.txt', # f'{args.mixer}/resources/gsa-mixer-hybridLOO-annot_10mar2023.csv'
                 '--load-params', f'{out_prefix}.plsa.baseline.json',
+                '--annot-file', f'{args.mixer}/resources/ldsc/1000G_EUR_Phase3_plink/baseline_v2.2_chr@.annot.gz',
                 '--out', f'{out_prefix}.plsa.full'
             ] + common_flags
 
@@ -107,7 +114,8 @@ def main(args):
             # univariate fit
             cmd = [
                 'python', mixer_py, 'fit1', '--trait1-file', temp_g,
-                '--out', f'{out_prefix}.fit', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.fit', 
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.fit.json'):
                 fit1_submitter.add(' '.join(cmd))
@@ -116,7 +124,8 @@ def main(args):
             cmd = [
                 'python', mixer_py, 'test1', '--trait1-file', temp_g,
                 '--load-params', f'{out_prefix}.fit.json',
-                '--out', f'{out_prefix}.test', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.test', 
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.test.json'):
                 test1_submitter.add(' '.join(cmd))
@@ -141,7 +150,8 @@ def main(args):
                 'python', mixer_py, 'fit2', '--trait1-file', temp_g1, '--trait2-file', temp_g2,
                 '--trait1-params', f'{args.out}/{g1}/{g1}_{p1}.{gset}.fit.json',
                 '--trait2-params', f'{args.out}/{g2}/{g2}_{p2}.{gset}.fit.json',
-                '--out', f'{out_prefix}.fit', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.fit', 
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.fit.json'):
                 fit2_submitter.add(' '.join(cmd))
@@ -150,7 +160,8 @@ def main(args):
             cmd = [
                 'python', mixer_py, 'test2', '--trait1-file', temp_g1, '--trait2-file', temp_g2,
                 '--load-params', f'{out_prefix}.fit.json',
-                '--out', f'{out_prefix}.test', '--go-file', f'{args.test}/{gset}.txt'
+                '--out', f'{out_prefix}.test',
+                # '--go-file', f'{args.test}/{gset}.txt'
             ] + common_flags
             if args.force or not os.path.isfile(f'{out_prefix}.test.json'):
                 test2_submitter.add(' '.join(cmd))

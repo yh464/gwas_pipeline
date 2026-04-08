@@ -7,25 +7,26 @@ def main(args):
     import numpy as np
     import os
     import time
-    
+    from _utils import logger
+    log = logger.logger()
     subjs = np.loadtxt(args.subjs,dtype = 'U')
     if len(subjs[0]) > 10:
       for i in range(subjs.size):
         subjs[i] = subjs[i][13:23]
     naflag = []
-    logout = open('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/asym_stats_timeout.log','w')
+    logout = open('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs/asym_stats_timeout.log','w')
     
     tic = time.perf_counter()
     idx = 0
     for subj in subjs:
       toc = time.perf_counter()-tic
-      print(f'{idx}/{subjs.size}, time = {toc:.3f}')
+      log.log(f'{idx}/{subjs.size}, time = {toc:.3f}')
       idx += 1
       # specify directories
       in_filename = args._in.replace('%subj',subj)
       
       if not os.path.isfile(in_filename):
-        print(f'No connectome found for the subject {subj}', file = logout)
+        log.log(f'No connectome found for the subject {subj}', file = logout)
         continue
       
       # loading the connectome  
@@ -35,12 +36,11 @@ def main(args):
         naflag.append(True)
       else:
         naflag.append(False)
-
       
     with open(args.out,'w') as f:
       nalist = subjs[naflag]
       for i in nalist:
-        print (i, file = f)
+        print(i, file = f)
     
 if __name__ == '__main__':
     # input argument processing
@@ -49,7 +49,7 @@ if __name__ == '__main__':
                                ' for one single individual for imaging derived phenotypes')
     parser.add_argument('-i','--in',dest = '_in', help =
         'Target file to screen',
-        default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Imaging/'+
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Imaging/'+
         '%subj/func/fMRI/parcellations/HCP.fsaverage.aparc_seq/Connectivity_sc2345.txt')
     parser.add_argument('-s', '--subjs', dest = 'subjs', help = 'list of subjs',
                         default = '../params/subjlist_rsfmri_hcp.txt')

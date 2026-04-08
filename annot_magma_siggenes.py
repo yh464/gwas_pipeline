@@ -23,6 +23,8 @@ def main(args):
     import scipy.stats as sts
     from _utils.path import normaliser
     norm = normaliser()
+    from _utils.logger import logger
+    log = logger()
     
     # reference gene labelling
     ref = pd.read_table(args.ref)
@@ -35,7 +37,7 @@ def main(args):
             annot_list.append(x.replace('.genes.annot',''))
     
     for x in args.pheno:
-      print(f'Processing: {x}')
+      log.log(f'Processing: {x}')
       os.chdir(f'{args._in}/{x}')
       all_annot = []
       
@@ -93,7 +95,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.%gset.gsa.out',__file__)
-    proj.add_output(args._in+'/%pheng/summary/siggenes.csv',__file__)
     try: main(args)
     except: cmdhistory.errlog()

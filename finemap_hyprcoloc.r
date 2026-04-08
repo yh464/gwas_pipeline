@@ -11,7 +11,7 @@ library(here) # for portability
 parser = ArgumentParser(description = 'This script runs HyPrColoc based on extracted loci')
 parser$add_argument('pheno', nargs = '*', help = 'Phenotypes in format <group>/<pheno> separated by whitespace')
 parser$add_argument('-i','--in', dest = 'input', help = 'Input directory containing extracted loci',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/loci')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/coloc/loci')
 parser$add_argument('--chr', type = 'integer', help = 'Chromosome, 23 for X, 24 for Y, 25 for XY, 26 for MT')
 parser$add_argument('--start', type = 'integer', help = 'Start BP')
 parser$add_argument('--stop', type = 'integer', help = 'Stop BP')

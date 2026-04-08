@@ -22,12 +22,15 @@ from tqdm import tqdm
 import scanpy as sc
 import scdrs, gget, gc, warnings, os, argparse
 from _utils.genetools import ensg_to_name
+from _utils.plugins.enrichr import enrichr_continuous
 from multiprocessing import Pool, cpu_count
 from _utils.gadgets import namespace
 import matplotlib.pyplot as plt
 from _plots.aes import redblue_alpha
 from _plots import scatterplot_noaxis, temporal_regplot
 from _utils.gadgets import mv_symlink
+from _utils import logger
+log = logger.logger()
 
 # downstream analyses
 def _stratify(df_score, adata, label):
@@ -81,23 +84,18 @@ def downstream_correlation(adata, df_score, label, genes = []):
     out_corr.append(_corr_genes(df_score, adata, strata, genes))
     return pd.concat(out_corr, axis = 1)
 
-def _enrichr(stratum, databases = ['GO_Biological_Process_2025','SynGO_2024'], top = [100, 200, 500, 1000]):
+def _enrichr(stratum, cutoff = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5]):
     stratum = stratum.dropna().sort_values(ascending = True)
-    gene_list = stratum.index.tolist()
     out = []
-    for db in databases:
-        for n in top:
-            enrichr_res = gget.enrichr(gene_list[:n], db)
-            out.append(pd.DataFrame(dict(
-                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
-                sign = '-', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
-            enrichr_res = gget.enrichr(gene_list[-n:], db)
-            out.append(pd.DataFrame(dict(
-                annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum), top = n, database = db,
-                sign = '+', process = enrichr_res.loc[:20,'path_name'], p = enrichr_res.loc[:20,'p_val'])))
+    for t in cutoff:
+        out.append(enrichr_continuous(
+            stratum, gene_col = 'index', top = -1, cutoff = t, top_negative = True, use_background = False, silent = True
+        ).assign(
+            annot = stratum.name[0], cell_type = stratum.name[1], n_genes = len(stratum)
+        ))
     return pd.concat(out, axis = 0)
 
-def downstream_enrichr(corr_df):
+def downstream_enrichr(corr_df, out_enrichr, out_revigo, force = False):
     # only include classes with <=100 cell types
     strata = corr_df.index.to_frame()
     for a in strata['annot'].unique():
@@ -110,17 +108,19 @@ def downstream_enrichr(corr_df):
     with Pool(min(cpu_count()*4, len(strata))) as p:
         summary = list(tqdm(p.imap(_enrichr, [corr_df.loc[i,:] for i in strata]), total = len(strata), desc = 'Conducting Enrichr analysis'))
     enrichr_summary = pd.concat(summary, axis = 0)
-    
-    from _plugins.enrichr import enrichr_to_revigo
+    enrichr_summary.to_csv(out_enrichr, index = False, sep = '\t')
+
+    if os.path.isfile(out_revigo) and (not force): return enrichr_summary, pd.read_table(out_revigo, sep = '\t')
+    from _utils.plugins.enrichr import enrichr_to_revigo
     revigo_summary = enrichr_to_revigo(
-        [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])],
-        name_col = 'process', pval_col = 'p'
+        [df for _, df in enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign','cutoff'])],
     )
-    for idx, (group, _) in enumerate(enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign'])):
+    for idx, (group, _) in enumerate(enrichr_summary.groupby(['annot','cell_type','n_genes','top','sign','cutoff'])):
         revigo_summary[idx] = revigo_summary[idx].assign(
-            annot = group[0], cell_type = group[1], n_genes = group[2], top = group[3], sign = group[4]
+            annot = group[0], cell_type = group[1], n_genes = group[2], top = group[3], sign = group[4], cutoff = group[5]
         )
     revigo_summary = pd.concat(revigo_summary, axis = 0)
+    revigo_summary.to_csv(out_revigo, index = False, sep = '\t')
     return enrichr_summary, revigo_summary
 
 def main(args = None, **kwargs):
@@ -144,7 +144,7 @@ def main(args = None, **kwargs):
                     if args.force: raise FileNotFoundError
                     temp_score = pd.read_table(tempfile, index_col = 0)
                 except:
-                    print(f'Scoring cells {cmin} - {cmax}')
+                    log.log(f'Scoring cells {cmin} - {cmax}')
                     temp = adata[cmin:cmax,:]
                     temp_score = scdrs.score_cell(temp, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
                     temp_score.to_csv(tempfile, index = True, sep = '\t')
@@ -182,7 +182,7 @@ def main(args = None, **kwargs):
         
         class_cols = [x for x in args.label if x in adata.obs.columns]
         mis_cols = [x for x in args.label if not x in adata.obs.columns]
-        if len(mis_cols) > 0: warnings.warn('Following columns are missing from the h5ad dataset: '+' '.join(mis_cols))
+        if len(mis_cols) > 0: log.warn('Following columns are missing from the h5ad dataset: '+' '.join(mis_cols))
         res = scdrs.method.downstream_group_analysis(adata, score, class_cols)
         enrichments = []
         for group, df in res.items():
@@ -204,12 +204,10 @@ def main(args = None, **kwargs):
     # Downstream analysis 2: for each cell type, conduct enrichment analysis using top correlated genes
     out_enrichr = f'{args.out}.downstream.enrichr.txt'
     out_revigo = f'{args.out}.downstream.revigo.txt'
-    if args.downstream and (not os.path.isfile(out_enrichr) or not os.path.isfile(out_revigo) or args.force):
+    if args.downstream:
         try: corr
         except: corr = pd.read_table(out_downstream, index_col = [0,1])
-        enrichr, revigo = downstream_enrichr(corr)
-        enrichr.to_csv(out_enrichr, index = False, sep = '\t')
-        revigo.to_csv(out_revigo, index = False, sep = '\t')
+        downstream_enrichr(corr, out_enrichr, out_revigo, force = args.force)
 
     # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
     out_pseudotime_fig = f'{args.out}.pseudotime.png'
@@ -229,9 +227,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('This script runs cell-type enrichments using scDRS')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input gene list and weights', required = True)
     parser.add_argument('--h5ad', help = 'Input h5ad single-cell multiomics dataset', required = True)
-    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
-        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
+        'subcluster_identity_broad','subcluster_identity', # keefe
+        ])
     parser.add_argument('-n','--nsig', help = 'Number of significant genes, default 1000', 
         type = int, default = 1000)
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
@@ -244,7 +244,6 @@ if __name__ == '__main__':
     for arg in ['_in','h5ad','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
 
-    from _utils import cmdhistory
-    cmdhistory.log()
-    try: main(args)
-    except: cmdhistory.errlog()
+    from _utils import logger
+    logger.splash(args)
+    main(args)

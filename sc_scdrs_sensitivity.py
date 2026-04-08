@@ -18,7 +18,7 @@ Requires following inputs:
 
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
-    import os
+    import os, gc
     import scanpy as sc
     import scdrs
     import pandas as pd
@@ -26,7 +26,9 @@ def main(args = None, **kwargs):
     if args == None:
         from _utils.gadgets import namespace
         args = namespace(**kwargs)
-
+    from _utils import logger
+    log = logger.logger()
+    
     out_score = f'{args.out}.sensitivity.txt'
     if os.path.isfile(out_score) and not args.force: return
     weights = pd.read_table(args._in).sort_values('weight', ascending = False).reset_index(drop = True)
@@ -44,17 +46,18 @@ def main(args = None, **kwargs):
                 if args.force: raise FileNotFoundError
                 temp_score = pd.read_table(tempfile, index_col = 0)
             except:
-                print(f'Scoring cells {cmin} - {cmax}')
+                log.log(f'Scoring cells {cmin} - {cmax}')
                 temp = adata[cmin:cmax,:]
                 temp_score = pd.DataFrame(0., index = temp.obs_names, columns = [f'n{x}' for x in args.nsig])
                 for nsig in tqdm(args.nsig, desc = f'Scoring with different number of genes'):
                     tmpdf = scdrs.score_cell(temp, gene_list[:nsig], 
                         gene_weight[:nsig] if gene_weight is not None else None, n_ctrl = 1,
                         return_ctrl_norm_score = False, verbose = False)
-                    print(tmpdf)
+                    log.log(tmpdf)
                     temp_score[f'n{nsig}'] = tmpdf['raw_score']
                 temp_score.to_csv(tempfile, index = True, sep = '\t')
             score_df.append(temp_score)
+            gc.collect()
         score = pd.concat(score_df)
     else: score = scdrs.score_cell(adata, gene_list, gene_weight, return_ctrl_norm_score = True, verbose = True)
     score.to_csv(out_score, index = True, sep = '\t')
@@ -66,9 +69,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('This script runs cell-type enrichments using scDRS')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input gene list and weights', required = True)
     parser.add_argument('--h5ad', help = 'Input h5ad single-cell multiomics dataset', required = True)
-    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/types in the h5ad dataset',
+    parser.add_argument('--label', nargs = '*', help = 'Columns containing cell classifications/annotations in the h5ad dataset',
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
-        'Class','Subclass','Type_updated', 'Cluster', 'Tissue']) # wang
+        'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
+        'subcluster_identity_broad','subcluster_identity', # keefe
+        ])
     parser.add_argument('-n','--nsig', help = 'Number of significant genes', nargs = '*', type = int,
         default = [100, 200, 500, 1000, 2000])
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
@@ -82,7 +87,6 @@ if __name__ == '__main__':
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     args.nsig = sorted(list(set(args.nsig))) # only unique elements
 
-    from _utils import cmdhistory
-    cmdhistory.log()
-    try: main(args)
-    except: cmdhistory.errlog()
+    from _utils import logger
+    logger.splash(args)
+    main(args)

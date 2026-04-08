@@ -13,12 +13,14 @@ Requires following inputs:
 def main(args):
     import os
     from fnmatch import fnmatch
-    
+    from _utils.logger import logger
+    log = logger()
+
     if args.force: force = '-f'
     else: force = ''
     
     # temp and log
-    tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/'
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
     
     # array submitter
@@ -34,7 +36,7 @@ def main(args):
     # directory management
     for g,p in pheno:
       if not os.path.isdir(f'{args.out}/{g}'): os.system(f'mkdir -p {args.out}/{g}') # creates output folder
-      print(f'{g}/{p}')
+      log.log(f'{g}/{p}')
       out_fname = f'{args.out}/{g}/{p}_{args.pval:.0e}.clumped'
       if os.path.isfile(out_fname) and (not args.force): continue
       submitter.add(
@@ -51,9 +53,9 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory',
       default = '../gwa/')
     parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Genetics/plink')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
     parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
-      default = '../params/bed_files_ukb.txt')
+      default = '../params/bed')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output directory',
       default = '../clump/')
     parser.add_argument('-p', '--pval',help = 'p-value threshold',
@@ -69,10 +71,5 @@ if __name__ == '__main__':
     logger.splash(args)
     cmdhistory.log()
     proj = path.project()
-    proj.add_var('%pheng',r'.+', 'phenotype group')
-    proj.add_var('%pheno',r'.+', 'phenotype')
-    proj.add_var('%maf',r'[0-9.]+', 'minor allele freq') # only allows digits and decimals
-    proj.add_input(args._in+'/%pheng/%pheno_%maf.fastGWA', __file__)
-    proj.add_input(args.out+'/%pheng/%pheno_%maf.clumped', __file__)
     try: main(args)
     except: cmdhistory.errlog()

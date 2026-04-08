@@ -16,7 +16,7 @@ Outputs:
 
 # construct LAVA command for R script
 def lava_cmd(out, exp, cov, overlap, clump, task, outfile, 
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'):
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'):
   from hashlib import sha256
   overlap_prefix = sha256((f'{out[0]}:{out[1]})_' + '_'.join([f'{g}:{p}' for g, ps in (exp + cov) for p in ps])
                           ).encode()).hexdigest() + '_overlap.txt'
@@ -31,7 +31,7 @@ def lava_cmd(out, exp, cov, overlap, clump, task, outfile,
 
 def main(args):
   from _utils.path import find_gwas, find_clump, pair_gwas
-  from _plugins.logparser import crosscorr_parse
+  from _utils.plugins.logparser import crosscorr_parse
   import os
   from statsmodels.stats.moment_helpers import cov2corr
   import pandas as pd
@@ -41,7 +41,9 @@ def main(args):
   from _utils.slurm import array_submitter
   submitter = array_submitter(name = 'gcorr_lava_'+'_'.join(args.p1)+'_'+'_'.join(args.p2), 
     env = 'gentoolsr', n_cpu = 2, timeout = 240)
-  tmpdir = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
+  enrich_submitter = array_submitter(name = 'gcorr_lava_enrich_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
+    env = 'gentoolspy', n_cpu = 1, timeout = 60, dependency = submitter)
+  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/lava/'
   if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
 
   # find files
@@ -55,15 +57,14 @@ def main(args):
 
   # task string general to all commands
   task = ['--ref', args.ref, '--eth', args.eth, '-i', args._in]
-  if args.all_loci: task.append('--all-loci')
-  if args.all_exp: task.append('--all-exp')
+  if args.all_loci: task.append('--all_loci')
+  if args.all_exp: task.append('--all_exp')
   if args.force: task.append('-f')
   if len(meta) > 0: task += ['--meta'] + meta
   if len(cov) > 0: task += ['--cov'] + [f'{g}:{p}' for g, p in cov]
 
-  if 0 < args.pval < 1 and not args.all_loci:
-    exposures_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in exposures]
-    outcomes_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in outcomes]
+  exposures_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in exposures]
+  outcomes_clump = [[find_clump(i, j, dirname = args.clump, pval = args.pval)[0] for j in js] for i, js in outcomes]
   
   # sample overlap matrix
   gcorr = crosscorr_parse(exposures + outcomes + cov, logdir = args.rg, full = True)
@@ -102,11 +103,16 @@ def main(args):
           c2s = c1s[p1s.index(p1):]; c2s.remove(c1)
         if len(p2s) == 0: continue
         outfile = f'{outdir}/{g1}_{p1}.{g2}.lava.txt'
-        if os.path.isfile(outfile) and not args.force: continue
-        # all phenotypes in g2 are included and correlated with g1_p1
-        cmd = lava_cmd((g1, p1), [(g2, p2s)], cov, overlap, [c1] + c2s, task, outfile)
-        submitter.add(cmd)
+        if not os.path.isfile(outfile) or args.force:
+          # all phenotypes in g2 are included and correlated with g1_p1
+          cmd = lava_cmd((g1, p1), [(g2, p2s)], cov, overlap, [c1] + c2s, task, outfile)
+          submitter.add(cmd)
+        if os.path.isfile(f'{outfile[:-4]}.inrich.txt') and os.path.isfile(f'{outfile[:-4]}.enrichr.txt') \
+          and not args.force and not args.fd: continue
+        enrich_cmd = f'python gcorr_lava_enrich.py -i {outfile} --inrich {args.inrich} -o {outfile[:-4]}' + (' -f' if args.force else '')
+        enrich_submitter.add(enrich_cmd)
   submitter.submit()
+  enrich_submitter.submit()
 
 if __name__ == '__main__':
   from _utils.slurm import slurm_parser
@@ -124,13 +130,17 @@ if __name__ == '__main__':
   parser.add_argument('--clump', dest = 'clump', help = 'Clumping output directory', 
     default = '../clump/')
   parser.add_argument('--ref', help = 'Reference LD Blocks directory',
-    default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
+    default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ref/lava_ref/') # intentionally absolute
   parser.add_argument('--eth', help = 'Ethnicity', choices = ['eas', 'afr', 'eur', 'sas', 'amr']
     , default = 'eur')
-  parser.add_argument('--all-loci', action = 'store_true', help = 'Analyse all loci')
-  parser.add_argument('--all-exp', action = 'store_true', help = 'Multiple regression with all exposures')
+  parser.add_argument('--inrich', 
+        help = 'folder of the inrich binary and resources, should contain resources/genes.txt and resources/snps.txt',
+        default = '/rds/project/rds-Nl99R8pHODQ/toolbox/inrich') # intentionally absolute
+  parser.add_argument('--all_loci', action = 'store_true', help = 'Analyse all loci')
+  parser.add_argument('--all_exp', action = 'store_true', help = 'Multiple regression with all exposures')
   parser.add_argument('--pval', type = float, default = 5e-8, help = 'Clumping p-value threshold')
   parser.add_argument('-f', '--force', action = 'store_true', help = 'Force overwrite')
+  parser.add_argument('--fd', action = 'store_true', help = 'Overwrite downstream analyses only')
   args = parser.parse_args()
 
   import os
@@ -140,11 +150,6 @@ if __name__ == '__main__':
   from _utils import cmdhistory, path, logger
   logger.splash(args)
   cmdhistory.log()
-  proj = path.project()
-  proj.add_input(f'{args._in}', __file__)
-  proj.add_input(f'{args.clump}',__file__)
-  proj.add_input(args.rg,__file__)
-  proj.add_output(f'{args.out}',__file__)
-  
+  proj = path.project()  
   try: main(args)
   except: cmdhistory.errlog()

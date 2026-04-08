@@ -9,6 +9,9 @@ Batch submits jobs for Mendelian Randomisation for all GWAS files in a directory
 (usually the same group of phenotypes). Scans the entire directory for GWAS summary
 stats of the same data extension.
 '''
+from _utils import logger
+log = logger.logger()
+
 def qc(file):
     import pandas as pd
     try: 
@@ -19,18 +22,30 @@ def qc(file):
 
 def main(args):
     import os
-    from _plugins.logparser import parse_h2_log
+    from _utils.plugins.logparser import parse_h2_log
     from _utils.path import find_clump, find_gwas
-    from _plugins.logparser import crosscorr_parse
+    from _utils.plugins.logparser import crosscorr_parse
     
+    # find clumping instrument threshold to extract SNPs
+    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True, clump = True)
+    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True, clump = True)
+    pvals = []
+    for g, ps in exposures + outcomes:
+        for p in ps:
+            try: _, pval = find_clump(g, p, args.clump, args.pval)
+            except: log.log(f'No clump file for {g}/{p} at pval {args.pval:.0e}'); continue
+            pvals.append(pval)
+    if len(set(pvals)) == 0: log.log('No clump files found for any phenotype at specified p-value threshold'); return
+    max_pval = max(pvals)
+
     # array submitter
     from mr_extract_snp_batch import api
-    print('Try running following command to force re-extraction of instruments')
-    print(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
-    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump)
+    log.log('Try running following command to force re-extraction of instruments')
+    log.log(f'python mr_extract_snp_batch.py -p1 {" ".join(args.p1)} -p2 {" ".join(args.p2)} -b -i {args.gwa} -o {args.inst} -c {args.clump} -f')
+    snp_submitter = api(p1 = args.p1, p2 = args.p2, bid = True, _in = args.gwa, out = args.inst, clump = args.clump, pval = max_pval)
     from _utils.slurm import array_submitter
     submitter_main = array_submitter(name = 'mr_'+'_'.join(args.p2), env = 'gentoolsr',
-        n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter)
+        n_cpu = 3 if args.apss else 2, timeout = 7, dependency = snp_submitter, partition = 'sapphire')
     submitter_lcv = array_submitter(name = 'mr_lcv_'+'_'.join(args.p2), env = 'gentoolsr', n_cpu = 2, timeout = 30)
     submitter_cause = array_submitter(name = 'mr_cause_'+'_'.join(args.p2), env = 'gentoolsr',n_cpu = 3, timeout = 30)
     
@@ -38,8 +53,6 @@ def main(args):
     if not os.path.isdir(args.out): os.mkdir(args.out)
 
     # genetic correlations
-    exposures = find_gwas(args.p1, dirname=args.gwa, ext=args.ext1, se = True)
-    outcomes = find_gwas(args.p2, dirname=args.gwa, ext=args.ext2, se = True)
     exp_corr_out = crosscorr_parse(exposures, outcomes, logdir=args.rg, full = True)
 
     # general command args for mr_master
@@ -69,9 +82,9 @@ def main(args):
             # filter for rg
             rginfo = exp_corr_out.loc[(exp_corr_out.group1==g1) & (exp_corr_out.pheno1==p1) & \
                 (exp_corr_out.group2==g2) & (exp_corr_out.pheno2==p2),:]
-            if rginfo.shape[0] == 0: print(f'No rg for {g1}/{p1} and {g2}/{p2}'); continue
+            if rginfo.shape[0] == 0: log.log(f'No rg for {g1}/{p1} and {g2}/{p2}'); continue
             if (args.rgp > 0 and rginfo.p.values[0] > args.rgp) or (args.rgp < 0 and rginfo.q.values[0] > 0.05):
-                print(f'Correlation between {g1}/{p1} and {g2}/{p2} is not significant, skipping')
+                log.log(f'Correlation between {g1}/{p1} and {g2}/{p2} is not significant, skipping')
                 continue
             
             # find h2 log for trait 1
@@ -83,22 +96,21 @@ def main(args):
                 gwa1 = f'{args.gwa}/{g1}/{p1}.{args.ext1}'
                 clump1, pval1 = find_clump(g1, p1, args.clump, args.pval)
                 clump001, _ = find_clump(g1, p1, args.clump, 0.001)
-            except: print(f'{g1} missing clumped GWAS sumstats'); continue
+            except: log.log(f'{g1} missing clumped GWAS sumstats'); continue
             try: 
                 gwa2 = f'{args.gwa}/{g2}/{p2}.{args.ext2}'
                 clump2, pval2 = find_clump(g2, p2, args.clump, args.pval)
                 clump002, _ = find_clump(g2, p2, args.clump, 0.001)
-            except: print(f'{g2} missing clumped GWAS sumstats'); continue
-            pval_thr = max([pval1, pval2])
+            except: log.log(f'{g2} missing clumped GWAS sumstats'); continue
             
             # find instruments
             instruments = []
             for i,_ in exposures:
                 for j,_ in outcomes:
-                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{pval_thr:.0e}.txt')
-                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{pval_thr:.0e}.txt')
-                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{pval_thr:.0e}.txt')
-                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{pval_thr:.0e}.txt')
+                    instruments.append(f'{args.inst}/{i}_clumped_for_{j}_{max_pval:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{i}_{max_pval:.0e}.txt')
+                    instruments.append(f'{args.inst}/{j}_clumped_for_{j}_{max_pval:.0e}.txt')
+                instruments.append(f'{args.inst}/{i}_clumped_for_{i}_{max_pval:.0e}.txt')
 
             # check progress and QC output
             out_prefix = f'{args.out}/{g2}/{p2}/{g1}_{p1}_{p2}'
@@ -112,7 +124,7 @@ def main(args):
                 if not qc(file):
                     try: os.remove(file)
                     except: pass
-                    print(f'Empty file: {file}')
+                    log.log(f'Empty file: {file}')
             
             if not os.path.isfile(fwd) or \
                 not os.path.isfile(rev) or \
@@ -120,8 +132,8 @@ def main(args):
                 not os.path.isfile(rev_presso) or args.force:
                 cmd = ['Rscript mr_master.r','--p1', f'{g1}/{p1}', '--p2', f'{g2}/{p2}',
                     '-i', ':'.join(instruments), '--c1', clump1, '--c2', clump2,
-                    '--g1', gwa1, '--g2', gwa2, '--pval', str(pval_thr), '--h21', str(h21),
-                    '--h2se1', str(h2se1), '--h22', str(h22), '--h2se2', str(h2se2),
+                    '--g1', gwa1, '--g2', gwa2, '--pval1', str(pval1), '--pval2', str(pval2),
+                    '--h21', str(h21), '--h2se1', str(h2se1), '--h22', str(h22), '--h2se2', str(h2se2),
                     '--gcovint', str(rginfo.gcov_int.values[0]), '--gcintse', str(rginfo.gcov_int_se.values[0]),
                     force, '--ldsc', args.ldsc,'-o', f'{args.out}/{g2}/{p2}'] + cmdargs
                 submitter_main.add(' '.join(cmd))
@@ -159,7 +171,7 @@ if __name__ == '__main__':
     path_spec.add_argument('-o','--out', dest = 'out', help = 'Output directory',
         default = '../mr')
     path_spec.add_argument('--ldsc', help = 'LD scores, for LCV regression', # intentionally absolute
-        default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/uk10k.l2.ldscore')
+        default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/ldsc_for_gsem/uk10k.l2.ldscore')
     
     pheno_spec = parser.add_argument_group('Phenotype specifications')
     pheno_spec.add_argument('-p1','--pheno1', dest = 'p1', 
@@ -188,12 +200,6 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path, logger
     logger.splash(args)
     cmdhistory.log()
-    proj = path.project()
-    proj.add_input(f'{args.gwa}/{args.p1}/*.{args.ext1}', __file__)
-    proj.add_input(f'{args.gwa}/{args.p2}/*.{args.ext2}', __file__)
-    proj.add_input(f'{args.clump}/{args.p1}/*.clumped',__file__)
-    proj.add_input(f'{args.clump}/{args.p2}/*.clumped',__file__)
-    proj.add_output(f'{args.out}/{args.p2}/*',__file__)
-    
+    proj = path.project()    
     try: main(args)
     except: cmdhistory.errlog()

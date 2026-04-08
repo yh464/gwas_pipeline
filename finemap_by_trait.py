@@ -18,7 +18,13 @@ Changelog:
     Now requires clumping output to reduce unnecessary computation
 '''
 
+
 def main(args):
+    import pandas as pd
+    from _utils.plugins.logparser import parse_clump_file, overlap_clumps
+    from _utils.path import find_bed
+    from _utils.logger import logger
+    log = logger()
     if os.path.isfile(args.out) and (not args.force): return
 
     stats_dir = f'{os.path.dirname(args.out)}/polyfun_stats'
@@ -40,9 +46,6 @@ def main(args):
                 f'--sumstats {stats_dir}/{prefix}.polyfun.stats --out {stats_dir}/{prefix}.snpvar')
       if o != 0: raise Exception(f'ERROR for {args._in} at step 2: extract snpvar')
 
-    import pandas as pd
-    from _plugins.logparser import parse_clump_file, overlap_clumps
-    from _utils.path import find_bed
     # identify SNPs that need to be clumped
     clumps = parse_clump_file(args.clump).sort_values(['CHR','POS']).reset_index(drop=True)
     clumps['group'] = prefix; clumps['pheno'] = os.path.basename(os.path.dirname(args._in))
@@ -50,8 +53,8 @@ def main(args):
     snps = overlaps.SNP
 
     # identify overlaps
-    print('Following SNPs are being fine-mapped')
-    print(snps.to_numpy())
+    log.log('Following SNPs are being fine-mapped')
+    log.log(snps.to_numpy())
 
     # sample size
     df = pd.read_csv(args._in, sep = '\\s+', usecols = ['N'])
@@ -77,7 +80,7 @@ def main(args):
           o = os.system(cmd)
 
           if o != 0: 
-              print(cmd)
+              log.log(cmd)
               continue
         summary.append(pd.read_table(f'{stats_dir}/{prefix}_chr{c}_{start}_{stop}.txt'))
 
@@ -92,9 +95,9 @@ if __name__ == '__main__':
     parser.add_argument('-c','--clump', dest = 'clump', help = 'Input clumping output file', required = True)
     parser.add_argument('-o', '--out', dest = 'out', help = 'output file name', required = True)
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'directory of bed binaries',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed/')
     parser.add_argument('--polyfun', help = 'directory of POLYFUN tool',
-      default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
+      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/polyfun/')
     parser.add_argument('-p', dest = 'p', help = 'p-value', type = float, default = 5e-8)
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',
       default = False, action = 'store_true')

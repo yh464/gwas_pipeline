@@ -10,6 +10,9 @@ Requires following inputs:
     GWAS summary statistics (single file)
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def search_file(file, patterns):
     import os
     import numpy as np
@@ -22,7 +25,7 @@ def search_file(file, patterns):
     search = subprocess.Popen(cmd, stdout = subprocess.PIPE)
     
     try: df = pd.read_table(search.stdout, header = None)
-    except: print(f'None of the SNPs found in {file}'); return None
+    except: log.log(f'None of the SNPs found in {file}'); return None
     
     df.columns = hdr
     df['Phenotype'] = os.path.basename(file).replace('.fastGWA','')
@@ -31,6 +34,7 @@ def search_file(file, patterns):
     for col in ['BETA', 'SE', 'AF1']:
         if col not in df.columns: df[col] = np.nan
     df = df.loc[:,['Phenotype','SNP','BETA','SE','P','N','A1','A2','AF1','CHR','POS']]
+    df['POS'] = df['POS'].astype(int)
     return df
     
 def search_snp(x, tmpdir, args): 
@@ -41,7 +45,7 @@ def search_snp(x, tmpdir, args):
     import pandas as pd
     from multiprocessing import Pool
     from functools import partial
-    print(x)
+    log.log(x)
     
     if os.path.isfile(args.snp[0]) and len(args.snp) == 1:
         patterns = args.snp[0]
@@ -52,7 +56,7 @@ def search_snp(x, tmpdir, args):
     for y in os.listdir(f'{args._in}/{x}'):
         if fnmatch(y,'*.fastGWA') and not fnmatch(y, '*_X.fastGWA'): 
             flist.append(f'{args._in}/{x}/{y}')
-    if len(flist) == 0: print(f'NO GWAS FILE FOR {x}'); return None
+    if len(flist) == 0: log.log(f'NO GWAS FILE FOR {x}'); return None
     
     cache = f'{tmpdir}/sigsnp_{snps[0]}_{snps[-1]}_{x}.txt'
     if os.path.isfile(cache) and not args.force:
@@ -73,14 +77,14 @@ def search_snp(x, tmpdir, args):
     return df
 
 def main(args):
-    import os
+    import os, tempfile
     import pandas as pd
     from _utils.path import normaliser
-    
+
     norm = normaliser()
     all_files = []
-    tmpdir = os.path.realpath('../temp/single_snp')
-    if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
+    # tmpdir = tempfile.mkdtemp()
+    tmpdir = os.path.realpath('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/single_snp')
     
     if os.path.isfile(args.snp[0]) and len(args.snp) == 1:
         patterns = args.snp[0]
@@ -96,12 +100,38 @@ def main(args):
         if type(x) != type(None): all_files.append(x)
     
     all_files = pd.concat(all_files).sort_values(by = ['Group','Phenotype','SNP'])
+
+    # flip strands so that all SNPs are in the same direction (A1 is the effect allele)
+    out = []
+    for snp, df_snp in all_files.groupby('SNP'):
+        ref_a1 = df_snp.loc[df_snp.N.idxmax(),'A1']
+        ref_a1 = ref_a1.iloc[0] if isinstance(ref_a1, pd.Series) else ref_a1
+        flip = (df_snp.A1 != ref_a1).copy()
+        df_snp.loc[flip, ['BETA']] = -df_snp.loc[flip, ['BETA']].values
+        df_snp.loc[flip, ['AF1']] = 1 - df_snp.loc[flip, ['AF1']].values
+        df_snp.loc[flip, ['A1','A2']] = df_snp.loc[flip, ['A2','A1']].values
+        if not args.compare: out.append(df_snp); continue
+
+        # for comparison across replication GWAS
+        compare_df = []
+        snpinfo = df_snp[['SNP','Phenotype','CHR','POS','A1','A2']].drop_duplicates('Phenotype').set_index(['SNP','Phenotype'])
+        snpinfo.columns = pd.MultiIndex.from_product([['SNP_info'], snpinfo.columns])
+        compare_df.append(snpinfo)
+        for group, df_group in df_snp.groupby('Group'):
+            df_group = df_group.set_index(['SNP','Phenotype']).loc[:,['BETA','SE','P','N','AF1']]
+            df_group.columns = pd.MultiIndex.from_product([[group], df_group.columns])
+            compare_df.append(df_group)
+        compare_df = pd.concat(compare_df, axis = 1)
+        out.append(compare_df.reset_index())
+
+    all_files = pd.concat(out)
+
     if args.out != None: 
         all_files.to_csv(args.out, sep = '\t', index = False)
     norm.normalise(all_files).to_clipboard(index = False)
     # all_files_wide = all_files.pivot_table(values = 'p', index = 'SNP', columns = 'Phenotype')
     # all_files_wide.insert(loc = 0, column = 'min_pval', value = all_files_wide.min(axis = 1))
-    # print(norm.normalise(all_files_wide))
+    # log.log(norm.normalise(all_files_wide))
     
 if __name__ == '__main__':
     import argparse
@@ -115,6 +145,8 @@ if __name__ == '__main__':
         help = 'Directory containing all GWA summary statistics',
         default = '../gwa/')
     parser.add_argument('-o','--out', dest = 'out', help = 'Output list file')
+    parser.add_argument('-c','--compare', action = 'store_true', 
+        help = 'formats output for comparison across multiple groups of replication GWAS')
     parser.add_argument('-f','--force', dest = 'force', action = 'store_true',
         default = False, help = 'force overwrite')
     args = parser.parse_args()

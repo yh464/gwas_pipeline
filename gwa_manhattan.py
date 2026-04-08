@@ -11,8 +11,10 @@ parser.add_argument('--file', dest = 'file', help = 'Input fastGWA file')
 parser.add_argument('-i','--in', dest = '_in', help = 'GWA file directory',
   default = '../gwa/')
 parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
-  default = '../gwa/manhattan/')
+  default = '../manhattan/')
 parser.add_argument('-p','--pval', help = 'p-value threshold', type = float, default = 5e-8)
+parser.add_argument('-a','--autosome_only', help = 'exclude sex chromosomes',
+  default = False, action = 'store_true')
 parser.add_argument('-f','--force',dest = 'force', help = 'force output',
   default = False, action = 'store_true')
 args = parser.parse_args()
@@ -28,12 +30,14 @@ tic = time.perf_counter()
 import pandas as pd
 from qmplot import manhattanplot, qqplot
 import matplotlib.pyplot as plt
+from _utils import logger
+log = logger.logger()
 
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams['font.sans-serif'] = 'Arial'
 
 toc = time.perf_counter() - tic
-print(f'Loaded modules. Time = {toc:.3f} seconds')
+log.log(f'Loaded modules. Time = {toc:.3f} seconds')
 
 os.chdir(f'{args._in}/{args.pheno}')
 x = args.file
@@ -43,6 +47,7 @@ _,ax = plt.subplots(figsize = (6,2), constrained_layout = True)
 
 if (not os.path.isfile(out_fname)) or args.force:
   df = pd.read_table(x).sort_values(by = ['CHR','POS'])
+  if args.autosome_only: df = df.loc[~df.CHR.isin([23,24,'X','Y']),:]
   sig = df.loc[df.P < 1e-3,:]
   nsig = (df.P < 5e-8).sum()
   # truncated Manhattan plot, pdf
@@ -91,4 +96,4 @@ if (not os.path.isfile(out_fname)) or args.force:
            ylabel=r"Observed $-log_{10}{(P)}$")
   plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 500, bbox_inches = 'tight')
   plt.close()
-  print(f'Fig plotted, time = {toc:.3f} seconds.')
+  log.log(f'Fig plotted, time = {toc:.3f} seconds.')

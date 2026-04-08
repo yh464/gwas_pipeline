@@ -3,6 +3,9 @@
 batch runs GREML to assess heritability
 '''
 
+from _utils import logger
+log = logger.logger()
+
 def main(args):
     # locate phenotype file
     import os
@@ -21,9 +24,9 @@ def main(args):
         timeout = 360, lim = 1)
     
     # temp and log
-    tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp/' # temporatory dir
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/' # temporatory dir
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
-    logout = open('/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwa_by_trait.log','w')
+    logout = open('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs/gwa_by_trait.log','w')
     
     # check validity of the phenotype file
     import pandas as pd
@@ -37,14 +40,14 @@ def main(args):
     
     # create output folder
     outdir = f'{args.out}/{f}/'.replace('.txt','')
-    print(outdir)
+    log.log(outdir)
     if not os.path.isdir(outdir):
       os.system(f'mkdir -p {outdir}')                                              # this also generates args.out
     
     # phenotypes to be analysed
     c = c[2:]
-    print('Following traits are to be GWA-analysed:', file = logout)
-    for i in c: print(i, file = logout)
+    log.log('Following traits are to be GWA-analysed:')
+    for i in c: log.log(i)
     
     # for each phenotype
     for i in range(c.size):
@@ -55,7 +58,7 @@ def main(args):
       # check existing files
       if os.path.isfile(f'{out_fname}.greml.hsq'):
         skip = True
-        print(f'Trait already analysed for: {trait}', file = logout)
+        log.log(f'Trait already analysed for: {trait}')
       
       if skip and (not args.force):
         continue
@@ -80,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory',
       default = '../pheno/ukb/')
     parser.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-      default = '../toolbox/gcta/gcta-1.94.1')
+      default = '../toolbox/gcta/gcta64')
     parser.add_argument('-o','--out',dest  = 'out', help = 'Output directory',
       default = '../gwa/')
     parser.add_argument('--cov',dest = 'cov', help = 'DISCRETE covariate file',
@@ -88,24 +91,20 @@ if __name__ == '__main__':
     parser.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariate file',
       default = '../params/quantitative_covars.txt')
     parser.add_argument('--grm', dest = 'grm', help = 'Genetic correlation matrix',
-      # default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/'+
+      # default = '/home/yh464/rds/rds-rb643-ukbiobank2/'+
       # 'Data_Genetics/Genetic_data/Neuroimaging_samples/full_grm')
       # 'Data_Users/yh464/params/sp0.05_grm')
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yg330/GRM_chr_merged/full_grm')
-    parser.add_argument('--mb',dest = 'mb', help = 'List of PLINK2 files',
-      default = '../params/bed_files_ukb.txt')
     parser.add_argument('-f','--force', dest = 'force', help = 'Force output',
       default = False, const = True, action = 'store_const')
     
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','gcta','cov','qcov','grm','mb']:
+    for arg in ['_in','out','gcta','cov','qcov','grm']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng.txt', __file__)
-    proj.add_output(args.out+'/%pheng/%pheno.greml..*', __file__)
     try: main(args)
     except: cmdhistory.errlog()

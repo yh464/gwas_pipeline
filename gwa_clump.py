@@ -13,10 +13,10 @@ Requires following inputs:
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-i','--in', dest = '_in', help = 'Input file')
-parser.add_argument('-b','--bfile', dest = 'bfile', help = 'BED file list',
-  default = '../params/bed_files_ukb.txt')
+parser.add_argument('-b','--bed', dest = 'bed', help = 'BED file list',
+  default = '../params/bed')
 parser.add_argument('--plink', dest = 'plink', help = 'Path to PLINK *1.9* executable', 
-  default = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Genetics/plink')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Genetics/plink')
 parser.add_argument('-o','--out', dest = 'out', help = 'Output directory')     # defaults to input dir
 parser.add_argument('-p',help = 'p-value threshold',
   default = 5e-8, type = float) # or 3.1076e-11, or 5e-6; 3.1076e-11 is derived from matrix decomposition
@@ -25,12 +25,14 @@ parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
 args = parser.parse_args()
 
 import os
-for arg in ['_in','out','bfile']:
+for arg in ['_in','out','bed']:
     setattr(args, arg, os.path.realpath(getattr(args, arg)))
 if type(args.out) == type(None): args.out = args._in
 
 from _utils import logger
+from _utils.path import find_bed
 logger.splash(args)
+log = logger.logger()
 
 def main(args):
     import time
@@ -39,30 +41,30 @@ def main(args):
     
     tic = time.perf_counter()
     idx = 0
-    blist = np.loadtxt(args.bfile,dtype = 'U')
+    blist = find_bed(args.bed)
     prefix = '.'.join(os.path.basename(args._in).split('.')[:-1])
     out = f'{args.out}/{prefix}_{args.p:.0e}.clumped'
     
-    tmpdir = f'/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
+    tmpdir = f'/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     os.chdir(args.out)                                                             # we do not need the input dir
     
     df = pd.read_table(args._in, sep = '\t')
     sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
     if sf.sum() == 0:
-      print(f'File {prefix} contains no significant SNP, skipping')
+      log.log(f'File {prefix} contains no significant SNP, skipping')
       out_df = pd.DataFrame(columns = ['CHR', 'F', 'SNP', 'BP', 'P', 
           'TOTAL', 'NSIG','S05','S01', 'S001','S0001','SP2'], index = [])
       out_df.to_csv(out, sep = '\t', index = False)
       toc = time.perf_counter() - tic
-      print(f'Total time = {toc:.3f}.')
+      log.log(f'Total time = {toc:.3f}.')
       return
     
     df_sig = df.loc[sf,:].sort_values(by = 'P')
     df_sig.to_csv(out.replace('clumped','siglist'), sep = '\t',index = False)      # export top few snps
     
     tmp_flist = []                                                                 # list of temp files
-    chrs = df_sig['CHR'].unique().astype(int)
+    chrs = df_sig['CHR'].replace('X',23).unique().astype(int)
     idx = 0
     
     out_df = []
@@ -89,7 +91,7 @@ def main(args):
       if os.path.isfile(f'{tmpout}.clumped'):
           out_df.append(pd.read_table(f'{tmpout}.clumped', sep = '\s+'))
       toc = time.perf_counter() - tic
-      print(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
+      log.log(f'Finished clumping chromosome {c}, {idx}/{len(chrs)} time = {toc:.3f}.')
     if len(out_df) > 0:
         out_df = pd.concat(out_df, axis = 0)
     else: out_df = pd.DataFrame(columns = ['CHR', 'F', 'SNP', 'BP', 'P', 

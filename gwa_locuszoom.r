@@ -16,9 +16,9 @@ parser$add_argument('-p','--pos', dest = 'pos', type = "numeric", help = 'genomi
 parser$add_argument('-l', '--ld', help = 'flanking window', type = "numeric", default = 500000)
 parser$add_argument('--bed',help = 'BED files to calculate LD',
 #  default = '/rds/project/rds-Nl99R8pHODQ/ref/1000g')
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/bed')
 parser$add_argument('--plink',help = 'PLINK binary',
-  default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink2')
+  default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/plink2')
 parser$add_argument('-o','--out', dest = 'out', help = 'output file name')
 parser$add_argument('--build', choices = c('hg19','hg38'), default = 'hg19',help = 'Human genome assembly version')
 parser$add_argument('-f','--force',dest = 'force', help = 'force overwrite',

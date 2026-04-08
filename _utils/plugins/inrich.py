@@ -38,9 +38,11 @@ def parse_inrich_output(file):
         if line.startswith('_O1'): main_analysis.append('\t'.join(line.split('\t')[1:]))
         if line.startswith('_O2'): igt_analysis.append('\t'.join(line.split('\t')[1:]))
     main_analysis = pd.read_table(io.StringIO('\n'.join(main_analysis)))
-    main_analysis['TARGET'] = main_analysis.TARGET.str.split(' ', expand = True)[0]
+    try: main_analysis['TARGET'] = main_analysis.TARGET.str.split(' ', expand = True)[0]
+    except: pass
     igt_analysis = pd.read_table(io.StringIO('\n'.join(igt_analysis)))
-    igt_analysis['TARGET'] = igt_analysis.TARGET.str.split(' ', expand = True)[0]
+    try: igt_analysis['TARGET'] = igt_analysis.TARGET.str.split(' ', expand = True)[0]
+    except: pass
     return main_analysis, igt_analysis
 
 def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop', 
@@ -50,13 +52,13 @@ def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop',
     Perform interval-based enrichment analysis using INRICH based on a dataframe
     '''
     df.columns = df.columns.str.lower().str.replace('_bp','')
-    chrom_col = chrom_col.lower()
-    start_col = start_col.lower()
-    stop_col = stop_col.lower()
+    chrom_col = chrom_col.lower().replace('_bp','')
+    start_col = start_col.lower().replace('_bp','')
+    stop_col = stop_col.lower().replace('_bp','')
 
     # prepare temp files
     tmpdir = tempfile.mkdtemp()
-    interval_file = f'{tmpdir}/{sha256(repr(df)).hexdigest()}.txt'
+    interval_file = f'{tmpdir}/{sha256(repr(df).encode()).hexdigest()}.txt'
     tmp = df[[chrom_col, start_col, stop_col]].copy()
     tmp.columns = ['chr', 'start_bp', 'stop_bp']
     tmp.to_csv(interval_file, sep = '\t', index = False, header = True)
@@ -65,7 +67,7 @@ def inrich(df, chrom_col = 'chr', start_col = 'start', stop_col = 'stop',
 
     all_main = []; all_igt = []
     for gene_set in gene_sets:
-        out_prefix = f'{tmpdir}/{sha256(repr((df, gene_set))).hexdigest()}'
+        out_prefix = f'{tmpdir}/{sha256(repr((df, gene_set)).encode()).hexdigest()}'
         cmd = f'{inrich_dir}/inrich -a {interval_file} -g {inrich_dir}/resources/genes.txt -m {inrich_dir}/resources/snps.txt ' + \
             f'-t {inrich_dir}/gene_set/{gene_set}.txt -o {out_prefix} -2 -r {niter} -q 5000'
         os.system(cmd)

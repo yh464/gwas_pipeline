@@ -14,7 +14,7 @@ def main(args):
       pheno = args.pheno
     
     # temp directory
-    tmpdir = '/rds/project/rb643-1/rds-rb643-ukbiobank2/Data_Users/yh464/temp'
+    tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
     
     flist = []
@@ -76,7 +76,5 @@ if __name__ == '__main__':
     from _utils import cmdhistory, path
     cmdhistory.log()
     proj = path.project()
-    proj.add_input(args._in+'/%pheng/%pheno.greml..*', __file__)
-    proj.add_output(args.out+'/greml_summary.csv', __file__)
     try: main(args)
     except: cmdhistory.errlog()
