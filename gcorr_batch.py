@@ -35,7 +35,7 @@ def main(args):
     if len(to_munge) > 0:
         from heri_batch import api
         dep = api(pheno = to_munge, ldsc = args.ldsc, complete = args.complete)
-    else: dep = None
+    else: dep = []
     
     # input and output directory
     if not os.path.isdir(args.out): os.system(f'mkdir -p {args.out}')
