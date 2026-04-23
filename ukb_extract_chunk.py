@@ -28,6 +28,7 @@ def main(args):
   if args.subj != 'all': 
       subj = open(args.subj,'r').read().splitlines()
       if subj[0][:3].lower() in ['fid','iid','eid']: subj = subj[1:] # remove header if present
+      subj = [s.split()[0] for s in subj] # in case the subject list contains multiple columns, only take the first one
       for i in range(len(subj)):
           if subj[i][:3] == 'UKB': subj[i] = subj[i][3:]
       subj = [int(s.split()[0]) for s in subj]
