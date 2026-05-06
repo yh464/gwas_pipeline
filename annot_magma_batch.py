@@ -8,14 +8,13 @@ Version 2: 2025-08-22
 Conducts MAGMA for single GWAS summary statistics
 
 Requires following inputs: 
-    GWAS summary statistics (single file)
+    GWAS summary statistics
     MAGMA annotation files (including H-MAGMA)
     MAGMA binary
 '''
 
 def main(args):
     import os
-    from fnmatch import fnmatch
     
     # array submitter
     from _utils.slurm import array_submitter

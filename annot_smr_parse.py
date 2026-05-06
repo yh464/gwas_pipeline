@@ -10,12 +10,16 @@ Upstream workflow:
     annot_smr_batch.py
 '''
 
+from _utils.logger import logger
+log = logger()
+
 def read_smr(file):
     import pandas as pd
     df = pd.read_table(file, usecols = ['probeID','ProbeChr','Gene', 'topSNP','A1','A2','b_SMR','se_SMR','p_SMR','p_HEIDI','nsnp_HEIDI'])
     df.columns = ['probe','chr','gene','SNP','A1','A2','beta','se','p','p_heidi','nsnp_heidi']
     return df
 
+@log.profile
 def main(args):
     # parse input xqtl file
     from fnmatch import fnmatch
@@ -23,9 +27,7 @@ def main(args):
     import pandas as pd
     from scipy.stats import false_discovery_control as fdr
     from _utils.path import normaliser, find_gwas
-    from _utils.logger import logger
     norm = normaliser()
-    log = logger()
     os.chdir(args._in)
     
     qtl_list = []
