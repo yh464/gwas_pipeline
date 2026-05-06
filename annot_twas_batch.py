@@ -27,11 +27,11 @@ def main(args):
     proj.register('annot_twas', 'annot/twas/$group/$pheno/$weight.twas.txt')
     
     # select weights to be used
-    l = [f for f in os.listdir(args.weights) if f.endswith('.pos')]
+    l = [f.replace('.pos','') for f in os.listdir(args.weights) if f.endswith('.pos')]
     log.log('Following TWAS weights are found in the weights directory:')
     for i, f in enumerate(l):
         log.log(f'    {i+1}: {f}')
-    default_weights = [x for x in ['cortex.nofilter', 'cross_disorder'] if x in l]
+    default_weights = [x for x in ['cortex.nofilter', 'cross_disorder', 'sCCA1'] if x in l]
     selected_weights = [l[int(x)-1].replace('.pos', '') for x in input('Please select weights to be used, separated by whitespace:\n' + \
         str(default_weights) + '\n')] or default_weights
     if not selected_weights: log.error('No weights selected, exiting')
