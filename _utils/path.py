@@ -416,7 +416,7 @@ class project():
             if key == 'pval': value = f'{value:.0e}'
             pattern = pattern.replace(f'${key}', f'{value}')
         pattern = pattern.replace('$group', group).replace('$pheno', pheno)
-        pattern = f'{self.project_root}/{pattern}'
+        pattern = f'{self.project_root}/{pattern}' if not pattern.startswith('/') else pattern
         os.makedirs(os.path.dirname(pattern), exist_ok = True)
         return pattern
     
