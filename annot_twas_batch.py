@@ -40,7 +40,7 @@ def main(args):
     for w in selected_weights: log.log(f'    {w}')
 
     for g, p in pheno:
-      sumstats_file = proj.to_pathname('ldsc_sumstats', g, p)
+      sumstats_file = proj.to_pathname('gwa', g, p)
       for weight in selected_weights:
         out_filename = proj.to_pathname('annot_twas', g, p, weight = weight)
         outdir = os.path.dirname(out_filename)
