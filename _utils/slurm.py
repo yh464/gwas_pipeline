@@ -355,7 +355,12 @@ class array_submitter():
     # submits a single job array
     def _submit_single(self):
         if self.debug: self._print(); self.submitted = True; return # debug mode -> print only
-        if self.intr: os.system(f'for x in {self.tmpdir}/*.sh; do bash $x; done'); return
+        if self.intr: 
+            for x in os.listdir(self.tmpdir):
+                if x.find('wrap') >= 0: continue
+                _logger.log(f'Running interactively: {x}')
+                os.system(f'bash {self.tmpdir}/{x}')
+            return
         time = self.timeout * self._count
         time = min(time, 720)
         email = '--mail-type=ALL' if self.email else ''
