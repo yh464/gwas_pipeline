@@ -23,11 +23,12 @@ def main(args):
     import pandas as pd
     pheno = find_gwas(args.pheno, long = True)
     submitter = array_submitter(name = 'annot_twas_'+'_'.join([x[1] for x in pheno]), 
-        env = 'gentoolsr', wd = args.fusion, timeout = 30, n_cpu = 2, partition = 'sapphire')
+        env = 'gentoolsr', wd = args.fusion, timeout = 30, n_cpu = 2)
     proj.register('annot_twas', 'annot/twas/$group/$pheno/$weight.twas.txt')
     
     # select weights to be used
     l = [f.replace('.pos','') for f in os.listdir(args.weights) if f.endswith('.pos')]
+    l.sort()
     log.log('Following TWAS weights are found in the weights directory:')
     for i, f in enumerate(l):
         log.log(f'    {i+1}: {f}')
