@@ -123,6 +123,9 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
 def main(args):
     pheno = find_gwas(args.pheno, dirname = args._in, long = True)
     extract = open(args.extract[0]).read().splitlines() if len(args.extract) > 0 and os.path.isfile(args.extract[0]) else args.extract
+    if len(pheno) > 20:
+        args.sep_chr = True
+        log.warn(f'More than 20 phenotypes found, automatically enabling --sep_chr to reduce memory usage.')
 
     log.log('Estimating the weights for each trait')
     corr = crosscorr_parse(pheno, full = True)
@@ -172,13 +175,13 @@ def main(args):
         for chrom in tqdm(chroms, desc = 'Processing each chromosome'):
             parallel_args = [(g, p, f'{tmpdir}/{chrom}', weights.loc[(g,p)], []) for g, p in pheno]
             chr_temp = f'{tmpdir}/{chrom}/{sha256((str(pheno) + ('nw' if args.nw else 'pca')).encode()).hexdigest()[:12]}'
-            if os.path.isfile(f'{chr_temp}.ss.parquet') and os.path.isfile(f'{chr_temp}.missnp.parquet'):
-                log.log(f'Chromosome {chrom}: found existing processed files, loading from disk')
+            try: 
                 out_chr = pd.read_parquet(f'{chr_temp}.ss.parquet')
                 missnp_chr = pd.read_parquet(f'{chr_temp}.missnp.parquet')
                 out.append(out_chr)
                 out_missnp.append(missnp_chr)
-            else:
+                log.log(f'Chromosome {chrom}: found existing processed files, loading from disk')
+            except:
                 chr_out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
                     total = len(parallel_args), 
                     desc = f'Processing chromosome {chrom}'))

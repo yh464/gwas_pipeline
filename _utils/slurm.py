@@ -52,7 +52,7 @@ class array_submitter():
                  log = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/logs',
                  tmpdir = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp',
                  parallel = 1, # number of parallel processes, useful for small jobs that need <1 CPU
-                 arraysize = 200, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500
+                 arraysize = 500, # array size limit, default 2000 for CSD3 cluster, QOS max jobs 500
                  email = True,
                  wallclock = -1, # total time limit per file, default 240 minutes
                  env = 'wd', # default working environment
