@@ -112,7 +112,8 @@ def gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint):
     out_z = pd.concat(list(z_list), axis = 1, ignore_index = True).fillna(0).sum(axis = 1).rename('Z')
     weight.columns = pd.MultiIndex.from_tuples(pheno, names = ['group','pheno'])
     gcovint = gcovint.loc[weight.columns, weight.columns].fillna(0).values
-    div_coef = np.einsum('ij, jk, ik -> i', weight.values, gcovint, weight.values, optimize = 'optimal') ** 0.5
+    # div_coef = np.einsum('ij, jk, ik -> i', weight.values, gcovint, weight.values, optimize = 'optimal') ** 0.5
+    div_coef = np.sqrt(np.sum((weight.values @ gcovint) * weight.values, axis = 1))
     out_z = out_z / div_coef
     out = pd.concat([snpinfo, af1, out_z, n_total], axis = 1, join = 'inner').sort_values(['CHR','POS'])
     out['P'] = sts.norm.sf(abs(out['Z'])) * 2
