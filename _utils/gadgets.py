@@ -1,4 +1,5 @@
 import os, shutil, gc
+from tabnanny import verbose
 class namespace():
     """
     A simple namespace class to hold attributes as properties.
@@ -30,3 +31,35 @@ def force_gc(func):
         gc.collect()
         return result
     return wrapper
+
+def check_parquet(filepath, remove_broken=True):
+    """
+    Check a parquet file for corruption and empty rows (memory-efficient).
+    
+    Reads only metadata (footer), not data rows, using O(1) memory.
+    Useful for validating incomplete writes from parallel jobs.
+    
+    Args:
+        filepath (str): Path to a single .parquet file to check.
+        remove_broken (bool): If True, delete the file if broken/empty; if False, only report.
+        verbose (bool): If True, print results to stdout.
+    
+    Returns: True if file is valid, otherwise False
+    """
+    try:
+        from pyarrow.parquet import ParquetFile
+    except ImportError:
+        raise ImportError("pyarrow is required for check_parquet; install via: pip install pyarrow")
+    
+    if not os.path.isfile(filepath): return False
+    
+    try:
+        # ParquetFile() reads only footer/metadata, not data — O(1) memory
+        pf = ParquetFile(filepath)
+        if pf.metadata.num_rows == 0:
+            if remove_broken: os.remove(filepath)
+            return False
+        else: return True
+    except Exception as e:
+        if remove_broken: os.remove(filepath)
+        return False

@@ -21,14 +21,15 @@ from tqdm import tqdm
 from _utils.path import find_gwas
 from _utils.plugins.logparser import crosscorr_parse
 from _utils import logger
+from _utils.gadgets import check_parquet
 from multiprocessing import Pool
 log = logger.logger()
 
 def sep_chr(input_args):
     g, p, in_dir, tmpdir = input_args
-    if all([os.path.exists(f'{tmpdir}/{chrom}/{g}/{p}.parquet') for chrom in range(1,23)]):
-        if os.path.exists(f'{tmpdir}/23/{g}/{p}.parquet'): return list(range(1,24))
-        elif os.path.exists(f'{tmpdir}/X/{g}/{p}.parquet'): return list(range(1,23)) + ['X']
+    if all([check_parquet(f'{tmpdir}/{chrom}/{g}/{p}.parquet') for chrom in range(1,23)]):
+        if check_parquet(f'{tmpdir}/23/{g}/{p}.parquet'): return list(range(1,24))
+        elif check_parquet(f'{tmpdir}/X/{g}/{p}.parquet'): return list(range(1,23)) + ['X']
         
     df = pd.read_table(f'{in_dir}/{g}/{p}.fastGWA', usecols = 
         lambda x: x.upper() in (['CHR','SNP','POS','A1','A2','BETA','OR','SE','N','AF1']),
