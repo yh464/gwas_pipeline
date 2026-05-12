@@ -183,15 +183,16 @@ def main(args):
                 log.log(f'Chromosome {chrom}: found existing processed files, loading from disk')
             except:
                 chr_out = list(tqdm(pool.imap(read_sumstats, parallel_args, chunksize = min(args.threads, len(parallel_args))), 
-                    total = len(parallel_args), 
-                    desc = f'Processing chromosome {chrom}'))
+                    total = len(parallel_args), desc = f'Reading chromosome {chrom}'))
                 weight_list, z_list, af_list, n_list, snpinfo_list = zip(*chr_out)
                 out_chr, missnp_chr = gwama(pheno, weight_list, z_list, af_list, n_list, snpinfo_list, gcovint)
                 
                 out.append(out_chr)
                 out_missnp.append(missnp_chr)
+                log.log(f'Writing chromosome {chrom} results to cache')
                 out_chr.to_parquet(f'{chr_temp}.ss.parquet')
                 missnp_chr.to_parquet(f'{chr_temp}.missnp.parquet')
+                log.log(f'Finished processing chromosome {chrom}')
                 del weight_list, z_list, af_list, n_list, snpinfo_list, chr_out
                 gc.collect()
         out = pd.concat(out, axis = 0).sort_values(['CHR','POS'])
