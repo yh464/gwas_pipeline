@@ -11,14 +11,13 @@
 # Date:   2025-03-02
 
 require(tidyverse)
-require(ggsegExtra)
 require(ggsegGlasser)
 
 # setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
 setwd('d:/.cam-pg/2025_psych-img-gwa/brainplots')
 
 force <- F
-ref <- glasser$data
+ref <- glasser()$data$sf$label
 
 theme_set(theme_void())
 
@@ -34,10 +33,11 @@ for (f in list.files()){
   # normalise columns names
   col = colnames(df)
   col[1] = 'phenotype'; col[2] = 'label'
-  df[,1] = df[,1] %>% gsub('_','\n',.) %>% tolower()
+  df[,1] = df[,1] %>% gsub('_','\n',.) 
+#  if (df[,1] != df[,1] %>% toupper()) df[,1] = df[,1] %>% tolower()
   roi = df[,2]
   roi = gsub('_0.01','',roi, ignore.case = T)
-  roi = gsub('_ROI','',roi, ignore.case = T)
+  roi = roi %>% gsub('$','_ROI', .) %>% gsub('_ROI_ROI','_ROI',.)
   bilateral = sum(startsWith(roi,'L_'),startsWith(roi,'lh_L_'),
                   startsWith(roi,'R_'),startsWith(roi,'rh_R_'))
   bilateral = (bilateral > 0)
@@ -46,14 +46,14 @@ for (f in list.files()){
     roi = gsub('^R','rh_R',roi, ignore.case = T)
     
     # plot parameters for bilateral plots
-    pos = position_brain(hemi + side ~ .)
+    pos = position_brain(hemi + view ~ .)
     hem = NULL
     height = 3
   } else {
     # hack the atlas and pretend everything is in L hemisphere
     roi = paste0('lh_L_',roi)
     # plot parameters for symmetric/unilateral plots
-    pos = position_brain(hemi + side ~ .)
+    pos = position_brain(hemi + view ~ .)
     hem = 'left'
     height = 1.5
   }
@@ -65,31 +65,31 @@ for (f in list.files()){
     df = df %>% group_by(phenotype) %>% mutate(q = p.adjust(p, 'BH'))
   }
   if ('q' %in% colnames(df)){
-    df = rbind(df %>% filter(q < 0.05) %>% mutate(significance = 'FDR-sig.'),
+    df = rbind(df %>% filter(q < 0.05) %>% mutate(significance = 'Corrected'),
                df %>% filter(q > 0.05) %>% mutate(significance = 'NS/nominal'))
   } else {
     df = df %>% mutate(significance = 'NA')
     warning('No p-value available')
   }
   
-  m <- merge(df, ref)
+  m <- df %>% filter(label %in% ref)
   
   # wrap figure to 6 phenotypes per line
   nrow = (m$phenotype %>% unique() %>% length() / 6) %>% ceiling()
   
   plt <- m %>% group_by(phenotype) %>%
     ggplot() + geom_brain(
-      atlas = glasser, hemi = hem,
+      atlas = glasser(), hemi = hem, view = c('medial','lateral'),
       aes(fill = .data[[colnames(df)[5]]], 
           colour = significance),
       position = pos) +
     scale_fill_gradient2(low='blue', mid = 'white', high='red',
                          midpoint = 0) +
     scale_colour_manual(values = c(
-      'NS/nominal' = '#AFAFAF6F',
-      'FDR-sig.' = 'black',
+      'NS/nominal' = '#AFAFAF3F',
+      'Corrected' = 'black',
       'NA' = '#AFAFAF'
-    ), guide = 'none') +
+    ), guide = 'none') + 
     facet_wrap(~phenotype, nrow = nrow) + 
     theme(
       strip.text = element_text(size = 12),

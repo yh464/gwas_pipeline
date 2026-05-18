@@ -115,8 +115,8 @@ class array_submitter():
         self.modules = modules
         
         # limit of commands per file and wallclock limit
-        self.wallclock = max(timeout, 240) if timeout > 15 else 60
-        if wallclock > 0: self.wallclock = wallclock
+        self.wallclock = max(self.timeout, 240) if self.timeout > 15 else 60
+        if wallclock > 0: self.wallclock = max(self.timeout, wallclock)
         if account != None and account.find('sl2') >= 0: self.wallclock = min(self.wallclock, 2160)
         else: self.wallclock = min(self.wallclock, 720) 
 
@@ -136,7 +136,7 @@ class array_submitter():
             self.n_cpu = cpu_avail[self.partition]
 
         # number of *parallel batches* of commands per file
-        self.lim = int(self.wallclock/timeout)
+        self.lim = int(self.wallclock/self.timeout)
         self.lim = max(self.lim, 1) # at least one command per file
         _logger.log(f'Max {self.lim} batches * {self.parallel} commands per file, {self.arraysize} files per array job for {self.name}')
         self.array_cmd_limit = self.arraysize * self.lim * self.parallel
