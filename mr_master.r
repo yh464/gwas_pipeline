@@ -433,13 +433,14 @@ main = function(args){
   if (! all(mr_rev_harm$F.statistic > 10)) all_mr_results(
     mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), mrlap_params_rev, apss_rev, force = args$force)
   
+  scatter_rev_leg = (scatter_rev + scale_colour_manual(values = mr_scatter_palette, drop = F) +
+    guides(colour = guide_legend(ncol = 1)) + theme(legend.position = 'right')) %>% get_legend()
   scatter_merged = plot_grid(
-    scatter_fwd, 
-    scatter_rev + scale_colour_manual(values = mr_scatter_palette, drop = F) +
-      guides(colour = guide_legend(ncol = 1)) + theme(legend.position = 'right'),
-    ncol = 2
+    scatter_fwd, scatter_rev, scatter_rev_leg,
+    ncol = 3,
+    rel_widths = c(1, 1, 0.35)
   )
-  ggsave(paste0(out_prefix,'_mr_scatterplot_merged.pdf'), width = 8, height = 4)
+  ggsave(paste0(out_prefix,'_mr_scatterplot_merged.pdf'), plot = scatter_merged, width = 8, height = 4)
   toc = proc.time()
   print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }
