@@ -217,6 +217,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   write.table(loo, paste0(prefix,'_lootest.txt'), sep = '\t', row.names = F)
   
   # a copy of the harmonised data
+  print(head(harm))
   write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
   
   #### Plots for TwoSampleMR ####
