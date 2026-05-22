@@ -10,6 +10,7 @@
 #### Reading command line input ####
 library(optparse)
 library(here) # for portability
+
 optlist = list(
   # input options
   # the filtering for p-values should be moved into the 'batch' file
@@ -80,8 +81,20 @@ merge_gwa_clump = function(gwa, clump, pheno) {
   return(gwa)
 }
 
+#### Aesthetics for plotting ####
+mr_scatter_palette = c("#a6cee3","#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c")
+names(mr_scatter_palette) = c(
+  'Inverse variance weighted',
+  'MR Egger',
+  'MRlap corrected IVW',
+  'Steiger−filtered IVW',
+  'Weighted median',
+  'MR-APSS'
+)
+if (! args$apss) mr_scatter_palette = mr_scatter_palette[1:5]
+
 #### Define function for MR ####
-all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL){
+all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force = F){
   # harm = harmonised data by TwoSampleMR
   # prefix = output file name, INCLUDING directory
   # mrlap_params is for MR-lap correction
@@ -92,125 +105,135 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL){
   
   #### perform tests: MR, sensitivity analysis, pleiotropy, leave-one-out, Steiger ####
   # excluding MR-presso test
-  res = mr(harm, method_list=c('mr_ivw', 'mr_weighted_median', 'mr_egger_regression'))
   het = mr_heterogeneity(harm, method_list = c('mr_ivw', 'mr_egger_regression'))
-  # mr_weighted_median' don't provide heterogeneity test
+  # mr_weighted_median' won't provide heterogeneity test
   pleio = mr_pleiotropy_test(harm)
   single = mr_singlesnp(harm)
   loo = mr_leaveoneout(harm)
   direc = directionality_test(harm)
   
-  #### if not correct direction, re-test after Steiger filtering ####
-  if (! direc$correct_causal_direction) {
-    print('Performing Steiger Filtering because directionality test failed')
-    harm_filtered = harm %>% steiger_filtering() %>% filter(
-      (steiger_dir | steiger_pval > 0.05) & mr_keep
-    )
-    tryCatch(
-      {
-        res_filtered = mr_ivw(harm_filtered$beta.exposure,
-                              harm_filtered$beta.outcome,
-                              harm_filtered$se.exposure,
-                              harm_filtered$se.outcome)
-      }, error = function(e) {
-        res_filtered = list(b = NA, se = NA, pval = NA)
-      }
-    )
-    res = res %>% rbind(data.frame(
-      id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
-      outcome = res$outcome[1], exposure = res$exposure[1],
-      method = 'Steiger-filtered IVW', nsnp = sum(harm$mr_keep),
-      b = res_filtered$b, se = res_filtered$se, pval = res_filtered$pval
-    ))
-  }
-  
-  #### MRlap correction ####
-  source('https://github.com/n-mounier/MRlap/raw/refs/heads/master/R/get_correction.R')
-  tryCatch({
-    mrlap_res = get_correction(
-      IVs = harm %>% select(beta.exposure,se.exposure) %>%
-        rename(std_beta.exp = beta.exposure, std_SE.exp = se.exposure),
-      lambda = mrlap_params$lambda,
-      lambda_se = mrlap_params$lambda_se,
-      h2_LDSC = mrlap_params$h2_exp,
-      h2_LDSC_se = mrlap_params$h2se_exp,
-      alpha_obs = res$b[res$method=='Inverse variance weighted'],
-      alpha_obs_se = res$se[res$method=='Inverse variance weighted'],
-      n_exp = max(harm$samplesize.exposure, na.rm = T) %>% as.numeric(), 
-      # as.numeric() required to prevent integer overflow
-      n_out = max(harm$samplesize.outcome, na.rm = T) %>% as.numeric(),
-      MR_threshold = mrlap_params$pval,
-      verbose = T
-    )
-    res = res %>% rbind(
-      data.frame(
+  results_file = paste0(prefix, '_results.txt')
+  if (file.exists(results_file) & ! force) res = read_tsv(results_file) else {
+    # Basic MR tests
+    res = mr(harm, method_list=c('mr_ivw', 'mr_weighted_median', 'mr_egger_regression'))
+    #### if not correct direction, re-test after Steiger filtering ####
+    if (! direc$correct_causal_direction) {
+      print('Performing Steiger Filtering because directionality test failed')
+      harm_filtered = harm %>% steiger_filtering() %>% filter(
+        (steiger_dir | steiger_pval > 0.05) & mr_keep
+      )
+      tryCatch(
+        {
+          res_filtered = mr_ivw(harm_filtered$beta.exposure,
+                                harm_filtered$beta.outcome,
+                                harm_filtered$se.exposure,
+                                harm_filtered$se.outcome)
+        }, error = function(e) {
+          res_filtered = list(b = NA, se = NA, pval = NA)
+        }
+      )
+      res = res %>% rbind(data.frame(
         id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
         outcome = res$outcome[1], exposure = res$exposure[1],
-        method = 'MRlap corrected IVW', nsnp = res$nsnp[1],
-        b = mrlap_res$alpha_corrected,
-        se = mrlap_res$alpha_corrected_se,
-        pval = 2*stats::pnorm(-abs(mrlap_res$alpha_corrected/mrlap_res$alpha_corrected_se))
+        method = 'Steiger-filtered IVW', nsnp = sum(harm_filtered$mr_keep),
+        b = res_filtered$b, se = res_filtered$se, pval = res_filtered$pval
+      ))
+    } else {
+  #    res = res %>% rbind(data.frame(
+  #      id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
+  #      outcome = res$outcome[1], exposure = res$exposure[1],
+  #      method = 'Steiger-filtered IVW', nsnp = NA, b = NA, se = NA, pval = NA))
+    }
+    
+    #### MRlap correction ####
+    source('https://github.com/n-mounier/MRlap/raw/refs/heads/master/R/get_correction.R')
+    tryCatch({
+      mrlap_res = get_correction(
+        IVs = harm %>% select(beta.exposure,se.exposure) %>%
+          rename(std_beta.exp = beta.exposure, std_SE.exp = se.exposure),
+        lambda = mrlap_params$lambda,
+        lambda_se = mrlap_params$lambda_se,
+        h2_LDSC = mrlap_params$h2_exp,
+        h2_LDSC_se = mrlap_params$h2se_exp,
+        alpha_obs = res$b[res$method=='Inverse variance weighted'],
+        alpha_obs_se = res$se[res$method=='Inverse variance weighted'],
+        n_exp = max(harm$samplesize.exposure, na.rm = T) %>% as.numeric(), 
+        # as.numeric() required to prevent integer overflow
+        n_out = max(harm$samplesize.outcome, na.rm = T) %>% as.numeric(),
+        MR_threshold = mrlap_params$pval,
+        verbose = T
       )
-    )
-  }, error = function(e) {
-    cat('MRlap correction failed, check for missing data')
-  }
-  )
-  
-  #### MR-APSS correction ####
-  if (args$apss) tryCatch({
-    library(MRAPSS)
-    mrapss_res = MRAPSS(apss_params$dat, exposure = res$exposure[1],
-                        outcome = res$outcome[1], C = apss_params$C,
-                        Omega = apss_params$Omega, Cor.SelectionBias = T)
-    res = res %>% rbind(
-      data.frame(
-        id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
-        outcome = res$outcome[1], exposure = res$exposure[1],
-        method = 'MR-APSS', nsnp = nrow(apss_params$dat),
-        b = mrapss_res$beta,
-        se = mrapss_res$beta.se,
-        pval = mrapss_res$pvalue
+      res = res %>% rbind(
+        data.frame(
+          id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
+          outcome = res$outcome[1], exposure = res$exposure[1],
+          method = 'MRlap corrected IVW', nsnp = res$nsnp[1],
+          b = mrlap_res$alpha_corrected,
+          se = mrlap_res$alpha_corrected_se,
+          pval = 2*stats::pnorm(-abs(mrlap_res$alpha_corrected/mrlap_res$alpha_corrected_se))
+        )
       )
+    }, error = function(e) {
+      cat('MRlap correction failed, check for missing data')
+    }
     )
-  }, error = function(e) {
-    cat('MR-APSS correction failed, check for missing data\n')
+    
+    #### MR-APSS correction ####
+    if (args$apss) tryCatch({
+      library(MRAPSS)
+      mrapss_res = MRAPSS(apss_params$dat, exposure = res$exposure[1],
+                          outcome = res$outcome[1], C = apss_params$C,
+                          Omega = apss_params$Omega, Cor.SelectionBias = T)
+      res = res %>% rbind(
+        data.frame(
+          id.exposure = res$id.exposure[1], id.outcome = res$id.outcome[1],
+          outcome = res$outcome[1], exposure = res$exposure[1],
+          method = 'MR-APSS', nsnp = nrow(apss_params$dat),
+          b = mrapss_res$beta,
+          se = mrapss_res$beta.se,
+          pval = mrapss_res$pvalue
+        )
+      )
+    }, error = function(e) {
+      cat('MR-APSS correction failed, check for missing data\n')
+    }
+    )
+    
+    #### tabular outputs ####
+    # tabular output
+    res = res %>% add_column(F_min = min(harm$F.statistic), F_med = median(harm$F.statistic))
+    write.table(res, results_file, sep = '\t')
   }
-  )
-  
-  #### Plots for TwoSampleMR ####
-  theme_set(theme_classic())
-  # scatter plot
-  scatter = mr_scatter_plot(res,harm)
-  ggsave(paste0(prefix,'_scatterplot.pdf'), width = 4, height = 4)
-  remove(scatter)
-  
-  # forest plot
-  forest = mr_forest_plot(single)
-  ggsave(paste0(prefix,'_forest.pdf'))
-  remove(forest)
-  
-  # leave-one-out plot
-  loo_plot = mr_leaveoneout_plot(loo)
-  ggsave(paste0(prefix,'_looplot.pdf'))
-  remove(loo_plot)
-  
-  #### tabular outputs ####
-  # a copy of the harmonised data
-  write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
-  
-  # tabular output
-  res = res %>% add_column(F_min = min(harm$F.statistic), F_med = median(harm$F.statistic))
-  write.table(res, paste0(prefix,'_results.txt'), sep = '\t')
   print(res)
   print(paste0('Saving results to ',prefix, '_results.txt'))
-  
+
   # tabular outputs for QC tests
   write.table(het, paste0(prefix, '_heterogeneity.txt'), sep = '\t')
   write.table(direc, paste0(prefix,'_dirtest.txt'), sep = '\t')
   write.table(single, paste0(prefix,'_singlesnp.txt'), sep = '\t')
   write.table(pleio, paste0(prefix,'_pleiotropy.txt'), sep = '\t')
   write.table(loo, paste0(prefix,'_lootest.txt'), sep = '\t')
+  
+  # a copy of the harmonised data
+  write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
+  
+  #### Plots for TwoSampleMR ####
+  # always overwrites
+  theme_set(theme_classic())
+  # scatter plot
+  scatter1 = mr_scatter_plot(res,harm) + scale_colour_manual(values = mr_scatter_palette)
+  ggsave(paste0(prefix,'_scatterplot.pdf'), width = 4, height = 4)
+  scatter = scatter + theme(legend.position = 'none')
+  ggsave(paste0(prefix,'_scatterplot_nolegend.pdf'), width = 4, height = 4)
+  
+  # forest plot
+  forest = mr_forest_plot(single)
+  ggsave(paste0(prefix,'_forest.pdf'))
+  
+  # leave-one-out plot
+  loo_plot = mr_leaveoneout_plot(loo)
+  ggsave(paste0(prefix,'_looplot.pdf'))
+  rm(scatter1, forest, loo_plot)
   
   #### perform tests and outputs in MR-presso ####
   # There might be not enough instruments for MR-presso so use a try catch structure
@@ -241,6 +264,8 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL){
     writeLines(c('Distortion Coefficient:','Distortion P-value:','','','Outliers:',''),
                con = outlier_log)
   })
+  
+  return(scatter)
 }
 
 ### Estimate F statistic ####
@@ -267,6 +292,7 @@ main = function(args){
     library(tidyverse)
   }
   library(ggplot2) # apparently there is a problem with the ggplot2::scale_linewidth_manual
+  library(cowplot)
   library(TwoSampleMR) # need devtools to install from github so just raise an error
   library(MRPRESSO)
     
@@ -388,9 +414,9 @@ main = function(args){
     print(paste0(sum(mr_fwd_harm$F.statistic < 10),' variants have F < 10'))
     mr_fwd_harm = mr_fwd_harm[mr_fwd_harm$F.statistic > 10,]
   }
-  all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), mrlap_params_fwd, apss_fwd)
+  scatter_fwd = all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), mrlap_params_fwd, apss_fwd, force = args$force)
   if (! all(mr_fwd_harm$F.statistic > 10)) all_mr_results(
-    mr_fwd_harm_weak, paste0(out_prefix,'_mr_forward_weak'), mrlap_params_fwd, apss_fwd)
+    mr_fwd_harm_weak, paste0(out_prefix,'_mr_forward_weak'), mrlap_params_fwd, apss_fwd, force = args$force)
   toc = proc.time()
   print(paste0('Finished forward direction MR, time = ',toc[3]))
   
@@ -399,9 +425,17 @@ main = function(args){
     print(paste0(sum(mr_rev_harm$F.statistic < 10),' variants have F < 10'))
     mr_rev_harm = mr_rev_harm[mr_rev_harm$F.statistic > 10,]
   }
-  all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), mrlap_params_rev, apss_rev)
+  scatter_rev = all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), mrlap_params_rev, apss_rev, force = args$force)
   if (! all(mr_rev_harm$F.statistic > 10)) all_mr_results(
-    mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), mrlap_params_rev, apss_rev)
+    mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), mrlap_params_rev, apss_rev, force = args$force)
+  
+  scatter_merged = cowplot(
+    scatter_fwd, 
+    scatter_rev + scale_colour_manual(values = mr_scatter_palette, drop = F) +
+      guides(colour = guide_legend(ncol = 1)) + theme(legend.position = 'right'),
+    ncol = 2
+  )
+  ggsave(paste0(out_prefix,'_mr_scatterplot_merged.pdf'), width = 8, height = 4)
   toc = proc.time()
   print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }

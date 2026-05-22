@@ -11,6 +11,7 @@
 # Date:   2025-03-02
 
 require(tidyverse)
+require(ggseg)
 require(ggsegGlasser)
 
 # setwd('d:/.cam-pg/2023_rsfc-gwas/brainplots')
