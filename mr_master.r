@@ -437,10 +437,9 @@ main = function(args){
     guides(colour = guide_legend(ncol = 1)) + theme(legend.position = 'right')) %>% get_legend()
   scatter_merged = plot_grid(
     scatter_fwd, scatter_rev, scatter_rev_leg,
-    ncol = 3,
-    rel_widths = c(1, 1, 0.35)
+    ncol = 3, rel_widths = c(1, 1, 0.6)
   )
-  ggsave(paste0(out_prefix,'_mr_scatterplot_merged.pdf'), plot = scatter_merged, width = 8, height = 4)
+  ggsave(paste0(out_prefix,'_mr_scatterplot_merged.pdf'), plot = scatter_merged, width = 8, height = 3)
   toc = proc.time()
   print(paste0('Finished reverse direction MR, time = ',toc[3]))
 }
