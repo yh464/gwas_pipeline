@@ -267,7 +267,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
                con = outlier_log)
   })
   
-  return(scatter)
+  return(list(scatter = scatter, results = res))
 }
 
 ### Estimate F statistic ####
@@ -418,7 +418,7 @@ main = function(args){
     print(paste0(sum(mr_fwd_harm$F.statistic < 10),' variants have F < 10'))
     mr_fwd_harm = mr_fwd_harm[mr_fwd_harm$F.statistic > 10,]
   }
-  scatter_fwd = all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), mrlap_params_fwd, apss_fwd, force = args$force)
+  res_fwd = all_mr_results(mr_fwd_harm,paste0(out_prefix,'_mr_forward'), mrlap_params_fwd, apss_fwd, force = args$force)
   if (! all(mr_fwd_harm$F.statistic > 10)) all_mr_results(
     mr_fwd_harm_weak, paste0(out_prefix,'_mr_forward_weak'), mrlap_params_fwd, apss_fwd, force = args$force)
   toc = proc.time()
@@ -429,14 +429,17 @@ main = function(args){
     print(paste0(sum(mr_rev_harm$F.statistic < 10),' variants have F < 10'))
     mr_rev_harm = mr_rev_harm[mr_rev_harm$F.statistic > 10,]
   }
-  scatter_rev = all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), mrlap_params_rev, apss_rev, force = args$force)
+  res_rev = all_mr_results(mr_rev_harm,paste0(out_prefix,'_mr_reverse'), mrlap_params_rev, apss_rev, force = args$force)
   if (! all(mr_rev_harm$F.statistic > 10)) all_mr_results(
     mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), mrlap_params_rev, apss_rev, force = args$force)
   
-  scatter_rev_leg = (scatter_rev + scale_colour_manual(values = mr_scatter_palette, drop = F) +
+  dummy_data = tibble(a = 1, b = 0, method = union(res_fwd$res$method, res_rev$res$method))
+  scatter_leg = (ggplot(dummy_data) + 
+    geom_abline(aes(slope = a, intercept = b, colour = method), show.legend = T) +
+    scale_colour_manual(values = mr_scatter_palette) +
     guides(colour = guide_legend(ncol = 1)) + theme(legend.position = 'right')) %>% get_legend()
   scatter_merged = plot_grid(
-    scatter_fwd, scatter_rev, scatter_rev_leg,
+    res_fwd$scatter, res_rev$scatter, scatter_leg,
     ncol = 3, rel_widths = c(1, 1, 0.6)
   )
   ggsave(paste0(out_prefix,'_mr_scatterplot_merged.pdf'), plot = scatter_merged, width = 8, height = 3)
