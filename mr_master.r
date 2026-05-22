@@ -113,7 +113,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   direc = directionality_test(harm)
   
   results_file = paste0(prefix, '_results.txt')
-  if (file.exists(results_file) & ! force) res = read_tsv(results_file) else {
+  if (file.exists(results_file) & ! force) res = read.table(results_file) %>% as_tibble() else {
     # Basic MR tests
     res = mr(harm, method_list=c('mr_ivw', 'mr_weighted_median', 'mr_egger_regression'))
     #### if not correct direction, re-test after Steiger filtering ####
@@ -202,7 +202,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
     #### tabular outputs ####
     # tabular output
     res = res %>% add_column(F_min = min(harm$F.statistic), F_med = median(harm$F.statistic))
-    write.table(res, results_file, sep = '\t')
+    write.table(res, results_file, sep = '\t', row.names = F)
   }
   print(res)
   print(paste0('Saving results to ',prefix, '_results.txt'))
@@ -429,7 +429,7 @@ main = function(args){
   if (! all(mr_rev_harm$F.statistic > 10)) all_mr_results(
     mr_rev_harm_weak, paste0(out_prefix,'_mr_reverse_weak'), mrlap_params_rev, apss_rev, force = args$force)
   
-  scatter_merged = cowplot(
+  scatter_merged = plot_grid(
     scatter_fwd, 
     scatter_rev + scale_colour_manual(values = mr_scatter_palette, drop = F) +
       guides(colour = guide_legend(ncol = 1)) + theme(legend.position = 'right'),
