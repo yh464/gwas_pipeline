@@ -223,7 +223,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   # scatter plot
   scatter1 = mr_scatter_plot(res,harm) + scale_colour_manual(values = mr_scatter_palette)
   ggsave(paste0(prefix,'_scatterplot.pdf'), width = 4, height = 4)
-  scatter = scatter + theme(legend.position = 'none')
+  scatter = scatter1 + theme(legend.position = 'none')
   ggsave(paste0(prefix,'_scatterplot_nolegend.pdf'), width = 4, height = 4)
   
   # forest plot
