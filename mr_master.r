@@ -102,6 +102,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   library(ggplot2) # apparently there is a problem with the ggplot2 function 'scale_linewidth_manual'
   library(TwoSampleMR)
   library(MRPRESSO)
+  id.exposure = harm$id.exposure[1]; id.outcome = harm$id.outcome[1]
   
   #### perform tests: MR, sensitivity analysis, pleiotropy, leave-one-out, Steiger ####
   # excluding MR-presso test
@@ -113,7 +114,8 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   direc = directionality_test(harm)
   
   results_file = paste0(prefix, '_results.txt')
-  if (file.exists(results_file) & ! force) res = read.table(results_file) %>% as_tibble() else {
+  if (file.exists(results_file) & ! force) res = read.delim(results_file) %>%
+      mutate(id.exposure = id.exposure, id.outcome = id.outcome) else {
     # Basic MR tests
     res = mr(harm, method_list=c('mr_ivw', 'mr_weighted_median', 'mr_egger_regression'))
     #### if not correct direction, re-test after Steiger filtering ####
@@ -221,7 +223,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   # always overwrites
   theme_set(theme_classic())
   # scatter plot
-  scatter1 = mr_scatter_plot(res,harm) + scale_colour_manual(values = mr_scatter_palette)
+  scatter1 = mr_scatter_plot(res,harm)[[1]] + scale_colour_manual(values = mr_scatter_palette)
   ggsave(paste0(prefix,'_scatterplot.pdf'), width = 4, height = 4)
   scatter = scatter1 + theme(legend.position = 'none')
   ggsave(paste0(prefix,'_scatterplot_nolegend.pdf'), width = 4, height = 4)
