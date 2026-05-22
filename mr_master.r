@@ -208,11 +208,11 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   print(paste0('Saving results to ',prefix, '_results.txt'))
 
   # tabular outputs for QC tests
-  write.table(het, paste0(prefix, '_heterogeneity.txt'), sep = '\t')
-  write.table(direc, paste0(prefix,'_dirtest.txt'), sep = '\t')
-  write.table(single, paste0(prefix,'_singlesnp.txt'), sep = '\t')
-  write.table(pleio, paste0(prefix,'_pleiotropy.txt'), sep = '\t')
-  write.table(loo, paste0(prefix,'_lootest.txt'), sep = '\t')
+  write.table(het, paste0(prefix, '_heterogeneity.txt'), sep = '\t', row.names = F)
+  write.table(direc, paste0(prefix,'_dirtest.txt'), sep = '\t', row.names = F)
+  write.table(single, paste0(prefix,'_singlesnp.txt'), sep = '\t', row.names = F)
+  write.table(pleio, paste0(prefix,'_pleiotropy.txt'), sep = '\t', row.names = F)
+  write.table(loo, paste0(prefix,'_lootest.txt'), sep = '\t', row.names = F)
   
   # a copy of the harmonised data
   write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
@@ -237,14 +237,14 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   
   #### perform tests and outputs in MR-presso ####
   # There might be not enough instruments for MR-presso so use a try catch structure
-  tryCatch({
+  if (force | ! file.exists(paste0(prefix,'_presso_results.txt'))) tryCatch({
     presso_res = run_mr_presso(harm) # use default parameters
     presso_res = presso_res[[1]]
     presso_table = rbind(presso_res$'Main MR results'[,c(2:6)],
                          c('MR-PRESSO Global',NA,NA,
                            presso_res$'MR-PRESSO results'$'Global Test'$RSSobs,
                            presso_res$'MR-PRESSO results'$'Global Test'$Pvalue))
-    write.table(presso_table,paste0(prefix,'_presso_results.txt'), sep = '\t')
+    write.table(presso_table,paste0(prefix,'_presso_results.txt'), sep = '\t', row.names = F)
     
     outlier_log = file(paste0(prefix,'_presso_outlier.txt'), open = 'w')
     writeLines(c('Distortion Coefficient:',
@@ -259,7 +259,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
     # if an error occurs, write blank files for parsing
     presso_res = matrix(nrow = 3, ncol = 5) %>% as.data.frame()
     colnames(presso_res) = c('MR Analysis','Causal Estimate','Sd','T-stat','P-value')
-    write.table(presso_res,paste0(prefix,'_presso_results.txt'), sep = '\t')
+    write.table(presso_res,paste0(prefix,'_presso_results.txt'), sep = '\t', row.names = F)
     outlier_log = file(paste0(prefix,'_presso_outlier.txt'), open = 'w')
     writeLines(c('Distortion Coefficient:','Distortion P-value:','','','Outliers:',''),
                con = outlier_log)
