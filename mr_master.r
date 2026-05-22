@@ -102,7 +102,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   library(ggplot2) # apparently there is a problem with the ggplot2 function 'scale_linewidth_manual'
   library(TwoSampleMR)
   library(MRPRESSO)
-  id.exposure = harm$id.exposure[1]; id.outcome = harm$id.outcome[1]
+  id_exposure = harm$id.exposure[1]; id_outcome = harm$id.outcome[1]
   
   #### perform tests: MR, sensitivity analysis, pleiotropy, leave-one-out, Steiger ####
   # excluding MR-presso test
@@ -115,7 +115,7 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   
   results_file = paste0(prefix, '_results.txt')
   if (file.exists(results_file) & ! force) res = read.delim(results_file) %>%
-      mutate(id.exposure = id.exposure, id.outcome = id.outcome) else {
+      mutate(id.exposure = id_exposure, id.outcome = id_outcome) else {
     # Basic MR tests
     res = mr(harm, method_list=c('mr_ivw', 'mr_weighted_median', 'mr_egger_regression'))
     #### if not correct direction, re-test after Steiger filtering ####
@@ -217,7 +217,6 @@ all_mr_results = function(harm, prefix, mrlap_params, apss_params = NULL, force 
   write.table(loo, paste0(prefix,'_lootest.txt'), sep = '\t', row.names = F)
   
   # a copy of the harmonised data
-  print(head(harm))
   write.table(harm, paste0(prefix,'_harmonised_data.txt'), sep = '\t')
   
   #### Plots for TwoSampleMR ####
@@ -367,12 +366,14 @@ main = function(args){
   # harmonise data for forward direction
   exp1$samplesize.exposure = metadata$n[1]
   out2$samplesize.outcome = metadata$n[2]
-  mr_fwd_harm = harmonise_data(exp1, out2, action = 2) %>% getr(metadata)
+  mr_fwd_harm = harmonise_data(exp1, out2, action = 2) %>% getr(metadata) %>%
+    mutate(id.exposure = exposure, id.outcome = outcome)
   
   # harmonise data for reverse direction
   exp2$samplesize.exposure = metadata$n[2]
   out1$samplesize.outcome = metadata$n[1]
-  mr_rev_harm = harmonise_data(exp2, out1, action = 2) %>% getr(metadata[c(2,1),])
+  mr_rev_harm = harmonise_data(exp2, out1, action = 2) %>% getr(metadata[c(2,1),]) %>%
+    mutate(id.exposure = exposure, id.outcome = outcome)
   
   #### pre-calculate parameters for MR-APSS correction ####
   if (args$apss){
