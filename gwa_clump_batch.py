@@ -39,7 +39,7 @@ def main(args):
     for g,p in pheno:
       gwa = proj.to_pathname('gwa', group = g, pheno = p)
       for pval in args.pval:
-        out_fname = proj.to_pathname('clump', group = g, pheno = p, pval = f'{pval:.0e}')
+        out_fname = proj.to_pathname('clump', group = g, pheno = p, pval = pval)
         out_prefix = out_fname.replace(f'_{pval:.0e}.clumped', '')
         if os.path.isfile(out_fname) and (not args.force): continue
         submitter.add(
