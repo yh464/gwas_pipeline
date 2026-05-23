@@ -47,7 +47,8 @@ def main(args):
     
     tmpdir = f'/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/clump_cache/{os.path.basename(args._in)}_{args.p:.0e}'
     if not os.path.isdir(tmpdir): os.system(f'mkdir -p {tmpdir}')
-    os.chdir(args.out)                                                             # we do not need the input dir
+    os.makedirs(os.path.dirname(out), exist_ok = True)
+    os.chdir(os.path.dirname(args.out))
     
     df = pd.read_table(args._in, sep = '\t')
     sf = df.P.values < args.p                                                      # sig filter, must be determined by matrix decomposition
