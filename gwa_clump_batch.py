@@ -25,7 +25,7 @@ def main(args):
     if not os.path.isdir(tmpdir): os.mkdir(tmpdir)
     
     # array submitter
-    timeout = 15 if args.pval < 1e-8 else 40
+    timeout = 15 if min(args.pval) < 1e-8 else 40
     from _utils.slurm import array_submitter
     submitter = array_submitter(
       name = f'clump_{args.pheno[0]}_{args.pval:.0e}',

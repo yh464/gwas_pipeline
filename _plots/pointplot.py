@@ -16,7 +16,7 @@ from .tidy import capitalise, get_fdr
 from .aes import discrete_palette
 
 def summary_pointplot(summary, xgroup = None, x = None, hue = None, y = None, se = None, 
-    sort = False, p_threshold: list[float] = [], sig_col = None, xlabel = True):
+    sort = False, p_threshold: list[float] = [], sig_col = None, xlabel = True, ylabel = None):
 
     '''
     Default input format: long format pd.DataFrame, compatible with corr_heatmap
@@ -53,8 +53,10 @@ def summary_pointplot(summary, xgroup = None, x = None, hue = None, y = None, se
     groups = summary[xgroup].unique()
     counts = [summary.loc[summary[xgroup] == xgroup_i, x].unique().size for xgroup_i in groups]
     hues = summary[hue].unique()
-    fig, ax = plt.subplots(1, len(groups), width_ratios = counts, sharey = True, squeeze = True,
-        figsize = (sum(counts)/3, 3))
+    fig, ax = plt.subplots(1, len(groups), width_ratios = counts, sharey = False, squeeze = True,
+        figsize = (sum(counts) * 0.3, 3), gridspec_kw = {'wspace': 0.1})
+    if len(groups) == 1: ax = np.array([ax]) # ensure ax is always an array for consistent indexing
+    ylim = (min(summary[y] - summary[se] * 1.96), max(summary[y] + summary[se] * 1.96))
     
     # aesthetics
     palette = discrete_palette(hues) # need to use dict mapping as sig and non-sig are plotted separately
@@ -68,46 +70,53 @@ def summary_pointplot(summary, xgroup = None, x = None, hue = None, y = None, se
         tmp = summary.loc[summary[xgroup] == group,:]
         tmp = tmp.sort_values(by = [x, hue], key = mapping) # important for alignment
 
-        # initialise x axis positions using a blank plot
-        sns.scatterplot(tmp, x = x, y = y, marker = '', ax = ax[i], legend = False)
+        # manually specify x coordinates for each point
+        dodge_width = 0.05 * tmp[hue].unique().size
+        col_width = max(1, dodge_width * 2 + 0.2)
+        tmp['x_pos'] = tmp[x].map(dict(zip(tmp[x].unique(), range(tmp[x].unique().size)))) * col_width
+        tmp['x_pos'] += tmp[hue].map(dict(zip(tmp[hue].unique(), np.linspace(-dodge_width, dodge_width, tmp[hue].unique().size)))) # dodge
 
-        # a hack to plot errorbars with just summary data
-        tmp_lower = tmp.copy(); tmp_lower[y] = tmp[y] - tmp[se]
-        tmp_upper = tmp.copy(); tmp_upper[y] = tmp[y] + tmp[se]
-        tmp = pd.concat([tmp, tmp_lower, tmp_upper], axis = 0)
+        # use scatterplot for marker size control
+        tmp['Sig_bin'] = tmp['Significance'] == sig_label
+        sns.scatterplot(tmp, x = 'x_pos', y = y, hue = hue, palette = palette, ax = ax[i],
+            size = tmp['Sig_bin'].map({True: 250, False: 25}), marker = 'o', edgecolors = 'none', legend = False)
 
-        tmp_sig = tmp.loc[tmp['Significance'] == sig_label, :]
-        tmp_ns = tmp.loc[tmp['Significance'] != sig_label, :]
-
-        sns.pointplot(tmp_ns, x = x, y = y, hue = hue, palette = palette, ax = ax[i], dodge = 0.2,
-            linestyle = 'none', errorbar = lambda x: (x.min(), x.max()), legend = False,
-            markersize = 5, err_kws = {'linewidth': 1, 'capsize': 0, 'linestyle': '--'})
-        sns.pointplot(tmp_sig, x = x, y = y, hue = hue, palette = palette, ax = ax[i], dodge = 0.2,
-            linestyle = 'none', errorbar = lambda x: (x.min(), x.max()), legend = False,
-            markersize = 25, err_kws = {'linewidth': 2, 'capsize': 0})
+        for _, row in tmp.iterrows():
+            ax[i].errorbar(
+                row['x_pos'], row[y], yerr = row[se] * 1.96, fmt = 'none', 
+                ecolor = palette[row[hue]], 
+                elinewidth = 3 if row['Significance'] == sig_label else 1,
+                capsize = 0
+            )
         
+        ax[i].set_xlim(tmp['x_pos'].min() - 0.5*col_width, tmp['x_pos'].max() + 0.5*col_width)
         ax[i].set_xlabel(group if xlabel else '', fontsize = 12)
+        ax[i].set_ylim(ylim)
         if i > 0: 
             ax[i].spines['left'].set_visible(False)
             ax[i].set_ylabel('')
-            ax[i].yticks([])
-        ax[i].axhline(0, color = '0.7', linestyle = '--', linewidth = 1.5)
+            ax[i].set_yticks([])
+        else:
+            ax[i].set_ylabel(y if ylabel is None else ylabel, fontsize = 12)
+            ax[i].spines['left'].set(position = ('outward', 10))
+        ax[i].set_xticks(np.array(range(tmp[x].unique().size)) * col_width, tmp[x].unique(), rotation = 90)
+        ax[i].axhline(0, color = '0.7', linestyle = '--', linewidth = 1.5, zorder = 0)
     
     # legend
-    right_pos = ax[-1].get_position().x1
-    figsize = fig.get_size_inches()
-
     # colour code for all groups specified in the hue variable
-    handles = [mpl.lines.Line2D([],[], marker = 'o', linetype = 'none', markersize = 5, 
+    handles = [mpl.lines.Line2D([],[], marker = 'o', linestyle = 'none', markersize = 5, 
         markerfacecolor = col, markeredgecolor = col, label = cat) for cat, col in palette.items()]
-    fig.legend(handles = handles, title = hue, loc = 'lower left', frameon = False, bbox_to_anchor = (right_pos+0.3/figsize[0], 0.4))
+    leg1 = ax[-1].legend(handles = handles, title = hue, loc = 'lower left', frameon = False, bbox_to_anchor = (1, 0.4))
 
     # size, linestyle and linewidth code for significant groups, only for the most significant category
     # legend should show a marker and a line
     if sig_label != '':
         handles = [
-            mpl.lines.Line2D([0, 22], [3.85, 3.85], color = 'k', likestyle = '-', linewidth = 2, label = sig_label),
-            mpl.lines.Line2D([0, 22], [3.85, 3.85], color = 'k', likestyle = '--', linewidth = 1, label = f'Nominal/NS')
+            mpl.lines.Line2D([0, 22], [3.85, 3.85], color = 'k', linewidth = 3, marker = 'o', markersize = 5, 
+                label = sig_label, solid_capstyle = 'butt'),
+            mpl.lines.Line2D([0, 22], [3.85, 3.85], color = 'k', linewidth = 1, marker = 'o', markersize = np.sqrt(5), 
+                label = f'Nominal/NS', solid_capstyle = 'butt')
         ]
-        fig.legend(handles = handles, title = 'Significance', loc = 'upper left', frameon = False, bbox_to_anchor = (right_pos+0.3/figsize[0], 0.4))
-    
+        ax[-1].legend(handles = handles, title = 'Significance', loc = 'upper left', frameon = False, bbox_to_anchor = (1, 0.4))
+        ax[-1].add_artist(leg1)
+    return fig
