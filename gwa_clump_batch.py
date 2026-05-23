@@ -28,7 +28,7 @@ def main(args):
     timeout = 15 if min(args.pval) < 1e-8 else 40
     from _utils.slurm import array_submitter
     submitter = array_submitter(
-      name = f'clump_{args.pheno[0]}_{args.pval:.0e}',
+      name = f'clump_{args.pheno[0]}_{min(args.pval):.0e}',
       timeout = timeout)
     
     # path specification
