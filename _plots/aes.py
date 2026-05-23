@@ -9,9 +9,9 @@ Plotting aesthetics
 
 import matplotlib as mpl
 import seaborn as sns
-import math
+import numpy as np
 
-# colour palettes
+# region colour palettes
 def register_palettes(*palettes):
   for p in palettes:
     try: mpl.colormaps.register(p)
@@ -84,15 +84,23 @@ greyblue_alpha = mpl.colors.LinearSegmentedColormap(
   1024,
 )
 
-def discrete_palette(n):
+def discrete_palette_n(n):
   '''Default colour palette to use for discrete mapping'''
   if n <= 10: return sns.color_palette('muted', n)
   else:
     palette = sns.color_palette('husl', n) # reorder to maximise distance between adjacent colours
-    split_half = math.ceil(n / 2)
+    split_half = np.ceil(n / 2)
     out = []
     for i in range(split_half):
       out.append(palette[i])
       if i + split_half < n:
         out.append(palette[i + split_half])
     return out
+
+def discrete_palette(categories):
+  '''Default colour palette to use for discrete mapping
+  returns a dict mapping from category to colour'''
+  palette = discrete_palette_n(len(categories))
+  return dict(zip(categories, palette))
+
+# endregion
