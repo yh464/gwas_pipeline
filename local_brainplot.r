@@ -33,8 +33,9 @@ for (f in list.files()){
   
   # normalise columns names
   col = colnames(df)
-  col[1] = 'phenotype'; col[2] = 'label'
-  df[,1] = df[,1] %>% gsub('_','\n',.) 
+  col[1] = 'phenotype'; col[2] = 'label'; col[4] = 'correlate'
+  df[,1] = df[,1] %>% gsub('_','\n',.)
+  df[,4] = df[,4] %>% gsub('_','\n',.)
 #  if (df[,1] != df[,1] %>% toupper()) df[,1] = df[,1] %>% tolower()
   roi = df[,2]
   roi = gsub('_0.01','',roi, ignore.case = T)
@@ -63,7 +64,7 @@ for (f in list.files()){
   if ('P' %in% col) df = df %>% rename(p = P)
   if ('Q' %in% col) df = df %>% rename(q = Q)
   if (! 'q' %in% col & 'p' %in% col) {
-    df = df %>% group_by(phenotype) %>% mutate(q = p.adjust(p, 'BH'))
+    df = df %>% group_by(phenotype, correlate) %>% mutate(q = p.adjust(p, 'BH'))
   }
   if ('q' %in% colnames(df)){
     df = rbind(df %>% filter(q < 0.05) %>% mutate(significance = 'Corrected'),
@@ -75,10 +76,8 @@ for (f in list.files()){
   
   m <- df %>% filter(label %in% ref)
   
-  # wrap figure to 6 phenotypes per line
-  nrow = (m$phenotype %>% unique() %>% length() / 6) %>% ceiling()
-  
-  plt <- m %>% group_by(phenotype) %>%
+  # wrap figure to 6 phenotypes per line or per correlate phenotype
+  plt <- m %>% group_by(phenotype, correlate) %>%
     ggplot() + geom_brain(
       atlas = glasser(), hemi = hem, view = c('medial','lateral'),
       aes(fill = .data[[colnames(df)[5]]], 
@@ -91,17 +90,27 @@ for (f in list.files()){
       'Corrected' = 'black',
       'NA' = '#AFAFAF'
     ), guide = 'none') + 
-    facet_wrap(~phenotype, nrow = nrow) + 
     theme(
       strip.text = element_text(size = 12),
       axis.ticks = element_blank(),
       axis.text = element_blank())
-  options()
+  if (m$correlate %>% unique() %>% length == 1){
+    nrow = (m$phenotype %>% unique() %>% length() / 6) %>% ceiling()
+    ncol = ceiling(m$phenotype %>% unique() %>% length()/nrow)
+    plt = plt + facet_wrap(~phenotype, nrow = nrow)
+  } else {
+    nrow = m$correlate %>% unique() %>% length()
+    ncol = m$phenotype %>% unique() %>% length()
+    plt = plt + facet_grid(correlate ~ phenotype, switch = 'y') +
+      theme(strip.text.y.left = element_text(angle = 90),
+            #strip.background.y = element_rect(fill = '#e7e7e7', colour = '#e7e7e7')
+            )
+  }
   ggsave(
     out,
     plot = plt,
     device = 'pdf',
-    width = ceiling(m$phenotype %>% unique() %>% length()/nrow), height = height * nrow
+    width = ncol, height = height * nrow
   )
   print(plt)
 }
