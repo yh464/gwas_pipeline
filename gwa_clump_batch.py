@@ -32,20 +32,15 @@ def main(args):
       timeout = timeout)
     
     # path specification
-    proj.register('clump', 'clump/$group/$pheno_5e-8.clumped')
-    for pval in args.pval:
-      if pval != 5e-8: 
-        proj.register(f'clump_{pval:.0e}', f'clump/$group/$pheno_{pval:.0e}.clumped')
+    proj.register('clump', 'clump/$group/$pheno_$pval.clumped')
     pheno = proj.find_gwas(args.pheno, long = True)
 
     # run clumping
     for g,p in pheno:
       gwa = proj.to_pathname('gwa', group = g, pheno = p)
       for pval in args.pval:
-        out_prefix = proj.to_pathname('clump', group = g, pheno = p) if pval == 5e-8 else \
-          proj.to_pathname(f'clump_{pval:.0e}', group = g, pheno = p)
-        out_prefix = out_prefix.replace(f'_{pval:.0e}.clumped', '')
-        out_fname = f'{args.out}/{g}/{p}_{pval:.0e}.clumped'
+        out_fname = proj.to_pathname('clump', group = g, pheno = p, pval = pval)
+        out_prefix = out_fname.replace(f'_{pval:.0e}.clumped', '')
         if os.path.isfile(out_fname) and (not args.force): continue
         submitter.add(
           f'python gwa_clump.py --in {gwa} -b {args.bfile} --plink {args.plink} '+
