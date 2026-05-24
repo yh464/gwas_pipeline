@@ -205,7 +205,7 @@ main = function(args){
       traits = paste0(args$input, '/', c(args$p1, args$cov, args$p2,args$med),'.sumstats'),
       sample.prev = metadata$sample_prev[1:n], population.prev = metadata$pop_prev[1:n],
       ld = args$ld, wld = args$ld, trait.names = trait.names_med,
-      ldsc.log = ppaste0(tmpdir,'/',sha256(paste(trait.names_med,collapse='.')),'.ldsc.log'))
+      ldsc.log = paste0(tmpdir,'/',sha256(paste(trait.names_med,collapse='.')),'.ldsc.log'))
     save(ldscoutput, file = ldsc_cache)
   }
   sumstats_cache = paste0(tmpdir,'/',sha256(paste(c(p1,p2),collapse='.')),'.sumstats.rdata')
