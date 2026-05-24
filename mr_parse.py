@@ -40,7 +40,8 @@ def parse_mr_results(prefix):
     
     # merge main and presso results to create the causal output summary table
     main_mr = main_mr.iloc[:,2:].copy() # removes id.exposure and id.outcome
-    main_mr.loc[main_mr.method == 'MR Egger', ['intercept','se_intercept','p_intercept']] = pleio.loc[1, ['egger_intercept','se','egger_p']].tolist()
+    main_mr.loc[main_mr.method == 'MR Egger', ['intercept','se_intercept','p_intercept']] = pleio.loc[
+        pleio.index[0], ['egger_intercept','se','egger_p']].tolist()
 
     presso.columns = ['method','b','se','t','pval']
     presso['outcome'] = main_mr['outcome']
@@ -51,8 +52,9 @@ def parse_mr_results(prefix):
     presso_p = [0 if p == '<0.001' else float(p) for p in presso_p]
     presso['pval'] = presso_p
     presso = presso.assign(F_min = np.nan, F_med = np.nan)
-    if np.isnan(presso.loc[2, 'pval']): presso.loc[1, ['F_min','F_med']] = main_mr.loc[1, ['F_min','F_med']].tolist()
-    presso.loc[3, 'b'] = presso.loc[3, 't']
+    if np.isnan(presso.loc[presso.index[1], 'pval']): 
+        presso.loc[presso.index[0], ['F_min','F_med']] = main_mr.loc[main_mr.index[0], ['F_min','F_med']].tolist()
+    presso.loc[presso.index[2], 'b'] = presso.loc[presso.index[2], 't']
     presso = presso.drop('t', axis = 'columns')
     presso = presso[main_mr.columns.intersection(presso.columns)]
     causal = pd.concat((main_mr, presso), axis = 'index').rename(columns = {'pval':'p'})
@@ -98,8 +100,6 @@ def main(args):
 
     for g2, p2s in outcomes:
       for g1, p1s in exposures:
-
-        
         for p2 in p2s:
             # initialise output parsed tables
             results_fwd = []
