@@ -34,7 +34,7 @@ def main(args):
             if not os.path.isfile(sumstats): to_munge.append(f'{g}/{p}')
     if len(to_munge) > 0:
         from heri_batch import api
-        dep = api(pheno = to_munge, ldsc = args.ldsc, complete = args.complete)
+        dep = api(pheno = to_munge, ldsc = args.ldsc, complete = args.complete, force = args.force)
     else: dep = []
     
     # input and output directory
