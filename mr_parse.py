@@ -85,8 +85,6 @@ def stratified_fdr(df,label, pvalues):
     return out
 
 def main(args):
-    import warnings
-    from fnmatch import fnmatch
     import pandas as pd
     from _utils.path import normaliser, find_gwas, pair_gwas
     
@@ -94,12 +92,13 @@ def main(args):
     exposures = find_gwas(args.p1, ext = args.ext1, se = True)
     outcomes = find_gwas(args.p2, ext = args.ext2, se = True)
     missing = []
+    all_fwd = []
+    all_rev = []
+    all_compare = []
 
     for g2, p2s in outcomes:
       for g1, p1s in exposures:
-        all_fwd = []
-        all_rev = []
-        all_compare = []
+
         
         for p2 in p2s:
             # initialise output parsed tables
@@ -128,11 +127,10 @@ def main(args):
                 results_fwd = pd.concat(results_fwd)
                 results_fwd_corrected = stratified_fdr(results_fwd,'method',['p','cause_p'])
                 all_fwd.append(results_fwd_corrected)
-                results_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward.txt', sep = '\t', index = False)
+                # results_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward.txt', sep = '\t', index = False)
                 pleio_fwd = pd.concat(pleio_fwd)
-                pleio_fwd_corrected = stratified_fdr(pleio_fwd,'outcome',['egger_p','presso_p'])
-                pleio_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward_pleiotropy.txt',
-                                            sep = '\t', index = False)
+                # pleio_fwd_corrected = stratified_fdr(pleio_fwd,'outcome',['egger_p','presso_p'])
+                # pleio_fwd_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_forward_pleiotropy.txt', sep = '\t', index = False)
             except:
                 log.warn(f'{p2} no MR forward results - check summary stats')
             
@@ -140,28 +138,30 @@ def main(args):
                 results_rev = pd.concat(results_rev)
                 results_rev_corrected = stratified_fdr(results_rev,'method',['p','cause_p'])
                 all_rev.append(results_rev_corrected)
-                results_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
+                # results_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse.txt', sep = '\t', index = False)
                 pleio_rev = pd.concat(pleio_rev)
-                pleio_rev_corrected = stratified_fdr(pleio_rev,'exposure',['egger_p','presso_p'])
-                pleio_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse_pleiotropy.txt', 
-                                            sep = '\t', index = False)
+                # pleio_rev_corrected = stratified_fdr(pleio_rev,'exposure',['egger_p','presso_p'])
+                # pleio_rev_corrected.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_reverse_pleiotropy.txt', sep = '\t', index = False)
             except:
                 log.warn(f'{p2} no MR reverse results - check summary stats')
             
             try:
                 results_compare = pd.concat(results_compare)
-                results_compare.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_compare.txt', sep = '\t', index = False)
+                # results_compare.to_csv(f'{args._in}/{g2}/{g1}_{p2}_mr_compare.txt', sep = '\t', index = False)
                 all_compare.append(results_compare)
             except: pass
         
-        all_fwd = stratified_fdr(pd.concat(all_fwd).drop(columns = ['q','cause_q']),'method',['p','cause_p']).sort_values(by = ['outcome','exposure','method'])
-        norm.normalise(all_fwd).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt', sep = '\t', index = False)
-        all_rev = stratified_fdr(pd.concat(all_rev).drop(columns = ['q','cause_q']),'method',['p','cause_p']).sort_values(by = ['outcome','exposure','method'])
-        norm.normalise(all_rev).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_reverse.txt', sep = '\t', index = False)
-        norm.normalise(pd.concat(all_compare)).to_csv(f'{args._in}/{g2}/all_{g1}_{g2}_mr_compare.txt', sep = '\t', index = False)
-        log.log(f'Parsed MR results for {g1} and {g2} saved to {args._in}/{g2}/all_{g1}_{g2}_mr_forward.txt and all_{g1}_{g2}_mr_reverse.txt')
+    all_fwd = stratified_fdr(pd.concat(all_fwd).drop(columns = ['q','cause_q']),'method',['p','cause_p']).sort_values(by = ['outcome','exposure','method'])
+    norm.normalise(all_fwd).to_csv(f'{args._in}/all_mr_forward.txt', sep = '\t', index = False)
+    all_rev = stratified_fdr(pd.concat(all_rev).drop(columns = ['q','cause_q']),'method',['p','cause_p']).sort_values(by = ['outcome','exposure','method'])
+    norm.normalise(all_rev).to_csv(f'{args._in}/all_mr_reverse.txt', sep = '\t', index = False)
+    norm.normalise(pd.concat(all_compare)).to_csv(f'{args._in}/all_mr_compare.txt', sep = '\t', index = False)
+    log.log(f'Parsed MR results saved to:')
+    log.log(f'    {args._in}/all_mr_forward.txt')
+    log.log(f'    {args._in}/all_mr_reverse.txt')
+    log.log(f'    {args._in}/all_mr_compare.txt')
     log.log('Missing MR results:')
-    for m in missing: log.log(m)
+    for m in missing: log.log(f'    {m}')
 
 if __name__ == '__main__':
     import argparse
