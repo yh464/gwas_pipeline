@@ -24,7 +24,7 @@ def _add_rep_axis(fig, rep = 'UMAP'):
   repax.set_xlabel(f'{rep}1', fontsize = 8); repax.set_ylabel(f'{rep}2', fontsize = 8)
   return fig
 
-def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '', vmin = None, vmax = None, **kwargs):
+def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 0.1, rep = 'UMAP', vname = '', vmin = None, vmax = None, **kwargs):
   '''
   Scatterplot without axes
   Input:
@@ -35,6 +35,7 @@ def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '
     all **kwargs are passed to sns.scatterplot()
   '''
   df = pd.DataFrame(dict(x = x, y = y, v = v)).dropna()
+  if not full and df.shape[0] > 500000: df = df.sample(500000, random_state = 0) # for large datasets, sample points to speed up plotting
 
   # colour palette
   if palette != None:
@@ -52,15 +53,17 @@ def scatterplot_noaxis(x, y, v, palette = None, s = 0.1, rep = 'UMAP', vname = '
     if np.nanmax(v) <= 0: vmin = max(np.nanquantile(v, 0.05)*1.5,np.nanmin(v)) if vmin == None else vmin; vmax = 0 if vmax == None else vmax
     elif np.nanmin(v) >= 0: vmin = 0 if vmin == None else vmin; vmax = min(np.nanquantile(v,0.95),np.nanmax(v)) if vmax == None else vmax
     else:
-      absv = np.abs(v) 
+      absv = np.abs(v)
       vmin = -max(np.nanquantile(absv, 0.95)*1.5,np.nanmax(absv)) if vmin == None else vmin
       vmax = max(np.nanquantile(absv, 0.95)*1.5,np.nanmax(absv)) if vmax == None else vmax
+      vmax, vmin = max(abs(vmin), abs(vmax)), -max(abs(vmin), abs(vmax)) # ensure vmin and vmax are symmetric around 0
     kwargs['hue_norm'] = mpl.colors.Normalize(vmin = vmin, vmax = vmax)
 
   # main plot
   fig = plt.figure(figsize = (5.3,5))
   ax = fig.add_axes((0.3/5.3, 0.3/5, 4.4/5.3, 4.4/5))
-  sns.scatterplot(data = df, x = 'x', y = 'y', hue = 'v', palette = use_palette, s = s, ax = ax, edgecolor = None, linewidth = 0, legend = legend, **kwargs)
+  sns.scatterplot(data = df, x = 'x', y = 'y', hue = 'v', palette = use_palette, s = s, ax = ax, edgecolor = None, linewidth = 0, 
+      legend = legend, rasterized = True, **kwargs)
   ax.axis('off')
   ax.set_aspect('equal')
   
@@ -89,6 +92,7 @@ def scatterplot_adata(adata, v, rep = 'umap', **kwargs):
     rep: representation in adata.obsm to use for coordinates
     all **kwargs are passed to scatterplot_noaxis()
   '''
+  rep = rep[2:] if rep.startswith('X_') else rep
   if rep.lower() == 'umap':
     coord_key = 'X_umap'; rep_axis = 'UMAP'
   elif rep.lower() == 'pca':
@@ -98,7 +102,7 @@ def scatterplot_adata(adata, v, rep = 'umap', **kwargs):
   elif rep.lower() == 'spatial':
     coord_key = 'spatial'; rep_axis = False
   elif rep in adata.obsm.keys():
-    coord_key = rep; rep_axis = rep.upper()
+    coord_key = rep; rep_axis = rep.upper().replace('X_','')
   else:
     raise ValueError(f'Reduced-dimension representation {rep} not in the anndata object')
   x = adata.obsm[coord_key][:,0]
