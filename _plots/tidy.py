@@ -41,7 +41,7 @@ def get_fdr(df, group_by = [0,1], sig_col = None, p_threshold: list[float] = [])
                 df.loc[~np.isnan(df['p']),'q'] = fdr(df.loc[~np.isnan(df['p']),'p'])
             else:
                 for _, df_group in df.groupby(group_by):
-                    df.loc[df.index.isin(df_group.index) & ~np.isnan(df_group['p']),'q'] = \
+                    df.loc[df.index.isin(df_group.index) & ~np.isnan(df['p']),'q'] = \
                         fdr(df_group.loc[~np.isnan(df_group['p']),'p'])
         df = df.assign(Significance = 'not significant')
         df.loc[df['p'] < 0.05, 'Significance'] = 'nominal'
