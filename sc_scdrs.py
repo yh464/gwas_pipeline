@@ -128,6 +128,7 @@ def main(args = None, **kwargs):
 
     # Stage 1: generate cell-specific scores
     out_score = f'{args.out}.score.txt'
+    log.log('Stage 1: Generating cell-specific scores')
     if not os.path.isfile(out_score) or args.force:
         weights = pd.read_table(args._in)
         gene_list = weights['gene'].iloc[:args.nsig].tolist()
@@ -155,6 +156,7 @@ def main(args = None, **kwargs):
         adata.file.close()
     
     # Stage 2: plot cell_specific scores
+    log.log('Stage 2: Plotting cell-specific scores')
     out_fig = f'{args.out}.score.png'
     if not os.path.isfile(out_fig) or args.force:
         adata = sc.read_h5ad(args.h5ad, 'r')
@@ -175,6 +177,7 @@ def main(args = None, **kwargs):
 
     # Stage 3: for each column of annotations, generate group-specific enrichments
     out_enrichment = f'{args.out}.enrichment.txt'
+    log.log('Stage 3: Generating group-specific enrichments')
     if not os.path.isfile(out_enrichment) or args.force:
         adata = sc.read_h5ad(args.h5ad, 'r')
         try: score
@@ -193,6 +196,8 @@ def main(args = None, **kwargs):
         adata.file.close()
     
     # Downstream analysis 1: for each cell type, correlate scDRS score with pseudotime and gene expression
+    log.log('Stage 4: Conducting downstream analyses')
+    log.log('Downstream analysis 1: Correlating scDRS score with pseudotime and gene expression')
     score = pd.read_table(out_score, index_col = 0, usecols = [0,2])
     adata = sc.read_h5ad(args.h5ad, 'r')
     out_downstream = f'{args.out}.downstream.txt'
@@ -204,19 +209,21 @@ def main(args = None, **kwargs):
     # Downstream analysis 2: for each cell type, conduct enrichment analysis using top correlated genes
     out_enrichr = f'{args.out}.downstream.enrichr.txt'
     out_revigo = f'{args.out}.downstream.revigo.txt'
+    log.log('Downstream analysis 2: Conducting enrichment analysis using top correlated genes')
     if args.downstream:
         try: corr
         except: corr = pd.read_table(out_downstream, index_col = [0,1])
         downstream_enrichr(corr, out_enrichr, out_revigo, force = args.force)
 
     # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
+    log.log('Downstream analysis 3: Plotting scDRS score with pseudotime, stratified by cell type')
     out_pseudotime_fig = f'{args.out}.pseudotime.png'
     cell_type_cols = [x for x in args.label if x.lower().find('type') > -1 or x.lower().find('annot') > -1 and x in adata.obs.columns]
     if args.downstream and 'pseudotime' in adata.obs.columns and len(cell_type_cols) > 0 and \
         (not os.path.isfile(out_pseudotime_fig) or args.force):
         df = pd.concat([score['norm_score'], adata.obs[['pseudotime', cell_type_cols[0]]]], axis = 1).dropna()
         fig = temporal_regplot(
-            df, x = 'pseudotime', y = 'norm_score', hue = cell_type_cols[0],
+            df, 'pseudotime', 'norm_score', hue = cell_type_cols[0],
             xlabel = '', ylabel = ' scDRS score', order = 2, clip_tail = 0.025
         )
         fig.savefig(out_pseudotime_fig, dpi = 400, bbox_inches = 'tight')
@@ -231,6 +238,7 @@ if __name__ == '__main__':
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
         'subcluster_identity_broad','subcluster_identity', # keefe
+        'CellClass','Region','Subregion' # braun
         ])
     parser.add_argument('-n','--nsig', help = 'Number of significant genes, default 1000', 
         type = int, default = 1000)
