@@ -130,7 +130,8 @@ def main(args):
     most_sig = pd.concat(most_sig, axis = 0)
     most_sig.to_clipboard(sep = '\t', index = False)
     most_sig = most_sig.sort_values('p').reset_index(drop = True)
-    log.log(most_sig.head())
+    log.log('Top significant gene sets:')
+    print(most_sig.head(10))
 
     if len(all_phenos) == 0: return
     all_phenos = pd.concat(all_phenos, axis = 0)
@@ -138,6 +139,7 @@ def main(args):
     # all_phenos.to_csv(f'{out_prefix}.txt', sep = '\t', index = False)
 
     # miami-like bar plot
+    log.log('Summarising result for each gene set:')
     for gset, gset_df in tqdm(all_phenos.groupby('gene_set'), total = all_phenos.gene_set.unique().size):
       if gset.find('GO') >= 0: # for GO terms, just report significant terms in a table
         gset_df = gset_df.loc[gset_df.p < 0.05,:]
@@ -162,7 +164,7 @@ def main(args):
         fig = corr_heatmap(gset_df[['group','phenotype','label','cell_type','beta','p','q']])
         fig.savefig(f'{out_prefix}.{gset}.pdf', bbox_inches = 'tight')
         plt.close(fig)
-      
+      log.log(f'    {gset:25}: {out_prefix}.{gset}.txt')
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 'Parses MAGMA GSA outputs for a group of phenotypes')
