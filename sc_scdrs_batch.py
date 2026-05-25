@@ -95,7 +95,7 @@ if __name__ == '__main__':
     from _utils.slurm import slurm_parser
     parser = slurm_parser(description = 'This script runs cell-type enrichments using scDRS')
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
-    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025','keefe_2025'])
+    parser.add_argument('-s','--sc', nargs = '*', help = 'single-cell dataset', default = ['siletti_2023','wang_2025','keefe_2025','braun_2023'])
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing gene-level summary statistics',
         default = '../annot/magma')
     parser.add_argument('--annot', help = 'Annotation used to generate gene-level sumstats', default = 'ENSG')
@@ -113,6 +113,7 @@ if __name__ == '__main__':
         default = ['ROIGroup', 'ROIGroupCoarse', 'ROIGroupFine', 'roi', 'supercluster_term', 'cluster_id', 'subcluster_id', 'development_stage', # siletti
         'Class','Subclass','Type_updated', 'Cluster', 'Tissue', # wang
         'subcluster_identity_broad','subcluster_identity', # keefe
+        'CellClass','Region','Subregion' # braun
         ])
     parser.add_argument('-d', '--downstream', help = 'Conduct downstream analyses', default = False, action = 'store_true')
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/scdrs')

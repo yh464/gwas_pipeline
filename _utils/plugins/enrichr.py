@@ -108,7 +108,9 @@ def enrichr_list(genes, background = None, databases =
         columns = ['rank','path_name','p_val','z_score','combined_score','overlapping_genes','adj_p_val','database'],
         index = []
     )
-    return pd.concat(out).sort_values(by = 'p_val').reset_index(drop = True)
+    out = pd.concat(out)
+    out = out.loc[out.p_val < 0.05, :].sort_values(by = 'p_val').reset_index(drop = True)
+    return out
 
 def enrichr_continuous(df, gene_col = None,
     top = -1, by = None, cutoff = None, top_negative = True, databases =
