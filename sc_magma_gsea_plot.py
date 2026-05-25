@@ -65,7 +65,7 @@ def process_pheno(gsets, g, p, args):
         magma_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.gsa.out'
         if not os.path.isfile(magma_output): log.warn(Warning(f'No MAGMA GSA output found for {g}/{p}/{gset}')); continue
         df = pd.read_table(magma_output, sep = '\\s+', comment = '#')
-        df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
+        df = df.rename(columns = {'FULL_NAME':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw', 'SE':'se', 'NGENES':'n_genes'})
         if 'cell_type' not in df.columns: df['cell_type'] = df.VARIABLE
         df['cell_type'] = df['cell_type'].fillna(df.VARIABLE)
 
@@ -73,6 +73,7 @@ def process_pheno(gsets, g, p, args):
         df = parse_gset_name(df, gset, gset_file)
         df.insert(0,'phenotype', value = p)
         df.insert(0,'group', value = g)
+        df = df.loc[:, ['group','phenotype','label','cell_type','beta','beta_raw','se','p','n_genes','VARIABLE','gene_set']]
 
         # FDR correction
         q = df.p.values.copy()
@@ -86,7 +87,7 @@ def process_pheno(gsets, g, p, args):
         cond_output = f'{args._in}/{g}/{p}/{p}.{args.annot}.{gset}.cond.gsa.out'
         if not os.path.isfile(cond_output): continue
         df = pd.read_table(cond_output, sep = '\\s+', comment = '#')
-        df = df.rename(columns = {'VARIABLE':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw'})
+        df = df.rename(columns = {'VARIABLE':'cell_type', 'P':'p', 'BETA_STD':'beta', 'BETA': 'beta_raw', 'SE':'se', 'NGENES':'n_genes'})
         df = parse_gset_name(df, gset, gset_file)
         df['analysed_cell_type'] = df['cell_type']
         # reorder cell types 1, 0, 3, 2, 5, 4, ... to get the cell types being conditioned on
@@ -164,7 +165,7 @@ def main(args):
         fig = corr_heatmap(gset_df[['group','phenotype','label','cell_type','beta','p','q']])
         fig.savefig(f'{out_prefix}.{gset}.pdf', bbox_inches = 'tight')
         plt.close(fig)
-      log.log(f'    {gset:25}: {out_prefix}.{gset}.txt')
+      log.log(f'    {gset:35}{out_prefix}.{gset}.txt')
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 'Parses MAGMA GSA outputs for a group of phenotypes')
