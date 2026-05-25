@@ -26,6 +26,7 @@ def get_fdr(df, group_by = [0,1], sig_col = None, p_threshold: list[float] = [])
     if 'fdr' in df.columns: df['q'] = df['fdr']
     if 'FDR' in df.columns: df['q'] = df['fdr']
     if 'P' in df.columns: df['p'] = df['P']
+    group_by = [df.columns[i] if type(i) == int else i for i in group_by]
     
     if sig_col is not None and sig_col in df.columns:
         sig_col_copy = df[sig_col].copy()
