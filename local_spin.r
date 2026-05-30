@@ -42,12 +42,13 @@ bilateral = (bilateral > 0)
 
 #### Mapping from HCP to Yeo and Mesulam ####
 maps = list()
-if (bilateral) {
-  maps$mes <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2meslr.csv', header=T)
-  maps$yeo <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
-} else {
-  maps$mes <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2mes.csv', header=T)
-  maps$yeo <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeo.csv', header=T)
+maps$mes <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2meslr.csv', header=T)
+maps$yeo <- read.csv('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/params/hcp2yeolr.csv', header=T)
+if (!bilateral) {
+  maps$mes <- maps$mes %>% filter(grepl('^L_', label1)) %>% 
+    mutate(label1 = gsub('^L_','',label1), label2 = gsub('^L_','',label2))
+  maps$yeo <- maps$yeo %>% filter(grepl('^L_', label1)) %>% 
+    mutate(label1 = gsub('^L_','',label1), label2 = gsub('^L_','',label2))
 }
 colnames(maps$mes) <- c("annot1","annot2","Gof","label1","label2")
 colnames(maps$yeo) <- c("annot1","annot2","Gof","label1","label2")
@@ -88,7 +89,7 @@ perm = function(df, ref, nperm = 10000) {
   # permutations
   for (i in 1:nperm){
     tempmap = ref
-    tempmap$label2 = tempmap$label2[perms[,i]]
+    tempmap$label2 = tempmap$label2[perms[1:nrow(tempmap),i]] # LH and RH are permuted separately, compatible w/ unilateral
     temp_merge = merge(df, tempmap, by = 'label1')
     temp = temp_merge %>% group_by(label2) %>% 
       summarise(avg = mean(.data[[signstat]], na.rm = T)) %>% arrange(label2)

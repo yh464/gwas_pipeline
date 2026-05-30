@@ -50,7 +50,7 @@ def _add_regression_axis(
     fig, position, 
     df, x, y, hue, palette, *, 
     df_clipped = None, xlabel = '', ylabel = '', xlabel_groups = True,
-    s = 0.5, alpha = 0.2, order = 1):
+    s = 0.5, alpha = 0.2, order = 1, clip_ylim = 0):
 
     if df_clipped is None: df_clipped = df
 
@@ -65,7 +65,7 @@ def _add_regression_axis(
         ax.xaxis.set_label_position('top')
     else: ax.spines['top'].set_visible(False)
     if xlabel == '': ax.spines[['top','bottom']].set_visible(False); ax.set_xticks([])
-    ax.set_ylim(df[y].min(), df[y].max())
+    ax.set_ylim(df[y].quantile(clip_ylim), df[y].quantile(1 - clip_ylim))
     for cat, cat_df in df_clipped.groupby(hue, observed = True):
         sns.regplot(
             data = cat_df,
@@ -84,7 +84,7 @@ def temporal_regplot(
     df,
     x, *y, hue = None, clip_tail = 0.025, height = 3, width = 7,
     xlabel = False, ylabel = None, xlabel_groups = True,
-    s = 0.5, alpha = 0.2, 
+    s = 0.5, alpha = 0.2, clip_ylim = 0,
     order = 1, annotate_corr = True
 ):
     '''
@@ -99,6 +99,7 @@ def temporal_regplot(
     xlabel_groups: whether to show x axis labels for each group separately, only applicable when hue is not None
     s: point size
     alpha: point transparency
+    clip_ylim: proportion of y-axis limits to clip at the top and bottom
     '''
 
     # region: argument sense checks and basic config
@@ -133,7 +134,7 @@ def temporal_regplot(
             ax.set_xlim(xlim)
             ax.spines[['top','right']].set_visible(False)
             if xlabel == '': ax.spines['bottom'].set_visible(False); ax.set_xticks([])
-            ax.set_ylim(df[col].min(), df[col].max())
+            ax.set_ylim(df[col].quantile(clip_ylim), df[col].quantile(1 - clip_ylim))
 
             sns.regplot(
                 data = df,
@@ -209,7 +210,7 @@ def temporal_regplot(
         _add_regression_axis(
             fig, ax_position, df, x, col, hue, palette,
             df_clipped = df_clipped, xlabel = ax_xlabel, ylabel = col_label,
-            xlabel_groups = xlabel_groups, s = s, alpha = alpha, order = order
+            xlabel_groups = xlabel_groups, s = s, alpha = alpha, order = order, clip_ylim = clip_ylim
         )
         current_height += height
 

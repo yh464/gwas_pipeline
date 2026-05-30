@@ -16,7 +16,8 @@ from .tidy import capitalise, get_fdr
 from .aes import discrete_palette
 
 def summary_pointplot(summary, xgroup = None, x = None, hue = None, y = None, se = None, 
-    sort = False, p_threshold: list[float] = [], sig_col = None, xlabel = True, ylabel = None):
+    sort = False, p_threshold: list[float] = [], sig_col = None, xlabel = True, ylabel = None,
+    palette = None):
 
     '''
     Default input format: long format pd.DataFrame, compatible with corr_heatmap
@@ -59,7 +60,7 @@ def summary_pointplot(summary, xgroup = None, x = None, hue = None, y = None, se
     ylim = (min(summary[y] - summary[se] * 1.96), max(summary[y] + summary[se] * 1.96))
     
     # aesthetics
-    palette = discrete_palette(hues) # need to use dict mapping as sig and non-sig are plotted separately
+    if palette == None: palette = discrete_palette(hues) # need to use dict mapping as sig and non-sig are plotted separately
     if not sort:
         map_order = dict(zip(summary[hue].unique(), range(len(summary[hue].unique())))) | \
             dict(zip(summary[x].unique(), range(len(summary[x].unique()))))

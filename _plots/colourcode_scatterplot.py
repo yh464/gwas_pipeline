@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from .aes import register_palettes
+from .aes import register_palettes, discrete_palette
 
 def _add_rep_axis(fig, rep = 'UMAP'):
   # UMAP axes
@@ -43,7 +43,7 @@ def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 0.1, rep = '
     use_palette = palette.name
   else:
     if v.dtype.name == 'category' or v.dtype == object:
-      use_palette = sns.color_palette('husl', n_colors = len(v.unique()))
+      use_palette = discrete_palette(v.unique())
     else:
       if np.nanmax(v) <= 0: from .aes import greyblue_alpha; use_palette = greyblue_alpha.name; register_palettes(greyblue_alpha)
       elif np.nanmin(v) >= 0: from .aes import redgrey_alpha; use_palette = redgrey_alpha.name; register_palettes(redgrey_alpha)
