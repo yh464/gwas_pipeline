@@ -47,7 +47,7 @@ def main(args):
             if not os.path.isfile(gsmap_out_ldsc) or args.force:
                 # check chunked outputs
                 n_chunks = max([int(x.replace(f'{s}_chunk','')) for x in os.listdir(f'{args.st}/{s}/generate_ldscore') if x.startswith(f'{s}_chunk')]+[0])
-                if n_chunks == 0: raise ValueError(f'No chunked ldscore files found for {s} in {args.st}/{s}/generate_ldscore')
+                if n_chunks == 0: log.warn(f'No chunked ldscore files found for {s} in {args.st}/{s}/generate_ldscore'); continue
                 # calculate 100 chunks at a time
                 chunks = [(x, min(x+99, n_chunks)) for x in range(1, n_chunks+1, 100)]
                 chunk_files = []
