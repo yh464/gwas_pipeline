@@ -27,7 +27,7 @@ def main(args):
     from tqdm import tqdm
 
     # find ST datasets and phenotype files
-    st_datasets = os.listdir(args.st)
+    st_datasets = sorted(os.listdir(args.st))
     pheno = find_gwas(args.pheno, dirname = args.gwa, ext = 'sumstats', long = True)
 
     for g, p in pheno:
@@ -66,8 +66,8 @@ def main(args):
             if len(all_cauchy[ct]) == 0:
                 log.warn(f'No Cauchy combination results found for {ct} in {g}/{p}, skipping')
                 continue
-            df_cauchy = pd.concat(all_cauchy[ct], axis = 1)
-            df_cauchy.to_csv(f'{args._in}/{g}/{p}/all_spatial_ldsc.{ct}.cauchy.txt', index = True, header = True, sep = '\t')
+            df_cauchy = pd.concat(all_cauchy[ct], axis = 1).sort_index()
+            df_cauchy.to_csv(f'{args._in}/{g}/{p}/all_{ct}.cauchy.txt', index = True, header = True, sep = '\t')
 
 if __name__ == '__main__':  
     from argparse import ArgumentParser
