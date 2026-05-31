@@ -31,40 +31,43 @@ def main(args):
     pheno = find_gwas(args.pheno, dirname = args.gwa, ext = 'sumstats', long = True)
 
     for g, p in pheno:
-      all_cauchy = dict(zip(args.cell_type + ['cell_type', 'region'], [list() for _ in range(len(args.cell_type) + 2)]))
-      for s in tqdm(st_datasets, desc = f'{g}/{p}'):
-        h5ad = f'{args.st}/{s}/find_latent_representations/{s}_add_latent.h5ad'
-        gsmap_output = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.csv.gz'
-        out_fig = f'{args._in}/{g}/{p}/{s}_gsmap_spatial_ldsc.png'
+        all_cauchy = dict(zip(args.cell_type + ['cell_type', 'region'], [list() for _ in range(len(args.cell_type) + 2)]))
+        for s in tqdm(st_datasets, desc = f'{g}/{p}'):
+            h5ad = f'{args.st}/{s}/find_latent_representations/{s}_add_latent.h5ad'
+            gsmap_output = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.csv.gz'
+            out_fig = f'{args._in}/{g}/{p}/{s}_gsmap_spatial_ldsc.png'
 
-        if not os.path.isfile(h5ad): log.warn(f'Missing h5ad file for {s}, skipping'); continue
-        if not os.path.isfile(gsmap_output):
-          log.warn(f'Missing spatial LDSC output file, please run:\n    python sc_gsmap_batch.py {g}/{p}')
-          continue
-        if os.path.isfile(out_fig) and not args.force: continue
-
-        adata = sc.read_h5ad(h5ad, 'r')
-        coords = pd.DataFrame(index = adata.obs_names, columns = ['x','y'], data = adata.obsm['spatial'])
-        sldsc = pd.read_table(gsmap_output, sep = ',', index_col = 'spot', dtype = {'spot':str})
-        df = coords.join(sldsc, how = 'inner')
-        if df.shape[0] == 0: log.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
-        df['logp'] = -np.log10(df['p'])
-        df.loc[df['logp'] < 0, 'logp'] = 0
-        colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], redgrey, 0.1, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
-        plt.savefig(out_fig, dpi = 400)
-        plt.close()
-        for ct in args.cell_type + ['cell_type', 'region']:
-            gsmap_cauchy_ct = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
-            if not os.path.isfile(gsmap_cauchy_ct): 
-                log.warn(f'Missing Cauchy combination output file {gsmap_cauchy_ct}, skipping')
+            if not os.path.isfile(h5ad): log.warn(f'Missing h5ad file for {s}, skipping'); continue
+            if not os.path.isfile(gsmap_output):
+                log.warn(f'Missing spatial LDSC output file, please run:\n    python sc_gsmap_batch.py {g}/{p}')
                 continue
-            all_cauchy[ct].append(pd.read_csv(gsmap_cauchy_ct, index_col = 0, usecols = ['annotation','p_cauchy']).rename(columns = {'p_cauchy':s}))
-      for ct in all_cauchy.keys():
-        if len(all_cauchy[ct]) == 0:
-            log.warn(f'No Cauchy combination results found for {ct} in {g}/{p}, skipping')
-            continue
-        df_cauchy = pd.concat(all_cauchy[ct], axis = 1)
-        df_cauchy.to_csv(f'{args._in}/{g}/{p}/all_spatial_ldsc.{ct}.cauchy.txt', index = True, header = True, sep = '\t')
+            
+            for ct in args.cell_type + ['cell_type', 'region']:
+                gsmap_cauchy_ct = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
+                if not os.path.isfile(gsmap_cauchy_ct): 
+                    log.warn(f'Missing Cauchy combination output file for {ct}, please run:\n    python sc_gsmap_batch.py {g}/{p} --cell_type {ct}')
+                    continue
+                all_cauchy[ct].append(pd.read_csv(gsmap_cauchy_ct, index_col = 0, usecols = ['annotation','p_cauchy']).rename(columns = {'p_cauchy':s}))
+
+            if os.path.isfile(out_fig) and not args.force: continue
+
+            adata = sc.read_h5ad(h5ad, 'r')
+            coords = pd.DataFrame(index = adata.obs_names, columns = ['x','y'], data = adata.obsm['spatial'])
+            sldsc = pd.read_table(gsmap_output, sep = ',', index_col = 'spot', dtype = {'spot':str})
+            df = coords.join(sldsc, how = 'inner')
+            if df.shape[0] == 0: log.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
+            df['logp'] = -np.log10(df['p'])
+            df.loc[df['logp'] < 0, 'logp'] = 0
+            colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], redgrey, 0.1, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
+            plt.savefig(out_fig, dpi = 400)
+            plt.close()
+
+        for ct in all_cauchy.keys():
+            if len(all_cauchy[ct]) == 0:
+                log.warn(f'No Cauchy combination results found for {ct} in {g}/{p}, skipping')
+                continue
+            df_cauchy = pd.concat(all_cauchy[ct], axis = 1)
+            df_cauchy.to_csv(f'{args._in}/{g}/{p}/all_spatial_ldsc.{ct}.cauchy.txt', index = True, header = True, sep = '\t')
 
 if __name__ == '__main__':  
     from argparse import ArgumentParser
