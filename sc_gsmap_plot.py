@@ -31,6 +31,7 @@ def main(args):
     pheno = find_gwas(args.pheno, dirname = args.gwa, ext = 'sumstats', long = True)
 
     for g, p in pheno:
+      all_cauchy = dict(zip(args.cell_type + ['cell_type', 'region'], [list() for _ in range(len(args.cell_type) + 2)]))
       for s in tqdm(st_datasets, desc = f'{g}/{p}'):
         h5ad = f'{args.st}/{s}/find_latent_representations/{s}_add_latent.h5ad'
         gsmap_output = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.csv.gz'
@@ -52,6 +53,14 @@ def main(args):
         colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], redgrey, 0.1, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
         plt.savefig(out_fig, dpi = 400)
         plt.close()
+        for ct in args.cell_type + ['cell_type', 'region']:
+            gsmap_cauchy_ct = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
+            if not os.path.isfile(gsmap_cauchy_ct): continue
+            all_cauchy[ct].append(pd.read_csv(gsmap_cauchy_ct, index_col = 0, usecols = ['annotation','p_cauchy']).rename(columns = {'p_cauchy':s}))
+      for ct in all_cauchy.keys():
+        if len(all_cauchy[ct]) == 0: continue
+        df_cauchy = pd.concat(all_cauchy[ct], axis = 1)
+        df_cauchy.to_csv(f'{args._in}/{g}/{p}/all_spatial_ldsc.{ct}.cauchy.txt', index = True, header = True, sep = '\t')
 
 if __name__ == '__main__':  
     from argparse import ArgumentParser
@@ -60,6 +69,8 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--in', dest = '_in', help = 'input gsMap result directory', default = '../sc/gsmap')
     parser.add_argument('-g','--gwa', help = 'Directory containing LDSC summary statistics',
         default = '../gcorr/ldsc_sumstats')
+    parser.add_argument('--cell_type', help = 'Additional cell type annotations for Cauchy combination', nargs = '*',
+        default = ['H1_annotation','H2_annotation']) # Qian
     parser.add_argument('-s','--st', help = 'Directory containing gsMap processed spatial transcriptomics data',
         default = '/rds/project/rds-Nl99R8pHODQ/multiomics/gsmap') # intentionally absolute
     parser.add_argument('-f','--force', help = 'force overwrite', default = False, action = 'store_true')

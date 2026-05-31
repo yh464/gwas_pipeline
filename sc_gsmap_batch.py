@@ -67,7 +67,9 @@ def main(args):
             if not os.path.islink(gsmap_out_ldsc): os.symlink(out_ldsc, gsmap_out_ldsc) # create a symlink for gsmap progress checking
 
             # Cauchy combination
-            if not os.path.isfile(out_cauchy_region) or not os.path.isfile(out_cauchy_ct) or args.force:
+            if not os.path.isfile(out_cauchy_region) or not os.path.isfile(out_cauchy_ct) or any([
+                not os.path.isfile(f'{outdir}/{s}_spatial_ldsc.{a}.cauchy.csv.gz') for a in args.cell_type
+            ]) or args.force:
                 if os.path.islink(gsmap_out_cauchy): os.unlink(gsmap_out_cauchy) # remove symlink if exists
                 if not os.path.isfile(out_cauchy_ct) or args.force:
                     cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation annotation')
@@ -75,6 +77,11 @@ def main(args):
                 if not os.path.isfile(out_cauchy_region) or args.force:
                     cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region')
                     cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_region}')
+                for ct in args.cell_type:
+                    out_cauchy_ct_specific = f'{outdir}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
+                    if not os.path.isfile(out_cauchy_ct_specific) or args.force:
+                        cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation {ct}')
+                        cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_ct_specific}')
                 cmds.append(f'ln -s {out_cauchy_region} {gsmap_out_cauchy}') # create a symlink for gsmap progress checking
             cauchy_submitter.add(*cmds)
 
@@ -100,6 +107,8 @@ if __name__ == '__main__':
         default = '/rds/project/rds-Nl99R8pHODQ/multiomics/gsmap') # intentionally absolute
     parser.add_argument('--gsmap', help = 'gsMap package and resources directory',
         default = '/rds/project/rds-Nl99R8pHODQ/toolbox/gsmap') # intentionally absolute
+    parser.add_argument('--cell_type', help = 'Additional cell type annotations for Cauchy combination', nargs = '*',
+        default = ['H1_annotation','H2_annotation']) # Qian
     parser.add_argument('-o', '--out', help = 'output directory', default = '../sc/gsmap')
     parser.add_argument('-r','--report', help = 'generate report', default = False, action = 'store_true')
     parser.add_argument('-f','--force', help = 'force overwrite', default = False, action = 'store_true')
