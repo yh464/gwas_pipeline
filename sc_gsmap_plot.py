@@ -56,7 +56,7 @@ def main(args):
         for ct in args.cell_type + ['cell_type', 'region']:
             gsmap_cauchy_ct = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
             if not os.path.isfile(gsmap_cauchy_ct): 
-                log.warn(f'Missing Cauchy combination output file for {ct}, please run:\n    python sc_gsmap_batch.py {g}/{p} --cell_type {ct}')
+                log.warn(f'Missing Cauchy combination output file {gsmap_cauchy_ct}, skipping')
                 continue
             all_cauchy[ct].append(pd.read_csv(gsmap_cauchy_ct, index_col = 0, usecols = ['annotation','p_cauchy']).rename(columns = {'p_cauchy':s}))
       for ct in all_cauchy.keys():
