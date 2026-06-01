@@ -64,7 +64,7 @@ def main(args):
                         os.system(f'zcat {x} | tail -n +2 >> {out_ldsc[:-3]}') # skip header
                     os.system(f'gzip -f {out_ldsc[:-3]}')
                     # pd.concat([pd.read_csv(x, index_col = False) for x in chunk_files]).to_csv(gsmap_out_ldsc, index = False)
-            if not os.path.islink(gsmap_out_ldsc): os.symlink(out_ldsc, gsmap_out_ldsc) # create a symlink for gsmap progress checking
+                    if not os.path.islink(gsmap_out_ldsc): os.symlink(out_ldsc, gsmap_out_ldsc) # create a symlink for gsmap progress checking
 
             # Cauchy combination
             if not os.path.isfile(out_cauchy_region) or not os.path.isfile(out_cauchy_ct) or any([
@@ -85,7 +85,7 @@ def main(args):
                 cmds.append(f'ln -s {out_cauchy_region} {gsmap_out_cauchy}') # create a symlink for gsmap progress checking
             cauchy_submitter.add(*cmds)
 
-            # report generationp
+            # report generation
             if args.report:
                 os.makedirs(out_rpt, exist_ok = True)
                 if not os.path.islink(gsmap_out_rpt): os.symlink(out_rpt, gsmap_out_rpt) # symlink the gsmap output directory to output filesystem
