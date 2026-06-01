@@ -64,9 +64,9 @@ def main(args):
                         os.system(f'zcat {x} | tail -n +2 >> {out_ldsc[:-3]}') # skip header
                     os.system(f'gzip -f {out_ldsc[:-3]}')
                     if not os.path.islink(gsmap_out_ldsc): os.symlink(out_ldsc, gsmap_out_ldsc) # create a symlink for gsmap progress checking
-                elif os.path.isfile(gsmap_out_ldsc) and not os.path.isfile(out_ldsc) and n_chunks <= 100:
-                    mv_symlink(gsmap_out_ldsc, out_ldsc)
-                    
+            if os.path.isfile(gsmap_out_ldsc) and not os.path.isfile(out_ldsc) and n_chunks <= 100:
+                mv_symlink(gsmap_out_ldsc, out_ldsc)
+
             # Cauchy combination
             if not os.path.isfile(out_cauchy_ct) or any([
                 not os.path.isfile(f'{outdir}/{s}_spatial_ldsc.{a}.cauchy.csv.gz') for a in args.cell_type
