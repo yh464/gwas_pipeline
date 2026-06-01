@@ -35,17 +35,17 @@ def main(args):
         for s in tqdm(st_datasets, desc = f'{g}/{p}'):
             h5ad = f'{args.st}/{s}/find_latent_representations/{s}_add_latent.h5ad'
             gsmap_output = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.csv.gz'
-            out_fig = f'{args._in}/{g}/{p}/{s}_gsmap_spatial_ldsc.png'
+            out_fig = f'{args._in}/{g}/{p}/{s}_gsmap_spatial_ldsc.pdf'
 
             if not os.path.isfile(h5ad): log.warn(f'Missing h5ad file for {s}, skipping'); continue
             if not os.path.isfile(gsmap_output):
-                log.warn(f'Missing spatial LDSC output file, please run:\n    python sc_gsmap_batch.py {g}/{p}')
+                log.warn(f'Missing spatial LDSC output file for {s}')
                 continue
             
             for ct in args.cell_type + ['cell_type']:
                 gsmap_cauchy_ct = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
                 if not os.path.isfile(gsmap_cauchy_ct): 
-                    log.warn(f'Missing Cauchy combination output file for {ct}, please run:\n    python sc_gsmap_batch.py {g}/{p} --cell_type {ct}')
+                    log.warn(f'Missing Cauchy combination output file for {ct} in {s}')
                     continue
                 all_cauchy[ct].append(pd.read_csv(gsmap_cauchy_ct, index_col = 0, usecols = ['annotation','p_cauchy']).rename(columns = {'p_cauchy':s}))
 
@@ -58,7 +58,9 @@ def main(args):
             if df.shape[0] == 0: log.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
             df['logp'] = -np.log10(df['p'])
             df.loc[df['logp'] < 0, 'logp'] = 0
-            colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], palette = redgrey, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
+            point_size = min(max(10000/df.shape[0], 0.1), 25)
+            colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], palette = redgrey, 
+                s = point_size, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
             plt.savefig(out_fig, dpi = 400)
             plt.close()
 
