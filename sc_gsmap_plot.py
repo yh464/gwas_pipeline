@@ -42,7 +42,7 @@ def main(args):
                 log.warn(f'Missing spatial LDSC output file, please run:\n    python sc_gsmap_batch.py {g}/{p}')
                 continue
             
-            for ct in args.cell_type + ['cell_type', 'region']:
+            for ct in args.cell_type + ['cell_type']:
                 gsmap_cauchy_ct = f'{args._in}/{g}/{p}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
                 if not os.path.isfile(gsmap_cauchy_ct): 
                     log.warn(f'Missing Cauchy combination output file for {ct}, please run:\n    python sc_gsmap_batch.py {g}/{p} --cell_type {ct}')
@@ -62,12 +62,14 @@ def main(args):
             plt.savefig(out_fig, dpi = 400)
             plt.close()
 
+        log.log(f'Cauchy combination results for {g}/{p}:')
         for ct in all_cauchy.keys():
             if len(all_cauchy[ct]) == 0:
                 log.warn(f'No Cauchy combination results found for {ct} in {g}/{p}, skipping')
                 continue
             df_cauchy = pd.concat(all_cauchy[ct], axis = 1).sort_index()
             df_cauchy.to_csv(f'{args._in}/{g}/{p}/all_{ct}.cauchy.txt', index = True, header = True, sep = '\t')
+            log.log(f'    {args._in}/{g}/{p}/all_{ct}.cauchy.txt')
 
 if __name__ == '__main__':  
     from argparse import ArgumentParser

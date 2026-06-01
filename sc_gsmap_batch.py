@@ -20,6 +20,7 @@ def main(args):
     cauchy_submitter = array_submitter('gsmap_cauchy_'+'_'.join(args.pheno), timeout = 10, n_cpu = 4, env = args.gsmap, dependency=ldsc_submitter)
     rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 360, n_cpu = 48, env = args.gsmap, dependency=ldsc_submitter)
     from _utils import logger
+    from _utils.gadgets import mv_symlink
     log = logger.logger()
     # find ST datasets and phenotype files
     st_datasets = os.listdir(args.st)
@@ -36,7 +37,6 @@ def main(args):
             gsmap_out_rpt = f'{args.st}/{s}/report/{g}_{p}'
             out_ldsc = f'{outdir}/{s}_spatial_ldsc.csv.gz'
             out_cauchy_ct = f'{outdir}/{s}_spatial_ldsc.cell_type.cauchy.csv.gz'
-            out_cauchy_region = f'{outdir}/{s}_spatial_ldsc.region.cauchy.csv.gz'
             out_rpt = f'{outdir}/{s}_gsmap_report'
             # log.log(f'gsMap output to:\n  {gsmap_out_ldsc}\n  {gsmap_out_cauchy}\n  {gsmap_out_rpt}')
             # log.log(f'Output will be moved to:\n  {out_ldsc}\n  {out_cauchy_ct}\n  {out_cauchy_region}\n  {out_rpt}')
@@ -56,33 +56,31 @@ def main(args):
                     chunk_files.append(gsmap_out_ldsc_chunk)
                     if not os.path.isfile(gsmap_out_ldsc_chunk) or args.force:
                         ldsc_submitter.add(f'gsmap run_spatial_ldsc --workdir {args.st} --sample_name {s} --trait_name {g}_{p} '+
-                                    f'--sumstats_file {args._in}/{g}/{p}.sumstats --w_file {args.gsmap}/gsMap_resource/LDSC_resource/weights_hm3_no_hla/weights. '+
-                                    f'--num_processes 4 --chunk_range {start_chunk} {end_chunk}')
-                if all([os.path.isfile(x) for x in chunk_files]) and not os.path.isfile(gsmap_out_ldsc):
+                            f'--sumstats_file {args._in}/{g}/{p}.sumstats --w_file {args.gsmap}/gsMap_resource/LDSC_resource/weights_hm3_no_hla/weights. '+
+                            f'--num_processes 4 --chunk_range {start_chunk} {end_chunk}')
+                if all([os.path.isfile(x) for x in chunk_files]) and not os.path.isfile(gsmap_out_ldsc) and n_chunks > 100:
                     os.system(f'zcat {chunk_files[0]} > {out_ldsc[:-3]}')
                     for x in chunk_files[1:]:
                         os.system(f'zcat {x} | tail -n +2 >> {out_ldsc[:-3]}') # skip header
                     os.system(f'gzip -f {out_ldsc[:-3]}')
-                    # pd.concat([pd.read_csv(x, index_col = False) for x in chunk_files]).to_csv(gsmap_out_ldsc, index = False)
                     if not os.path.islink(gsmap_out_ldsc): os.symlink(out_ldsc, gsmap_out_ldsc) # create a symlink for gsmap progress checking
-
+                elif os.path.isfile(gsmap_out_ldsc) and not os.path.isfile(out_ldsc) and n_chunks <= 100:
+                    mv_symlink(gsmap_out_ldsc, out_ldsc)
+                    
             # Cauchy combination
-            if not os.path.isfile(out_cauchy_region) or not os.path.isfile(out_cauchy_ct) or any([
+            if not os.path.isfile(out_cauchy_ct) or any([
                 not os.path.isfile(f'{outdir}/{s}_spatial_ldsc.{a}.cauchy.csv.gz') for a in args.cell_type
             ]) or args.force:
                 if os.path.islink(gsmap_out_cauchy): os.unlink(gsmap_out_cauchy) # remove symlink if exists
                 if not os.path.isfile(out_cauchy_ct) or args.force:
                     cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation annotation')
                     cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_ct}')
-                if not os.path.isfile(out_cauchy_region) or args.force:
-                    cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation region')
-                    cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_region}')
                 for ct in args.cell_type:
                     out_cauchy_ct_specific = f'{outdir}/{s}_spatial_ldsc.{ct}.cauchy.csv.gz'
                     if not os.path.isfile(out_cauchy_ct_specific) or args.force:
                         cmds.append(f'gsmap run_cauchy_combination --workdir {args.st} --sample_name {s} --trait_name {g}_{p} --annotation {ct}')
                         cmds.append(f'mv {gsmap_out_cauchy} {out_cauchy_ct_specific}')
-                cmds.append(f'ln -s {out_cauchy_region} {gsmap_out_cauchy}') # create a symlink for gsmap progress checking
+                cmds.append(f'ln -s {out_cauchy_ct} {gsmap_out_cauchy}') # create a symlink for gsmap progress checking
             cauchy_submitter.add(*cmds)
 
             # report generation
