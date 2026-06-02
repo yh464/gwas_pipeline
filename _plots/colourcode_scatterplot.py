@@ -24,7 +24,7 @@ def _add_rep_axis(fig, rep = 'UMAP'):
   repax.set_xlabel(f'{rep}1', fontsize = 8); repax.set_ylabel(f'{rep}2', fontsize = 8)
   return fig
 
-def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 0.1, rep = 'UMAP', vname = '', vmin = None, vmax = None, **kwargs):
+def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 'auto', rep = 'UMAP', vname = '', vmin = None, vmax = None, **kwargs):
   '''
   Scatterplot without axes
   Input:
@@ -40,7 +40,7 @@ def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 0.1, rep = '
   # colour palette
   if palette != None:
     register_palettes(palette)
-    use_palette = palette.name
+    use_palette = palette
   else:
     if v.dtype.name == 'category' or v.dtype == object:
       use_palette = discrete_palette(v.unique())
@@ -62,6 +62,16 @@ def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 0.1, rep = '
   # main plot
   fig = plt.figure(figsize = (5.3,5))
   ax = fig.add_axes((0.3/5.3, 0.3/5, 4.4/5.3, 4.4/5))
+  if s == 'auto':
+    # estimate minimum distance between points in the x-y plane
+    from scipy.spatial.distance import pdist
+    if df.shape[0] > 1:
+      dists = pdist(df[['x','y']].values)
+      min_dist = np.nanquantile(dists, 0.01) # use 1st percentile of distances to avoid outliers dominating
+      s = (min_dist/2)**2 / np.pi
+    else:
+      s = 10
+    s = min(max(s, 0.01), 64) # set a reasonable range for point size
   sns.scatterplot(data = df, x = 'x', y = 'y', hue = 'v', palette = use_palette, s = s, ax = ax, edgecolor = None, linewidth = 0, 
       legend = legend, rasterized = True, **kwargs)
   ax.axis('off')
