@@ -67,12 +67,12 @@ def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 'auto', rep 
     from scipy.spatial.distance import pdist
     if df.shape[0] > 1 and df.shape[0] < 50000:
       dists = pdist(df[['x','y']].values)
-      min_dist = np.nanmedian(dists) # use median of distances
+      min_dist = np.nanquantile(dists, 0.25)
       axis_range = max(df['x'].max() - df['x'].min(), df['y'].max() - df['y'].min())
-      s = (min_dist/axis_range)**2 * 36
+      s = (min_dist/axis_range)**2 * 64
     elif df.shape[0] >= 50000: s = 0.1
     else: s = 10
-    s = min(max(s, 0.1), 64) # set a reasonable range for point size
+    s = min(max(s, 0.1), 36) # set a reasonable range for point size
   sns.scatterplot(data = df, x = 'x', y = 'y', hue = 'v', palette = use_palette, s = s, ax = ax, edgecolor = None, linewidth = 0, 
       legend = legend, rasterized = True, **kwargs)
   ax.axis('off')
