@@ -18,7 +18,7 @@ def main(args):
     import os
     from _utils.path import find_gwas
     from _plots import colourcode_scatterplot
-    from _plots.aes import redgrey
+    from _plots.aes import redgrey_alpha
     import matplotlib.pyplot as plt
     import scanpy as sc
     import pandas as pd
@@ -60,8 +60,8 @@ def main(args):
             if df.shape[0] == 0: log.warn(f'No overlapping spots between {h5ad} and {gsmap_output}, skipping'); continue
             df['logp'] = -np.log10(df['p'])
             df.loc[df['logp'] < 0, 'logp'] = 0
-            colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], palette = redgrey, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
-            plt.savefig(out_fig, dpi = 400)
+            colourcode_scatterplot.scatterplot_noaxis(df['x'], df['y'], df['logp'], palette = redgrey_alpha, rep = False, vname = r"$-log_{10}{(P)}$", vmin = 0)
+            plt.savefig(out_fig, dpi = 400, bbox_inches = 'tight')
             plt.close()
 
         log.log(f'Cauchy combination results for {g}/{p}:')
