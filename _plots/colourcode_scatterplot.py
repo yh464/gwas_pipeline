@@ -63,13 +63,13 @@ def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 'auto', rep 
   fig = plt.figure(figsize = (5.3,5))
   ax = fig.add_axes((0.3/5.3, 0.3/5, 4.4/5.3, 4.4/5))
   if s == 'auto':
-    # estimate minimum distance between points in the x-y plane
+    # estimate distance between points in the x-y plane
     from scipy.spatial.distance import pdist
     if df.shape[0] > 1 and df.shape[0] < 50000:
       dists = pdist(df[['x','y']].values)
-      min_dist = np.nanquantile(dists, 0.01) # use 1st percentile of distances to avoid outliers dominating
+      min_dist = np.nanmedian(dists) # use median of distances
       axis_range = max(df['x'].max() - df['x'].min(), df['y'].max() - df['y'].min())
-      s = (min_dist)**2 / axis_range # scale point size based on minimum distance and axis range
+      s = (min_dist/axis_range)**2 * 36
     elif df.shape[0] >= 50000: s = 0.1
     else: s = 10
     s = min(max(s, 0.1), 64) # set a reasonable range for point size
