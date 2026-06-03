@@ -100,9 +100,9 @@ if __name__ == '__main__':
   io.add_argument('-o','--out',dest  = 'out', help = 'Output prefix', required = True)
   io.add_argument('--mpheno', help = 'Phenotype ID in file, required for fastGWA')
   io.add_argument('--dcov',dest = 'dcov', help = 'DISCRETE covariance file',
-    default = '../params/discrete_covars.txt')
+    default = '../params/ukb_nov2025_eur_dcov.txt')
   io.add_argument('--qcov',dest = 'qcov', help = 'QUANTITATIVE covariance file',
-    default = '../params/quantitative_covars.txt')
+    default = '../params/ukb_nov2025_eur_qcov.txt')
   io.add_argument('--bed',dest = 'bed', help = 'PLINK2 binaries',
     default = '../params/bed')
   io.add_argument('--grm', dest = 'grm', help = 'Genetic relatedness matrix',
