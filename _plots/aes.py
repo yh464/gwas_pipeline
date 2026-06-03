@@ -59,6 +59,16 @@ redgrey_alpha = mpl.colors.LinearSegmentedColormap(
   1024
   )
 
+redgrey_alpha0 = mpl.colors.LinearSegmentedColormap(
+  'redgrey_alpha0',
+  dict(red = ((0,0.8,0.8),(1,0.8,0.8)),
+       green = ((0,0.8,0.8),(1,0,0)),
+       blue = ((0,0.8,0.8),(1,0,0)),
+       alpha = ((0,0,0),(1,1,1))),
+  1024
+  )
+
+
 whiteblue = mpl.colors.LinearSegmentedColormap(
   'whiteblue',
   dict(red = ((0,0,0),(1,1,1)),
@@ -81,6 +91,15 @@ greyblue_alpha = mpl.colors.LinearSegmentedColormap(
        green = ((0,0,0),(1,.8,.8)),
        blue = ((0,0.8,0.8),(1,.8,.8)),
        alpha = ((0,1,1),(1,.2,.2))),
+  1024,
+)
+
+greyblue_alpha0 = mpl.colors.LinearSegmentedColormap(
+  'greyblue_alpha0',
+  dict(red = ((0,0,0),(1,.8,.8)),
+       green = ((0,0,0),(1,.8,.8)),
+       blue = ((0,0.8,0.8),(1,.8,.8)),
+       alpha = ((0,1,1),(1,0,0))),
   1024,
 )
 
