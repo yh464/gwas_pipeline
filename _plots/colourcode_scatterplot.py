@@ -68,7 +68,8 @@ def scatterplot_noaxis(x, y, v, *, full = True, palette = None, s = 'auto', rep 
     if df.shape[0] > 1:
       dists = pdist(df[['x','y']].values)
       min_dist = np.nanquantile(dists, 0.01) # use 1st percentile of distances to avoid outliers dominating
-      s = (min_dist/2)**2 / np.pi
+      axis_range = max(df['x'].max() - df['x'].min(), df['y'].max() - df['y'].min())
+      s = (min_dist*2.5/axis_range)**2 / np.pi
     else:
       s = 10
     s = min(max(s, 0.01), 64) # set a reasonable range for point size
