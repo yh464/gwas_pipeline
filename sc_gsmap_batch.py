@@ -21,9 +21,12 @@ def main(args):
     rpt_submitter = array_submitter('gsmap_rpt_'+'_'.join(args.pheno), timeout = 360, n_cpu = 48, env = args.gsmap, dependency=ldsc_submitter)
     from _utils import logger
     from _utils.gadgets import mv_symlink
+    from fnmatch import fnmatch
     log = logger.logger()
     # find ST datasets and phenotype files
     st_datasets = os.listdir(args.st)
+    if len(args.subset) > 0:
+        st_datasets = [s for s in st_datasets if any([fnmatch(s, '*' + pattern + '*') for pattern in args.subset])]
     pheno = find_gwas(args.pheno, dirname = args._in, ext = 'sumstats', long = True)
 
     for g, p in pheno:
@@ -101,7 +104,8 @@ if __name__ == '__main__':
     parser.add_argument('pheno', nargs = '*', help = 'Phenotypes')
     parser.add_argument('-i','--in', dest = '_in', help = 'Directory containing LDSC summary statistics',
         default = '../gcorr/ldsc_sumstats')
-    parser.add_argument('-s','--st', help = 'Directory containing gsMap processed spatial transcriptomics data',
+    parser.add_argument('-s','--subset', help = 'Subset of ST datasets (default: all)', nargs = '*', default = [])
+    parser.add_argument('--st', help = 'Directory containing gsMap processed spatial transcriptomics data',
         default = '/rds/project/rds-Nl99R8pHODQ/multiomics/gsmap') # intentionally absolute
     parser.add_argument('--gsmap', help = 'gsMap package and resources directory',
         default = '/rds/project/rds-Nl99R8pHODQ/toolbox/gsmap') # intentionally absolute

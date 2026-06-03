@@ -22,12 +22,14 @@ def main(args):
     import matplotlib.pyplot as plt
     import scanpy as sc
     import pandas as pd
-    import warnings
     import numpy as np
     from tqdm import tqdm
-
+    from fnmatch import fnmatch
+    
     # find ST datasets and phenotype files
     st_datasets = sorted(os.listdir(args.st))
+    if len(args.subset) > 0:
+        st_datasets = [s for s in st_datasets if any([fnmatch(s, '*' + pattern + '*') for pattern in args.subset])]
     pheno = find_gwas(args.pheno, dirname = args.gwa, ext = 'sumstats', long = True)
 
     for g, p in pheno:
@@ -80,7 +82,8 @@ if __name__ == '__main__':
         default = '../gcorr/ldsc_sumstats')
     parser.add_argument('--cell_type', help = 'Additional cell type annotations for Cauchy combination', nargs = '*',
         default = ['H1_annotation','H2_annotation']) # Qian
-    parser.add_argument('-s','--st', help = 'Directory containing gsMap processed spatial transcriptomics data',
+    parser.add_argument('-s','--subset', help = 'Subset of ST datasets (default: all)', nargs = '*', default = [])
+    parser.add_argument('--st', help = 'Directory containing gsMap processed spatial transcriptomics data',
         default = '/rds/project/rds-Nl99R8pHODQ/multiomics/gsmap') # intentionally absolute
     parser.add_argument('-f','--force', help = 'force overwrite', default = False, action = 'store_true')
     args = parser.parse_args()
