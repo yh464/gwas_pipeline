@@ -83,17 +83,18 @@ if (not os.path.isfile(out_fname)) or args.force:
                 logp = True,
                 ld_block_size = 1000000,
                 text_kws = {'fontfamily': 'sans-serif', 'fontsize': 20},
-                ax = ax)
+                ax = ax,
+                rasterized = True)
   xtick = list(range(9)) + [10,12,14,17,20]
   ax.set_xticks(ax.get_xticks()[xtick], [x+1 for x in xtick])
-  plt.savefig(out_fname.replace('pdf','png'), dpi = 500, bbox_inches = 'tight')
+  plt.savefig(out_fname.replace('pdf','full.pdf'), dpi = 400, bbox_inches = 'tight')
   plt.close()
   
   plt.rcParams['font.size'] = 20
   _, ax = plt.subplots(figsize = (3,3))
   qqplot(data = df['P'], title = '', ax = ax,
          marker= '.', xlabel=r"Expected $-log_{10}{(P)}$",
-           ylabel=r"Observed $-log_{10}{(P)}$")
-  plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 500, bbox_inches = 'tight')
+           ylabel=r"Observed $-log_{10}{(P)}$", rasterized = True)
+  plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 400, bbox_inches = 'tight')
   plt.close()
   log.log(f'Fig plotted, time = {toc:.3f} seconds.')

@@ -36,7 +36,7 @@ def main(args):
             os.system(f'mkdir -p {args.out}/{y}')
         
         for x in flist:
-            out_fname = f'{args.out}/{x}'.replace('.fastGWA','.manhattan.png')
+            out_fname = f'{args.out}/{x}'.replace('.fastGWA','.manhattan.full.pdf')
             if os.path.isfile(out_fname) and not args.force: continue
             submitter.add('python '+
               f'gwa_manhattan.py {y} --file {x} -i {args._in} -o {args.out} {f}')
