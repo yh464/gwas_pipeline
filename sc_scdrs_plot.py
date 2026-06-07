@@ -39,10 +39,10 @@ def main(args):
             for h5prefix in h5ad_prefix:
                 try: 
                     df = pd.read_table(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.enrichment.txt').assign(dataset = h5prefix)
-                    mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.score.png',
-                               f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.score.png')
-                    mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.pseudotime.png',
-                               f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.pseudotime.png')
+                    mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.score.pdf',
+                               f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.score.pdf')
+                    mv_symlink(f'{args._in}/{g}/{p}/{sc}/{p}.{h5prefix}.scdrs.pseudotime.pdf',
+                               f'{args._in}/plots/{sc}/{g}.{p}.{h5prefix}.scdrs.pseudotime.pdf')
                 except: log.warn(f'Missing scDRS enrichment for {p}.{sc}.{h5prefix}'); continue
                 pheno_summary.append(df)
             if len(pheno_summary) == 0: log.warn(f'Missing scDRS enrichment for {g}/{p}'); continue

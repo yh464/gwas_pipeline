@@ -157,7 +157,7 @@ def main(args = None, **kwargs):
     
     # Stage 2: plot cell_specific scores
     log.log('Stage 2: Plotting cell-specific scores')
-    out_fig = f'{args.out}.score.png'
+    out_fig = f'{args.out}.score.pdf'
     if not os.path.isfile(out_fig) or args.force:
         adata = sc.read_h5ad(args.h5ad, 'r')
         try: score
@@ -217,7 +217,7 @@ def main(args = None, **kwargs):
 
     # Downstream analysis 3: plot scDRS score with pseudotime, stratified by cell type
     log.log('Downstream analysis 3: Plotting scDRS score with pseudotime, stratified by cell type')
-    out_pseudotime_fig = f'{args.out}.pseudotime.png'
+    out_pseudotime_fig = f'{args.out}.pseudotime.pdf'
     cell_type_cols = [x for x in args.label if x.lower().find('type') > -1 or x.lower().find('annot') > -1 and x in adata.obs.columns]
     if args.downstream and 'pseudotime' in adata.obs.columns and len(cell_type_cols) > 0 and \
         (not os.path.isfile(out_pseudotime_fig) or args.force):
