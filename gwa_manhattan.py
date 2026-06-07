@@ -34,7 +34,6 @@ from _utils import logger
 log = logger.logger()
 
 plt.rcParams["font.family"] = "sans-serif"
-plt.rcParams['font.sans-serif'] = 'Arial'
 
 toc = time.perf_counter() - tic
 log.log(f'Loaded modules. Time = {toc:.3f} seconds')
