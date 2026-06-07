@@ -95,6 +95,6 @@ if (not os.path.isfile(out_fname)) or args.force:
   qqplot(data = df['P'], title = '', ax = ax,
          marker= '.', xlabel=r"Expected $-log_{10}{(P)}$",
            ylabel=r"Observed $-log_{10}{(P)}$", rasterized = True)
-  plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.png'), dpi = 400, bbox_inches = 'tight')
+  plt.savefig(out_fname.replace('.manhattan.pdf','.qqplot.pdf'), dpi = 400, bbox_inches = 'tight')
   plt.close()
   log.log(f'Fig plotted, time = {toc:.3f} seconds.')
