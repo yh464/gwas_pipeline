@@ -7,6 +7,7 @@ Version 1: 2025-11-13
 A plotting tool to plot regression plots
 '''
 
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -76,6 +77,36 @@ def _add_regression_axis(
         )
     for cat, cat_df in df.loc[df.index.difference(df_clipped.index)].groupby(hue, observed = True):
         sns.scatterplot(cat_df, x = x, y = y, color = palette[cat], s = s, alpha = alpha / 2, edgecolor = 'none', ax = ax, rasterized = True)
+    
+    if x.startswith('log') and xlabel != '':
+        # regression is based on log(x) but the tick labels should be in linear scale
+        # label at log(x) = n, n+0.301, n+0.699, n+1, ... corresponding to x = 1e+n, 2e+n, 5e+n, 10e+n, ...
+        n_ticks = ax.get_xticks().size
+        xrange = xlim[1] - xlim[0]
+        if xrange >= n_ticks:
+            dist = xrange // n_ticks
+            ticks = np.arange(np.ceil(xlim[0]), np.floor(xlim[1]) + 1, dist)
+            tick_labels = [f'{10**tick:.0f}' for tick in ticks]
+        elif xrange >= 2:
+            tick_l = min(np.ceil(xlim[0]), np.ceil(xlim[0])-np.log10(2), np.ceil(xlim[0])-np.log10(5))
+            tick_u = max(np.floor(xlim[1]), np.floor(xlim[1])+np.log10(2), np.floor(xlim[1])+np.log10(5))
+            ticks = np.arange(np.floor(tick_l), np.ceil(tick_u) + 1)
+            ticks = np.concatenate([ticks, ticks + np.log10(2), ticks + np.log10(5)])
+            ticks = ticks[(ticks >= xlim[0]) & (ticks <= xlim[1])]
+            tick_labels = [f'{10**tick:.0f}' for tick in ticks]
+        else:
+            ticks = 10**ax.get_xticks()
+            decimals = -int(np.log10(max(ticks) - min(ticks)))
+            ticks = np.array([np.round(tick, decimals) if np.log10(tick) >= -decimals else round(tick, -int(np.log10(tick))) for tick in ticks])
+            tick_labels = [f'{tick:.{min(decimals,0)}f}' if np.log10(tick) >= -decimals else f'{tick:.{max(0, -int(np.log10(tick)))}f}' for tick in ticks]
+            ticks = np.log10(ticks)
+            ticks = ticks[(ticks >= xlim[0]) & (ticks <= xlim[1])]
+            ticks = np.unique(ticks)
+
+        ax.set_xticks(ticks, labels = tick_labels)
+        xlabel = xlabel.replace('log_','').replace('log10_','')
+        xlabel = xlabel[3:] if xlabel.startswith('log') else xlabel
+    
     ax.set_xlabel(xlabel, fontsize = 12)
     ax.set_ylabel(ylabel, fontsize = 12)
     return ax
@@ -103,7 +134,9 @@ def temporal_regplot(
     '''
 
     # region: argument sense checks and basic config
-    df = df.dropna()
+    cols_to_check = [x] + list(y)
+    if hue is not None: cols_to_check.append(hue)
+    df = df[cols_to_check].dropna(subset = [x] + list(y)).copy() # drop rows with missing values in the relevant columns
     df[x] = df[x].astype(float) # ensure x is numeric
     if isinstance(ylabel, str): ylabel = [ylabel] # allow y to be a single column name
     y = list(y)

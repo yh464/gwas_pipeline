@@ -31,7 +31,7 @@ def main(args):
     for sc in args.sc:
         os.makedirs(f'{args._in}/plots/{sc}', exist_ok=True)
         h5ad_prefix = [x[:-5] for x in os.listdir(f'{args.h5ad}/{sc}') if x[-5:] =='.h5ad']
-        out_prefix = f'{args._in}/'+'_'.join([x[0] for x in pheno_short])+f'.{sc}'
+        out_prefix = f'{args._in}/{sc}'
         # concatenate scDRS output
         summary = []
         for g, p in pheno:
@@ -61,6 +61,7 @@ def main(args):
         for lab in summary.annotation.unique():
             tmp = summary.loc[summary.annotation == lab,:]
             tmp.to_csv(f'{out_prefix}_{lab}_enrichment.txt', index = False, sep = '\t')
+            log.log(f'Enrichment for {sc}.{lab} saved to {out_prefix}_{lab}_enrichment.txt')
             x_size = tmp.dataset + '_' + tmp.cell_type
             if 1 <= x_size.unique().size <= 500:
                 fig = corr_heatmap(tmp, p_threshold = [0.05, 0.001])
