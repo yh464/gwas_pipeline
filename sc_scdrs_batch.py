@@ -76,10 +76,10 @@ def main(args):
                         (' -f' if args.force else '')
                     )
                 if os.path.isfile(f'{out_prefix}.score.txt') and os.path.isfile(f'{out_prefix}.enrichment.txt') \
-                    and os.path.isfile(f'{out_prefix}.score.pdf') and \
+                    and os.path.isfile(os.path.realpath(f'{out_prefix}.score.pdf')) and \
                     (not args.downstream or (os.path.isfile(f'{out_prefix}.downstream.txt') and \
-                        os.path.isfile(f'{out_prefix}.downstream.revigo.txt') and os.path.isfile(f'{args.out}.pseudotime.pdf'))) \
-                    and not args.force: continue
+                        os.path.isfile(f'{out_prefix}.downstream.revigo.txt') and \
+                        os.path.isfile(os.path.realpath(f'{args.out}.pseudotime.pdf')))) and not args.force: continue
                 cmd = ['python', 'sc_scdrs.py', '-i', weights_file, '-n', 
                        f'{nsigs[-1]}' if args.nsig < 0 else f'{args.nsig:.0f}',
                        '--h5ad', h5, '--label'] + args.label
