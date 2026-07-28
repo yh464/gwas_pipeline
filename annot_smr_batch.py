@@ -150,6 +150,7 @@ if __name__ == '__main__':
       default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary to use in magma',
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/') # intentionally absolute
+    parser.add_argument('--opera', action = 'store_true', help = 'Run OPERA to combine different SMR')
     parser.add_argument('-o','--out', dest = 'out', help = 'output directory',
       default = '../annot/smr')
     parser.add_argument('-f','--force',dest = 'force', help = 'force overwrite',

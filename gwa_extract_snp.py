@@ -21,7 +21,7 @@ def search_file(file, patterns):
     
     patterns = os.path.realpath(patterns)
     hdr = open(file).readline().replace('\n','').split()
-    cmd = ['/bin/fgrep','-wf',patterns,file]
+    cmd = ['/bin/grep','-Fwf',patterns,file]
     search = subprocess.Popen(cmd, stdout = subprocess.PIPE)
     
     try: df = pd.read_table(search.stdout, header = None)

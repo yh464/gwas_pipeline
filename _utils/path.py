@@ -18,6 +18,10 @@ import pandas as pd
 from .logger import logger
 log = logger()
 
+default_toolbox = {
+
+}
+
 def find_clump(group, pheno, 
                dirname = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/clump',
                pval = 5e-8, strict = False):
@@ -357,6 +361,7 @@ class project():
         self.project_root = os.path.realpath(root_dir)
         os.makedirs(f'{self.project_root}/.path', exist_ok = True) # hidden folder to store path config
         self.config_file = f'{self.project_root}/.path/path_config.json'
+        self.toolbox_file = f'{self.project_root}/.path/toolbox_config.json'
         if not os.path.isfile(self.config_file):
             self.config = {
                 'gwa': 'gwa/$group/$pheno.fastGWA' # require input GWAS to be in fastGWA format
@@ -366,6 +371,14 @@ class project():
         else:
             with open(self.config_file, 'r') as f:
                 self.config = json.load(f)
+
+        if not os.path.isfile(self.toolbox_file):
+            self.toolbox = default_toolbox
+            with open(self.toolbox_file, 'w') as f:
+                json.dump(self.toolbox, f, indent = 4)
+        else:
+            with open(self.toolbox_file, 'r') as f:
+                self.toolbox = json.load(f)
 
         self.progress_file = f'{self.project_root}/.path/progress.txt'
         if not os.path.isfile(self.progress_file):
@@ -381,6 +394,8 @@ class project():
         self.progress.to_csv(self.progress_file, sep = '\t', index = True, header = True)
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f, indent = 4)
+        with open(self.toolbox_file, 'w') as f:
+            json.dump(self.toolbox, f, indent = 4)
 
     def register(self, ftype, pattern, force = False):
         # pattern should be relative to the project root
@@ -468,3 +483,13 @@ class project():
             self.progress.loc[(g, p), ftype] = out[-1]
         log.log(f'Found {sum(out)} / {len(out)} files for processing step {ftype}')
         return out, pheno
+    
+    # external toolbox
+    # function to automatically populate relevant fields when reading cmdline argument with paths to tools
+    def find_tools(self, namespace):
+        for key, value in vars(namespace).items():
+            if key in self.toolbox.keys() and value is None:
+                setattr(namespace, key, self.toolbox[key])
+            elif key in self.toolbox.keys() and value is not None:
+                log.warn(f'Using tool {key} from non-default location: {value}.')   
+        return namespace
