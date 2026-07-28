@@ -97,7 +97,6 @@ for p, x in prs:
                 )
         except:
             log.log(f'        {phen} correlation failed with {x}')
-            raise
 summary = pd.concat(summary).dropna()
 summary['q'] = sts.false_discovery_control(summary['p'])
 summary['ols_q'] = sts.false_discovery_control(summary['ols_p'])
@@ -108,3 +107,4 @@ tmp_beta.columns.name = None; tmp_beta.index.name = None
 tmp_beta.to_csv(f'{args.out}/{prefix}_beta.txt', sep = '\t',
                 index_label = False, index = True, header = True)
 summary.to_csv(f'{args.out}/{prefix}_summary.txt', index = False, sep = '\t')
+log.log(f'Correlation summary written to {args.out}/{prefix}_summary.txt')
