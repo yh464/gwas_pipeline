@@ -88,7 +88,7 @@ for p, x in prs:
                     group1 = prefix,
                     pheno1 = phen,
                     group2 = [p],
-                    pheno2 = prs,
+                    pheno2 = x,
                     r = partcorr['r'].values[0],
                     p = partcorr['p-val'].values[0],
                     ols_beta = ols_beta, ols_p = ols_p,
@@ -96,7 +96,8 @@ for p, x in prs:
                     ))
                 )
         except:
-            log.log(f'        {phen} correlation failed with {prs}')
+            log.log(f'        {phen} correlation failed with {x}')
+            raise
 summary = pd.concat(summary).dropna()
 summary['q'] = sts.false_discovery_control(summary['p'])
 summary['ols_q'] = sts.false_discovery_control(summary['ols_p'])
