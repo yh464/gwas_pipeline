@@ -45,6 +45,7 @@ args = parser$parse_args(commandArgs(TRUE))
 args$p1 = sort(args$p1); args$p2 = sort(args$p2)
 args$cov = sort(args$cov); args$med = sort(args$med)
 if (!is.null(args$manual)) args$manual = normalizePath(args$manual)
+
 #### Sanity checks to command line arguments ####
 args$input = normalizePath(args$input); args$out = normalizePath(args$out)
 if (length(args$meta) < length(c(args$p1,args$cov, args$p2, args$med))) warning(
@@ -150,6 +151,7 @@ write_model = function(dwls, file){
     add_column(chi2 = dwls$modelfit$chisq, chi2_p = dwls$modelfit$p_chisq, 
       df = dwls$modelfit$df, CFI = dwls$modelfit$CFI, SRMR = dwls$modelfit$SRMR)
   write_tsv(out, file = file, quote = 'needed')
+  print(paste0('Model output saved to ', file))
   return(T)
 }
 
@@ -245,6 +247,7 @@ main = function(args){
                  CFI = dwls$modelfit$CFI, 
                  SRMR = dwls$modelfit$SRMR)
     write_tsv(out, file = results, quote = 'needed')
+    print(paste0('Common factor model output saved to ', results))
     
     #### common factor GWAS ####
     if (args$gwas & (!file.exists(gwa) | args$force)){
@@ -256,6 +259,7 @@ main = function(args){
         add_column(N = max(metadata$n[1:n])) %>% 
         add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA'))
       write_tsv(cgwas, gwa)
+      print(paste0('Common factor GWAS output saved to ', gwa))
     }
   } else if (args$common & length(trait.names_med) == 2) {
     # enforce equal weight if only two factors
@@ -275,6 +279,7 @@ main = function(args){
         rename(POS = 'BP', BETA = 'est', Z = 'Z_Estimate',P = 'Pval_Estimate') %>%
         add_af1(paste0(args$full, '/', args$p1[1], '.fastGWA')) %>%
         write_tsv(gwa[1])
+      print(paste0('Common factor GWAS output saved to ', gwa[1]))
     }
   }
   
