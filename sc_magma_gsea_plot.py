@@ -151,7 +151,7 @@ def main(args):
       gset_df.to_csv(f'{out_prefix}.{gset}.txt', sep = '\t', index = False)
       if gset_df.cell_type.unique().size < 1: continue
       gset_df = gset_df.assign(**{'-log(fdr)': (-np.log10(gset_df.q) * (gset_df['beta'] > 0))})
-      if gset_df.cell_type.unique().size < 100:
+      if gset_df.cell_type.unique().size < 50:
         fig1, ax1 = plt.subplots(gset_df.cell_type.unique().size, 1, figsize = (len(pheno), 3*gset_df.cell_type.unique().size), sharex = True, squeeze = False)
         ax1 = ax1[::-1,0] # invert y axis
         for i, ct in enumerate(gset_df.cell_type.unique()):
@@ -165,7 +165,7 @@ def main(args):
         fig = corr_heatmap(gset_df[['group','phenotype','label','cell_type','beta','p','q']])
         fig.savefig(f'{out_prefix}.{gset}.pdf', bbox_inches = 'tight')
         plt.close(fig)
-      log.log(f'    {gset:35}{out_prefix}.{gset}.txt')
+      log.log(f'    {out_prefix}.{gset}.txt')
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 'Parses MAGMA GSA outputs for a group of phenotypes')

@@ -56,13 +56,13 @@ def main(args):
     summary = norm.normalise(summary)
     if not os.path.isfile(f'{fout}.txt') or len(args.exclude) == 0:
         summary.to_csv(f'{fout}.txt', index = False, sep = '\t')
+    log.log(f'Tabular output saved to {fout}.txt and {fout}.wide.txt')
     
     # plot figure
     from _plots import corr_heatmap
     fig = corr_heatmap(summary, annot = 'Heritability')
     fig.savefig(f'{fout}.pdf', bbox_inches = 'tight')
     log.log(f'Figure output saved to {fout}.pdf')
-    log.log(f'Tabular output saved to {fout}.txt and {fout}.wide.txt')
     
 if __name__ == '__main__':
     import argparse
