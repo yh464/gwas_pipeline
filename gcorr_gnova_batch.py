@@ -13,6 +13,7 @@ Outputs:
 '''
 
 import os
+from fnmatch import fnmatch
 from _utils.logger import logger
 log = logger()
 
@@ -34,6 +35,7 @@ def main(args):
         if not any([f'{chrom}.gnova' in os.listdir(f'{args.gene_set}/{x}') for chrom in range(1,23)]): 
             log.warn(f'Missing GNOVA annotation file in {args.gene_set}/{x}, skipping')
             continue
+        if len(args.subset) > 0 and not any([fnmatch(x, f'*{s}*') for s in args.subset]): continue # empty list = all gene sets available
         gene_sets.append(x)
 
     log.log(f'Found following gene sets for GNOVA analysis:')
@@ -63,6 +65,7 @@ if __name__ == '__main__':
     parser = slurm_parser(description = 'A wrapper script to conduct GNOVA correlation analysis')
     parser.add_argument('-p1', '--p1', nargs = '+', help = 'Phenotype group 1')
     parser.add_argument('-p2', '--p2', nargs = '*', default = [], help = 'Phenotype group 2 (if not specified, estimate pairwise correlation of p1)')
+    parser.add_argument('--subset', nargs = '*', default = [], help = 'Subset of gene sets to process')
     parser.add_argument('-i','--in', dest = '_in', help = 'Input directory containing LDSC-munged GWAS summary statistics',
         default = '../gcorr/ldsc_sumstats/')
     parser.add_argument('-o', '--out', help = 'Output directory',
