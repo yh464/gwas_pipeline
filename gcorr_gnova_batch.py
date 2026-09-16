@@ -32,10 +32,10 @@ def main(args):
     gene_sets = []
     for x in os.listdir(args.gene_set):
         if x.startswith('.') or not os.path.isdir(f'{args.gene_set}/{x}'): continue
+        if len(args.subset) > 0 and not any([fnmatch(x, f'*{s}*') for s in args.subset]): continue # empty list = all gene sets available
         if not any([f'{chrom}.gnova' in os.listdir(f'{args.gene_set}/{x}') for chrom in range(1,23)]): 
             log.warn(f'Missing GNOVA annotation file in {args.gene_set}/{x}, skipping')
             continue
-        if len(args.subset) > 0 and not any([fnmatch(x, f'*{s}*') for s in args.subset]): continue # empty list = all gene sets available
         gene_sets.append(x)
 
     log.log(f'Found following gene sets for GNOVA analysis:')
