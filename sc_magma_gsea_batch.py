@@ -83,8 +83,8 @@ def main(args = None, **kwargs):
         for gscore, gscore_prefix in gscores:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}.cond'
             if (os.path.isfile(f'{out_prefix}.gsa.out') and not args.force) or len(cond_cols[gscore]) == 0: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --model joint-pairs analyse=list,'+
-                          ','.join(cond_cols[gscore])+ f' --out {out_prefix} --settings abbreviate=0')
+            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --model joint-pairs "analyse=list,'+
+                          ','.join(cond_cols[gscore])+ f'" --out {out_prefix} --settings abbreviate=0')
 
     submitter.submit()
     return submitter
