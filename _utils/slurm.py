@@ -420,9 +420,7 @@ def add_slurm_args_dec(generator):
 class slurm_parser(argparse.ArgumentParser):
     '''An argparse.ArgumentParser with default SLURM config options'''
     def __init__(self,**kwargs):
-        super().__init__(
-            formatter = argparse.ArgumentDefaultsHelpFormatter,
-            **kwargs)
+        super().__init__(**kwargs)
         self.parser_config()
 
     def parser_config(self):
