@@ -20,7 +20,7 @@ log = logger()
 def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(name = 'gcorr_gnova_'+'_'.join(args.p1)+'_'+'_'.join(args.p2),
-        n_cpu = 4, timeout = 30, env = args.gnova)
+        n_cpu = 8, timeout = 30, env = args.gnova)
     
     # find and pair GWAS files
     from _utils.path import find_gwas, pair_gwas
