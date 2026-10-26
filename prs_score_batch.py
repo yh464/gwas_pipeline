@@ -44,7 +44,7 @@ def format_gwas_4prscs(gwa_file, out_prefix):
 def main(args):
     from _utils.path import find_gwas, find_bed
     from _utils.slurm import array_submitter
-    pheno = find_gwas(args.pheno, dirname = args._in, no_ukb = True, long = True)
+    pheno = find_gwas(args.pheno, dirname = args._in, no_ukb = True, long = True, se = True) # need effect size and SE
     submitter = array_submitter(name = 'prs_score_'+'_'.join([g for g,_ in pheno]), 
         n_cpu = 2, timeout = 120, env = 'gentoolspy', partition = 'icelake-himem')
     bed_list = find_bed(args.bed)
