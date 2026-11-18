@@ -19,7 +19,7 @@ def parse_fd(eid):
   fd_file = f'{eid}/func/fMRI/rfMRI.ica/mc/prefiltered_func_data_mcf.par'
   if not os.path.isfile(fd_file): return np.nan, np.nan
   df = np.loadtxt(fd_file)
-  df[:,:3] *= np.pi * 50 / 180 # rotations
+  df[:,:3] *= 50 # rotations are in radians
   fd = df[2:,:] - df[:-2,:]
   fd = np.abs(fd).sum(axis = 1)
   return np.sum(fd)/(len(fd) + 1), np.max(fd)
