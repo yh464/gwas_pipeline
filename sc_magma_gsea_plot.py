@@ -151,7 +151,7 @@ def main(args):
       gset_df.to_csv(f'{out_prefix}.{gset}.txt', sep = '\t', index = False)
       if gset_df.cell_type.unique().size < 1: continue
       gset_df = gset_df.assign(**{'-log(fdr)': (-np.log10(gset_df.q) * (gset_df['beta'] > 0))})
-      if gset_df.cell_type.unique().size < 50:
+      if gset_df.cell_type.unique().size < 50 and args.barplot:
         fig1, ax1 = plt.subplots(gset_df.cell_type.unique().size, 1, figsize = (len(pheno), 3*gset_df.cell_type.unique().size), sharex = True, squeeze = False)
         ax1 = ax1[::-1,0] # invert y axis
         for i, ct in enumerate(gset_df.cell_type.unique()):
@@ -177,6 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--gset', dest = 'gset', help = 'Gene sets to study enrichment, scans directory',
         default = '../multiomics/gene_set')
     parser.add_argument('--gscore', help = 'Directory containing gene scores', default = '../multiomics/gene_score')
+    parser.add_argument('--barplot', action = 'store_true', help = 'Generate barplots for each gene set')
     # always overwrites
     args = parser.parse_args()
     # path normalisation
