@@ -13,12 +13,15 @@ Requires following inputs:
     BESD format xQTL datasets.
 '''
 
-from _utils.logger import logger
 import pandas as pd
 import numpy as np
 import os
 from fnmatch import fnmatch
+from _utils.logger import logger
 log = logger()
+from _utils.path import toolbox
+tool = toolbox()
+smr = tool['smr']
 
 def format_gwa(gwa, tmpgwa):
     # input file name, usually fastGWA format
@@ -124,7 +127,7 @@ def main(args):
         for qtl in qtl_list:
             if qtl[0] == qtl[1] and bfile_list[0] == bfile_list[1]:
                 if os.path.isfile(f'{args.out}/{p}.smr') and not args.force: continue
-                submitter.add(f'{args.smr} --bfile {bfile_list[0]} --gwas-summary {tmpgwa} '+
+                submitter.add(f'{smr} --bfile {bfile_list[0]} --gwas-summary {tmpgwa} '+
                     f'--beqtl-summary {qtl[0]} --out {args.out}/{g}/{p}.{os.path.basename(qtl[0])}')
             else:
                 qtl_name = os.path.basename(qtl[0]).replace('_chr1','').replace('.besd','')
@@ -132,7 +135,7 @@ def main(args):
                 for q, b, chrom in zip(qtl, bfile_list, range(1,25)):
                     if os.path.isfile(f'{args.out}/{g}/{p}.{qtl_name}/chr{chrom}.smr') and not args.force:
                         continue
-                    submitter.add(f'{args.smr} --bfile {b} --gwas-summary {tmpgwa} '+
+                    submitter.add(f'{smr} --bfile {b} --gwas-summary {tmpgwa} '+
                         f'--beqtl-summary {q} --out {args.out}/{g}/{p}.{qtl_name}/chr{chrom}')
     
     submitter.submit()
@@ -146,8 +149,8 @@ if __name__ == '__main__':
       default = '../gwa/')
     parser.add_argument('-q','--qtl', dest = 'qtl', help = 'Directory containing all xQTL files',
       default = '../params/xqtl')
-    parser.add_argument('-s','--smr', dest = 'smr', help = 'Location of SMR binary',
-      default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
+    # parser.add_argument('-s','--smr', dest = 'smr', help = 'Location of SMR binary',
+    #   default = '/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/toolbox/smr') # intentionally absolute
     parser.add_argument('-b', '--bfile', dest = 'bfile', help = 'bed binary to use in magma',
       default = '/rds/project/rds-Nl99R8pHODQ/UKB/Imaging_genetics/yh464/bed/') # intentionally absolute
     parser.add_argument('--opera', action = 'store_true', help = 'Run OPERA to combine different SMR')
@@ -157,7 +160,7 @@ if __name__ == '__main__':
       default = False, action = 'store_true')
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','qtl','smr','bfile']:
+    for arg in ['_in','out','qtl','bfile']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path, logger

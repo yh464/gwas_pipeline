@@ -493,3 +493,44 @@ class project():
             elif key in self.toolbox.keys() and value is not None:
                 log.warn(f'Using tool {key} from non-default location: {value}.')   
         return namespace
+
+class toolbox():
+    def __init__(self, toolbox_file = os.path.realpath('../.path/toolbox.json')):
+        self.config_file = toolbox_file
+        if not os.path.isfile(self.config_file):
+            self.config = {}
+            with open(self.config_file, 'w') as f:
+                json.dump(self.config, f, indent = 4)
+        else:
+            with open(self.config_file, 'r') as f:
+                self.config = json.load(f)
+
+    def __getitem__(self, tool_name):
+        return self.require(tool_name)
+
+    def require(self, tool_name, default = None):
+        if tool_name not in self.config:
+            try: return self.register(tool_name, default, force = True)
+            except: log.error(f'Tool {tool_name} is not registered in the toolbox. Please register it first.')
+ 
+        tool_path = self.config[tool_name]
+        if not os.path.isfile(tool_path) and not os.path.isdir(tool_path):
+            try: return self.register(tool_name, default, force = True)
+            except: log.error(f'Tool {tool_name} is registered but the path {tool_path} does not exist.')
+        return tool_path
+
+    def register(self, tool_name, tool_path, force = False):
+        if tool_path is None: raise ValueError('Tool path must be provided when registering a tool.') # silently fail if no path is provided
+        if not os.path.isfile(tool_path) and not os.path.isdir(tool_path):
+            log.error(f'Tool path {tool_path} does not exist.')
+
+        tool_path = os.path.realpath(tool_path)
+
+        if tool_name in self.config.keys() and self.config[tool_name] == tool_path: return tool_path
+        elif tool_name in self.config.keys() and self.config[tool_name] != tool_path and not force:
+            log.error(f'Tool {tool_name} already exists in toolbox with a different path. Use force = True to overwrite.')
+
+        self.config[tool_name] = tool_path
+        with open(self.config_file, 'w') as f:
+            json.dump(self.config, f, indent = 4)
+        return tool_path

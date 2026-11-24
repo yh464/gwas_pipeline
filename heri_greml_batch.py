@@ -5,8 +5,13 @@ batch runs GREML to assess heritability
 
 from _utils import logger
 log = logger.logger()
+from _utils.path import toolbox
+tool = toolbox()
 
 def main(args):
+
+    gcta = tool['gcta']
+
     # locate phenotype file
     import os
     import fnmatch
@@ -65,7 +70,7 @@ def main(args):
      
       scripts_path = os.path.realpath(__file__)
       scripts_path = os.path.dirname(scripts_path)
-      submitter.add(f'{args.gcta} --reml --reml-est-fix --reml-pred-rand --grm-cutoff 0.05 '+
+      submitter.add(f'{gcta} --reml --reml-est-fix --reml-pred-rand --grm-cutoff 0.05 '+
         f'--grm {args.grm} --pheno {args._in}/{f} --mpheno {mpheno} '+
         f'--qcovar {args.qcov} --covar {args.cov} --out {out_fname} '+
         f'--threads 8')
@@ -82,8 +87,8 @@ if __name__ == '__main__':
     parser.add_argument('pheno', help = 'Phenotype file in TXT format - please supply ONLY ONE')
     parser.add_argument('-i','--in', dest = '_in', help = 'Phenotype directory',
       default = '../pheno/ukb/')
-    parser.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-      default = '../toolbox/gcta/gcta64')
+    # parser.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
+    #   default = '../toolbox/gcta/gcta64')
     parser.add_argument('-o','--out',dest  = 'out', help = 'Output directory',
       default = '../gwa/')
     parser.add_argument('--cov',dest = 'cov', help = 'DISCRETE covariate file',
@@ -100,7 +105,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     import os
-    for arg in ['_in','out','gcta','cov','qcov','grm']:
+    for arg in ['_in','out','cov','qcov','grm']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     
     from _utils import cmdhistory, path

@@ -16,6 +16,8 @@ import os
 from fnmatch import fnmatch
 from _utils.logger import logger
 log = logger()
+from _utils.path import toolbox
+tool = toolbox()
 
 def main(args = None, **kwargs):
     from _utils.gadgets import namespace
@@ -26,6 +28,8 @@ def main(args = None, **kwargs):
     from _utils.slurm import array_submitter
     submitter = array_submitter('sc_magma_gsea_'+'_'.join(args.pheno),
         n_cpu = 1, timeout = 20, parallel = 4, modules = ['gcc/11'], env = 'base')
+
+    magma = tool['magma']
 
     # find gene set files
     gsets = [(f'{args.gset}/{x}', x[:-4]) for x in os.listdir(args.gset) if x[-4:] == '.txt']
@@ -67,23 +71,23 @@ def main(args = None, **kwargs):
         for gset, gset_prefix in gsets:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gset_prefix}'
             if os.path.isfile(f'{out_prefix}.gsa.out') and not args.force: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --set-annot {gset} --out {out_prefix} --settings abbreviate=0')
+            submitter.add(f'{magma} --gene-results {sumstat} --set-annot {gset} --out {out_prefix} --settings abbreviate=0')
         
         for gset, gset_prefix in gsets:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gset_prefix}.cond'
             if (os.path.isfile(f'{out_prefix}.gsa.out') and not args.force) or len(cond_cols[gset]) == 0: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --set-annot {gset} --model joint-pairs "analyse=list,'+
+            submitter.add(f'{magma} --gene-results {sumstat} --set-annot {gset} --model joint-pairs "analyse=list,'+
                 ','.join(cond_cols[gset])+ f'" --out {out_prefix} --settings abbreviate=0')
         
         for gscore, gscore_prefix in gscores:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}'
             if os.path.isfile(f'{out_prefix}.gsa.out') and not args.force: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --out {out_prefix} --settings abbreviate=0')
+            submitter.add(f'{magma} --gene-results {sumstat} --gene-covar {gscore} --out {out_prefix} --settings abbreviate=0')
 
         for gscore, gscore_prefix in gscores:
             out_prefix = f'{outdir}/{p}.{args.annot}.{gscore_prefix}.cond'
             if (os.path.isfile(f'{out_prefix}.gsa.out') and not args.force) or len(cond_cols[gscore]) == 0: continue
-            submitter.add(f'{args.magma} --gene-results {sumstat} --gene-covar {gscore} --model joint-pairs "analyse=list,'+
+            submitter.add(f'{magma} --gene-results {sumstat} --gene-covar {gscore} --model joint-pairs "analyse=list,'+
                           ','.join(cond_cols[gscore])+ f'" --out {out_prefix} --settings abbreviate=0')
 
     submitter.submit()
@@ -100,7 +104,7 @@ if __name__ == '__main__':
     parser.add_argument('--gset', dest = 'gset', help = 'Gene sets to study enrichment, scans directory',
         default = '../multiomics/gene_set')
     parser.add_argument('--gscore', help = 'Directory containing gene scores', default = '../multiomics/gene_score')
-    parser.add_argument('--magma', dest = 'magma', help = 'MAGMA executable', default = '../toolbox/magma/magma')
+    # parser.add_argument('--magma', dest = 'magma', help = 'MAGMA executable', default = '../toolbox/magma/magma')
     parser.add_argument('-c', '--cond', nargs = '*', help = 'Cell type annotation used for conditional analysis',
         default = ['supercluster_term', 'Type']) # siletti, wang
     parser.add_argument('-o', '--out', dest = 'out', help = 'output directory', default = '../sc/magma_gsea')
@@ -111,6 +115,7 @@ if __name__ == '__main__':
     import os
     for arg in ['_in','gset','gscore','magma','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
+    if 'all' in args.cond: args.cond = ['all']
 
     from _utils import cmdhistory, logger
     logger.splash(args)

@@ -14,12 +14,16 @@ Requires following inputs:
 import os
 from _utils.logger import logger
 log = logger()
+from _utils.path import toolbox
+tool = toolbox()
 
 @log.profile
 def main(args):
   import pandas as pd
   from fnmatch import fnmatch
   os.makedirs(os.path.dirname(args.out), exist_ok = True)
+
+  gcta = tool['gcta']
 
   # parse bed files
   if fnmatch(args.bed, '*.bed'):
@@ -65,7 +69,7 @@ def main(args):
   else: args.xchr = False; log.warn('skipping X chromosome because no bed file found')
 
   if not os.path.isfile(f'{args.out}.fastGWA') or args.force:
-    exit_code = os.system(f'{args.gcta} --fastGWA-mlm{exact} {bfile} --grm-sparse {args.grm} '+
+    exit_code = os.system(f'{gcta} --fastGWA-mlm{exact} {bfile} --grm-sparse {args.grm} '+
       f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
       f' {ft} --keep {args.keep} --out {args.out}')
     if exit_code != 0: raise RuntimeError('fastGWA failed, please check the input files and parameters')
@@ -82,11 +86,11 @@ def main(args):
           xkeep = pd.merge(xkeep, xfam)
           xkeep.to_csv(xkeep_file, sep = '\t', index = False)
       
-      exit_code = os.system(f'{args.gcta} --fastGWA-mlm{exact} {bfile} --grm-sparse {args.grm} '+
+      exit_code = os.system(f'{gcta} --fastGWA-mlm{exact} {bfile} --grm-sparse {args.grm} '+
           f'--pheno {args._in} --mpheno {args.mpheno} --qcovar {args.qcov} --covar {args.dcov}'+
           f' {ft} --keep {xkeep_file} --model-only --out {args.out}_Xmodel')
       if exit_code != 0: raise RuntimeError('X chromosome model fitting failed')
-      os.system(f'{args.gcta} {xbfile} --load-model {args.out}_Xmodel.fastGWA --geno 0.1 --out {args.out}_X')
+      os.system(f'{gcta} {xbfile} --load-model {args.out}_Xmodel.fastGWA --geno 0.1 --out {args.out}_X')
       os.system(f'tail -n +2 {args.out}_X.fastGWA >> {args.out}.fastGWA')
 
 if __name__ == '__main__':
@@ -109,8 +113,8 @@ if __name__ == '__main__':
     default = '../params/bed/ukb_img_eur.sp')
 
   params = parser.add_argument_group(title = 'parameters for GCTA')
-  params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-    default = '../toolbox/gcta/gcta64')
+  # params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
+  #   default = '../toolbox/gcta/gcta64')
   params.add_argument('--maf', dest = 'maf', help = 'Filter by minor allele frequency',
     default = '0.01', type = str)
   params.add_argument('--keep', dest = 'keep', help = 'Subjects to keep', # intentionally absolute
@@ -126,7 +130,7 @@ if __name__ == '__main__':
   parser.add_argument('-f','--force', dest = 'force', help = 'Force overwrite',
     default = False, action = 'store_true')
   args = parser.parse_args()
-  for arg in ['_in','out','gcta','dcov','qcov','grm','bed','xbed']:
+  for arg in ['_in','out','dcov','qcov','grm','bed','xbed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
   from _utils import logger

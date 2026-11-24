@@ -425,3 +425,17 @@ class slurm_parser(argparse.ArgumentParser):
 
     def parser_config(self):
         self = add_slurm_args(self)
+
+def get_slurm_config():
+    # check the number of CPUs per task and memory per task
+    pages = os.sysconf("SC_PHYS_PAGES")
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    total_mem_bytes = pages * page_size
+
+    n_cpu_per_task = int(os.environ['SLURM_CPUS_PER_TASK']) if 'SLURM_CPUS_PER_TASK' in os.environ else os.cpu_count()
+    n_cpu_on_node = int(os.environ['SLURM_CPUS_ON_NODE']) if 'SLURM_CPUS_ON_NODE' in os.environ else os.cpu_count()
+
+    mem_per_task_mb = int(os.environ['SLURM_MEM_PER_CPU']) * n_cpu_per_task if 'SLURM_MEM_PER_CPU' in os.environ else \
+        total_mem_bytes / (1024 * 1024) / n_cpu_on_node * n_cpu_per_task
+
+    return n_cpu_per_task, mem_per_task_mb

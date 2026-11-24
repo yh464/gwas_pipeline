@@ -13,9 +13,6 @@ Requires following inputs:
     SMR summary stats
 '''
 
-from gettext import find
-
-
 def main(args):
     from fnmatch import fnmatch
     force = '-f' if args.force else ''

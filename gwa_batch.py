@@ -12,11 +12,14 @@ Requires following inputs:
     PLINK bed binaries
     covariates files in FID IID *** format
 '''
-from _utils.logger import logger
-log = logger()
+
 import os, fnmatch
 import pandas as pd
 from hashlib import sha256
+from _utils.logger import logger
+log = logger()
+from _utils.path import toolbox
+tool = toolbox()
 
 def main(args):
   # array submitter
@@ -24,6 +27,8 @@ def main(args):
   submitter = array_submitter(name = 'gwa_'+ '_'.join(args.pheno),timeout = 90)
   tmpdir = os.path.realpath('/home/yh464/rds/rds-rb643-ukbiobank2/Data_Users/yh464/temp/_snp_list')
   os.makedirs(tmpdir, exist_ok = True)
+
+  gcta = tool['gcta']
   
   # general args
   force = '-f' if args.force else ''
@@ -89,7 +94,7 @@ def main(args):
             continue
           submitter.add(
             f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov.replace(".txt",f"_sex_{sex}.txt")} '+
-            f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+            f'--qcov {args.qcov.replace(".txt",f"_sex_{sex}.txt")} --bed {args.bed} --grm {args.grm} --gcta {gcta} --maf {args.maf} '+
             f'--keep {args.keep} --nox {extract} {force}'
           )
 
@@ -99,7 +104,7 @@ def main(args):
         continue
       submitter.add(
         f'python gwa_by_trait.py -i {f} -o {out_fname} --mpheno {mpheno} --dcov {args.dcov} '+
-        f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {args.gcta} --maf {args.maf} '+
+        f'--qcov {args.qcov} --bed {args.bed} --grm {args.grm} --gcta {gcta} --maf {args.maf} '+
         f'--keep {args.keep} {xchr} --xbed {args.xbed} {extract} {force}'
         )
 
@@ -126,8 +131,8 @@ if __name__ == '__main__':
     default = '../params/bed/ukb_img_eur.sp')
   
   params = parser.add_argument_group(title = 'parameters for GCTA')
-  params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
-    default = '../toolbox/gcta/gcta64')
+  # params.add_argument('--gcta', dest = 'gcta', help = 'Location of GCTA executable',
+  #   default = '../toolbox/gcta/gcta64')
   params.add_argument('--maf', dest = 'maf', help = 'Filter by minor allele frequency',
     default = '0.01', type = str)
   params.add_argument('--keep', dest = 'keep', help = 'Subjects to keep', # intentionally absolute
@@ -146,7 +151,7 @@ if __name__ == '__main__':
   
   args = parser.parse_args()
   import os
-  for arg in ['_in','out','gcta','dcov','qcov','grm','bed']:
+  for arg in ['_in','out','dcov','qcov','grm','bed']:
       setattr(args, arg, os.path.realpath(getattr(args, arg)))
   
   from _utils import cmdhistory, path, logger
