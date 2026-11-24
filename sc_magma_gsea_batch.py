@@ -113,7 +113,7 @@ if __name__ == '__main__':
     
     # path normalisation
     import os
-    for arg in ['_in','gset','gscore','magma','out']:
+    for arg in ['_in','gset','gscore','out']:
         setattr(args, arg, os.path.realpath(getattr(args, arg)))
     if 'all' in args.cond: args.cond = ['all']
 
